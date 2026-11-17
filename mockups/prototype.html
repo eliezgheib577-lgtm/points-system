@@ -341,7 +341,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <div class="nav"><span class="ic">＋</span>New submission</div>
         <div class="nav"><span class="ic">▤</span>My submissions<span class="count">5</span></div>
         <div class="nav"><span class="ic">◇</span>Returned to me<span class="count">1</span></div>
-        <div class="nav"><span class="ic">◈</span>LC members</div>
       </div>
       <div class="navgroup">
         <div class="navlabel">Reference</div>
@@ -381,7 +380,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
             </tbody>
           </table>
           <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)">
-            <div class="note info" style="border:0;background:transparent;padding:0"><span class="ic">🔒</span><span>Point totals, member balances and the points sheet are held by the VPA. You'll see whether a submission was approved — not the figures it ended up with.</span></div>
+            <div class="note info" style="border:0;background:transparent;padding:0"><span class="ic">🔒</span><span>Point totals, member balances and the points sheet are held by the VPA — your own points included. You'll see whether a submission was approved, never the figures it ended up with.</span></div>
           </div>
         </div>
       </div>
@@ -400,7 +399,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <div class="nav on"><span class="ic">＋</span>New submission</div>
         <div class="nav"><span class="ic">▤</span>My submissions<span class="count">5</span></div>
         <div class="nav"><span class="ic">◇</span>Returned to me<span class="count">1</span></div>
-        <div class="nav"><span class="ic">◈</span>LC members</div>
       </div>
       <div class="side-foot"><div class="avatar">RH</div><div><b>Rami Haddad</b><small>LO · LC AUB</small></div></div>
     </aside>
@@ -467,7 +465,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <div class="nav on"><span class="ic">＋</span>New submission</div>
         <div class="nav"><span class="ic">▤</span>My submissions<span class="count">5</span></div>
         <div class="nav"><span class="ic">◇</span>Returned to me<span class="count">1</span></div>
-        <div class="nav"><span class="ic">◈</span>LC members</div>
       </div>
       <div class="side-foot"><div class="avatar">RH</div><div><b>Rami Haddad</b><small>LO · LC AUB</small></div></div>
     </aside>
@@ -486,7 +483,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <div class="row" style="align-items:flex-start">
           <div style="flex:2.2;min-width:0;display:flex;flex-direction:column;gap:14px">
             <div class="card">
-              <div class="card-h"><h3>Add a volunteer</h3><div class="spacer"></div><small>Search the LC member registry — no free typing of names</small></div>
+              <div class="card-h"><h3>Add a volunteer</h3><div class="spacer"></div><small>Search by name or ID to add them — the picker shows no points</small></div>
               <div class="card-b" style="display:flex;gap:10px;align-items:flex-end">
                 <div class="field" style="flex:1.6"><label>Member</label><div class="inp ph">🔎 Start typing a name or LeMSIC ID…</div></div>
                 <div class="field" style="flex:1.2"><label>Role / effort</label><div class="inp sel ph">Select from rubric</div></div>
@@ -557,7 +554,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
         <div class="nav on"><span class="ic">＋</span>New submission</div>
         <div class="nav"><span class="ic">▤</span>My submissions<span class="count">5</span></div>
         <div class="nav"><span class="ic">◇</span>Returned to me<span class="count">1</span></div>
-        <div class="nav"><span class="ic">◈</span>LC members</div>
       </div>
       <div class="side-foot"><div class="avatar">RH</div><div><b>Rami Haddad</b><small>LO · LC AUB</small></div></div>
     </aside>
@@ -1337,13 +1333,16 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
                   <tr><td>Submit points</td><td><b>✓</b></td><td><b>✓</b></td><td class="sub">—</td></tr>
                   <tr><td>Track own submissions</td><td><b>✓</b></td><td><b>✓</b></td><td class="sub">—</td></tr>
                   <tr><td>Approve &amp; adjust</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">—</td></tr>
-                  <tr><td>See point totals</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">own only</td></tr>
+                  <tr><td>See their own points</td><td class="sub">—</td><td><b>✓</b></td><td><b>✓</b></td></tr>
+                  <tr><td>See anyone else's points</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">—</td></tr>
                   <tr><td>See the points sheet</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">—</td></tr>
                   <tr><td>See rankings</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">own rank</td></tr>
-                  <tr><td>Member registry</td><td class="sub">names only</td><td><b>✓</b></td><td class="sub">—</td></tr>
+                  <tr><td>Browse the member registry</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">—</td></tr>
+                  <tr><td>Search members while submitting</td><td><b>✓</b></td><td><b>✓</b></td><td class="sub">—</td></tr>
                   <tr><td>Excel workbook</td><td class="sub">—</td><td><b>✓</b></td><td class="sub">—</td></tr>
                 </tbody>
               </table>
+              <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><div class="sub">An LO account has no member view, so an LO who volunteers can't look up their own balance either. Giving someone both roles needs two separate accounts.</div></div>
             </div>
             <div class="card"><div class="card-h"><h3>Term</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:11px">
               <div class="kv"><span class="k">Active term</span><span class="v">2026–2027 · Semester 1</span></div>
@@ -1488,7 +1487,7 @@ sheet.addEventListener("click",function(e){ if(e.target===sheet) sheet.classList
 
 /* make the mock-up click through */
 var NAVMAP={"Dashboard":"lo-dash","New submission":"lo-event","My submissions":"lo-dash","Returned to me":"lo-dash",
- "LC members":"lo-dash","Points rubric":"rubric","How it works":"login",
+ "Points rubric":"rubric","How it works":"login",
  "Overview":"vpa-queue","Pending review":"vpa-queue","All submissions":"vpa-queue","Points sheet":"ledger",
  "Members":"by-member","Excel sync":"excel-sync","Rubric & rules":"rubric","Accounts & LCs":"rubric","Audit log":"ledger",
  "My points":"member","My events":"member","Leaderboard":"ledger","My certificate":"member"};
