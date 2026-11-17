@@ -51,6 +51,7 @@ button{font:inherit;cursor:pointer}
 .topbar{height:58px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 24px;position:sticky;top:0;z-index:5}
 .crumb{color:var(--muted);font-size:13px}
 .crumb b{color:var(--ink);font-weight:600}
+.spacer{flex:1}
 .topbar .spacer{flex:1}
 .termsel{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:12.5px;color:var(--ink-2);background:var(--surface-2)}
 .dot{width:7px;height:7px;border-radius:99px;background:#1cab84;box-shadow:0 0 0 3px #d6f2e9}
@@ -554,6 +555,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         <div class="nav"><span class="ic">▤</span>All submissions</div>
         <div class="nav"><span class="ic">≡</span>Points sheet</div>
         <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
         <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
         <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
         <div class="nav"><span class="ic">⟲</span>Audit log</div>
@@ -602,6 +604,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         <div class="nav"><span class="ic">▤</span>All submissions</div>
         <div class="nav"><span class="ic">≡</span>Points sheet</div>
         <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
         <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
         <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
         <div class="nav"><span class="ic">⟲</span>Audit log</div>
@@ -683,6 +686,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         <div class="nav"><span class="ic">▤</span>All submissions</div>
         <div class="nav on"><span class="ic">≡</span>Points sheet</div>
         <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
         <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
         <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
         <div class="nav"><span class="ic">⟲</span>Audit log</div>
@@ -690,14 +694,14 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA · National</small></div></div>
     </aside>
     <div class="main">
-      <div class="topbar"><div class="crumb"><b>Points sheet</b></div><div class="spacer"></div><div class="syncbar"><span class="dot"></span>Synced to Google Sheet · 40 s ago</div><button class="btn sm">⇩ Export XLSX</button><button class="btn sm">⇩ CSV</button></div>
+      <div class="topbar"><div class="crumb"><b>Points sheet</b></div><div class="spacer"></div><div class="syncbar"><span class="dot"></span>Excel workbook written · 40 s ago</div><button class="btn sm">⇩ Download .xlsx</button><button class="btn sm">⇅ Sync settings</button></div>
       <div class="content">
-        <div class="page-head"><div><h1>Live points sheet</h1><p>Every row here came from an approved submission. Nothing is typed directly — corrections are new, signed entries, so the history never changes underneath you.</p></div></div>
+        <div class="page-head"><div><h1>Live points sheet</h1><p>Opening balances imported from your old workbook, plus every point approved since. Nothing is typed directly — corrections are new, signed entries, so the history never changes underneath you.</p></div></div>
         <div class="grid g4" style="margin-bottom:16px">
-          <div class="tile"><div class="k">Total points · term</div><div class="v">4,106</div><div class="d">+82 today</div></div>
+          <div class="tile"><div class="k">Grand total</div><div class="v">4,106</div><div class="d">+82 today</div></div>
+          <div class="tile"><div class="k">Carried forward</div><div class="v">3,180</div><div class="d">from the old workbook</div></div>
+          <div class="tile"><div class="k">Earned in app</div><div class="v">926</div><div class="d">61 approved events</div></div>
           <div class="tile"><div class="k">Members credited</div><div class="v">312</div><div class="d">of 486 registered</div></div>
-          <div class="tile"><div class="k">Events approved</div><div class="v">61</div><div class="d">across 7 LCs</div></div>
-          <div class="tile"><div class="k">Avg pts / member</div><div class="v">13.2</div><div class="d">median 9</div></div>
         </div>
         <div class="row" style="align-items:flex-start">
           <div class="card" style="flex:2.1;min-width:0">
@@ -712,6 +716,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
                 <tr><td class="mono">#1839</td><td><div class="who"><span class="ava">HZ</span><div><b>Hadi Zein</b><small>LEM-2104</small></div></div></td><td>Peer Education Training<div class="sub">Trainer / facilitator</div></td><td>LU</td><td class="num"><b>10</b></td><td class="sub">Y. Dagher</td><td class="sub">yesterday</td></tr>
                 <tr style="background:var(--red-soft)"><td class="mono">#1838</td><td><div class="who"><span class="ava">ER</span><div><b>Elias Rizk</b><small>LEM-2015</small></div></div></td><td>Winter Clothing Drive<div class="sub" style="color:var(--red)">Correction — reverses #1702</div></td><td>USJ</td><td class="num"><b style="color:var(--red)">−6</b></td><td class="sub">Y. Dagher</td><td class="sub">yesterday</td></tr>
                 <tr><td class="mono">#1837</td><td><div class="who"><span class="ava">SI</span><div><b>Sara Itani</b><small>LEM-2233</small></div></div></td><td>Exchange Orientation Day<div class="sub">OC member</div></td><td>BAU</td><td class="num"><b>8</b></td><td class="sub">Y. Dagher</td><td class="sub">2 days ago</td></tr>
+                <tr style="background:var(--blue-soft)"><td class="mono">#0001</td><td><div class="who"><span class="ava">LK</span><div><b>Lea Khoury</b><small>LEM-2341</small></div></div></td><td>Carried forward — 2025/26 workbook<div class="sub">Opening balance · IMP-2026-01</div></td><td>AUB</td><td class="num"><b>84</b></td><td class="sub">Import</td><td class="sub">01 Sep 2026</td></tr>
                 <tr><td class="mono">#1836</td><td><div class="who"><span class="ava">PG</span><div><b>Perla Gemayel</b><small>LEM-2456</small></div></div></td><td>Research Methodology Webinar<div class="sub">OC coordinator</div></td><td>Balamand</td><td class="num"><b>11</b></td><td class="sub">Y. Dagher</td><td class="sub">2 days ago</td></tr>
               </tbody>
             </table></div>
@@ -738,6 +743,379 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   </div>
 </section>
 
+<!-- ============ BY MEMBER ============ -->
+<section class="screen" id="by-member">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National &middot; VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav on"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA &middot; National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb">Points sheet / <b>By member</b></div><div class="spacer"></div><div class="syncbar"><span class="dot"></span>Excel workbook written &middot; 40 s ago</div><button class="btn sm">⇩ Download .xlsx</button></div>
+      <div class="content">
+        <div class="page-head"><div><h1>Totals by member</h1><p>Points imported from the old workbook and points earned in the app are kept apart, then added together. Nobody loses history, and you can always see where a number came from.</p></div></div>
+        <div class="grid g4" style="margin-bottom:16px">
+          <div class="tile"><div class="k">Carried forward</div><div class="v">3,180</div><div class="d">imported 01 Sep 2026</div></div>
+          <div class="tile"><div class="k">Earned in app</div><div class="v">926</div><div class="d">61 approved events</div></div>
+          <div class="tile"><div class="k">Grand total</div><div class="v">4,106</div><div class="d">312 members credited</div></div>
+          <div class="tile"><div class="k">Workbook rows</div><div class="v">1,842</div><div class="d">ledger + totals tabs</div></div>
+        </div>
+        <div class="card">
+          <div class="tabs"><div class="tab">Ledger</div><div class="tab on">By member</div><div class="tab">By LC</div><div class="tab">By committee</div><div class="tab">Corrections</div></div>
+          <div class="card-h" style="border-bottom:1px solid var(--line-2)"><span class="pill flat">All LCs &#9662;</span><span class="pill flat">Active members &#9662;</span><div class="spacer"></div><small>Sorted by total &#9662;</small></div>
+          <div class="scroll-x"><table>
+            <thead><tr><th>Member</th><th>LC</th><th>Year</th><th class="num">Carried forward</th><th class="num">This term</th><th class="num">Total</th><th>Last activity</th></tr></thead>
+            <tbody>
+              <tr><td><div class="who"><span class="ava">LK</span><div><b>Lea Khoury</b><small>LEM-2341</small></div></div></td><td>AUB</td><td class="sub">3rd</td><td class="num mono">84</td><td class="num mono" style="color:var(--accent-2)">+12</td><td class="num"><b>96</b></td><td class="sub">World Diabetes Day &middot; today</td></tr>
+              <tr><td><div class="who"><span class="ava">HZ</span><div><b>Hadi Zein</b><small>LEM-2104</small></div></div></td><td>LU</td><td class="sub">5th</td><td class="num mono">74</td><td class="num mono" style="color:var(--accent-2)">+10</td><td class="num"><b>84</b></td><td class="sub">Peer Education Training &middot; 1 d</td></tr>
+              <tr><td><div class="who"><span class="ava">PG</span><div><b>Perla Gemayel</b><small>LEM-2456</small></div></div></td><td>Balamand</td><td class="sub">4th</td><td class="num mono">63</td><td class="num mono" style="color:var(--accent-2)">+11</td><td class="num"><b>74</b></td><td class="sub">Research Webinar &middot; 2 d</td></tr>
+              <tr><td><div class="who"><span class="ava">MS</span><div><b>Maya Saad</b><small>LEM-2488</small></div></div></td><td>AUB</td><td class="sub">4th</td><td class="num mono">55</td><td class="num mono" style="color:var(--accent-2)">+10</td><td class="num"><b>65</b></td><td class="sub">World Diabetes Day &middot; today</td></tr>
+              <tr><td><div class="who"><span class="ava">SI</span><div><b>Sara Itani</b><small>LEM-2233</small></div></div></td><td>BAU</td><td class="sub">2nd</td><td class="num mono">51</td><td class="num mono" style="color:var(--accent-2)">+8</td><td class="num"><b>59</b></td><td class="sub">Exchange Orientation &middot; 2 d</td></tr>
+              <tr><td><div class="who"><span class="ava">ER</span><div><b>Elias Rizk</b><small>LEM-2015</small></div></div></td><td>USJ</td><td class="sub">6th</td><td class="num mono">58</td><td class="num mono" style="color:var(--red)">&minus;6</td><td class="num"><b>52</b></td><td class="sub">Correction #1838 &middot; 1 d</td></tr>
+              <tr><td><div class="who"><span class="ava">KN</span><div><b>Karim Nassar</b><small>LEM-2502</small></div></div></td><td>AUB</td><td class="sub">2nd</td><td class="num mono">38</td><td class="num mono" style="color:var(--accent-2)">+8</td><td class="num"><b>46</b></td><td class="sub">World Diabetes Day &middot; today</td></tr>
+              <tr><td><div class="who"><span class="ava">TF</span><div><b>Tala Fares</b><small>LEM-2690</small></div></div></td><td>AUB</td><td class="sub">1st</td><td class="num mono" style="color:var(--muted)">0</td><td class="num mono" style="color:var(--accent-2)">+4</td><td class="num"><b>4</b></td><td class="sub">joined this term</td></tr>
+            </tbody>
+          </table></div>
+          <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;border-radius:0 0 var(--r) var(--r)"><span class="sub">8 of 312 members shown</span><div class="spacer"></div><span class="sub">Carried <b class="mono">3,180</b> + earned <b class="mono">926</b> =</span>&nbsp;<b style="font-size:17px">4,106 pts</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IMPORT 1 ============ -->
+<section class="screen" id="import-upload">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National &middot; VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav on"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA &middot; National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb">Excel sync / <b>Import existing sheet</b></div><div class="spacer"></div><button class="btn sm">Cancel</button><button class="btn pri sm">Next: match members &rarr;</button></div>
+      <div class="content">
+        <div class="steps">
+          <div class="step on"><span class="n">1</span><b>Upload &amp; map columns</b></div><div class="step-line"></div>
+          <div class="step "><span class="n">2</span><b>Match members</b></div><div class="step-line"></div>
+          <div class="step "><span class="n">3</span><b>Review &amp; import</b></div>
+        </div>
+        <div class="page-head"><div><h1>Import your existing points sheet</h1><p>Done once, at the start. Everything in the old workbook becomes the starting balance each member already earned &mdash; new approved points are then added on top of it.</p></div></div>
+        <div class="row" style="align-items:flex-start">
+          <div style="flex:1.9;min-width:0;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>Source file</h3><div class="spacer"></div><button class="btn sm">Replace file</button></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--surface-2)">
+                  <span style="font-size:20px">&#128202;</span>
+                  <div style="flex:1"><b style="font-size:13.4px">LeMSIC Points 2025-2026.xlsx</b><div class="sub">412 KB &middot; uploaded today 14:02 &middot; 4 sheets detected</div></div>
+                  <span class="pill ok">&check; readable</span>
+                </div>
+                <div>
+                  <div class="hint" style="margin-bottom:7px">Which sheet holds the points?</div>
+                  <div class="chips">
+                    <span class="pill ok">&#9679; TOTALS &middot; 312 rows</span>
+                    <span class="pill flat">SCOPH &middot; 184 rows</span>
+                    <span class="pill flat">SCORA &middot; 141 rows</span>
+                    <span class="pill flat">Archive 24-25 &middot; 298 rows</span>
+                  </div>
+                </div>
+                <div class="note info"><span class="ic">i</span><span>Header row detected at <b>row 3</b> &mdash; rows 1&ndash;2 look like a title and a blank spacer, so they're skipped. <a href="#">Change</a></span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Column mapping</h3><div class="spacer"></div><small>Guessed from your headers &mdash; correct anything that's wrong</small></div>
+              <div class="scroll-x"><table>
+                <thead><tr><th>Column in your file</th><th>First value</th><th style="width:210px">Maps to</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><b>Student Name</b><div class="sub mono">column B</div></td><td class="sub">Lea Khoury</td><td><div class="cellinp sel">Member name</div></td><td><span class="pill ok">&check; required</span></td></tr>
+                  <tr><td><b>ID</b><div class="sub mono">column C</div></td><td class="sub mono">LEM-2341</td><td><div class="cellinp sel">LeMSIC ID</div></td><td><span class="pill ok">&check; best match key</span></td></tr>
+                  <tr><td><b>University</b><div class="sub mono">column D</div></td><td class="sub">AUB</td><td><div class="cellinp sel">Local committee</div></td><td><span class="pill ok">&check; mapped</span></td></tr>
+                  <tr><td><b>Year</b><div class="sub mono">column E</div></td><td class="sub">Med 3</td><td><div class="cellinp sel">Study year</div></td><td><span class="pill ok">&check; mapped</span></td></tr>
+                  <tr><td><b>Total Points</b><div class="sub mono">column H</div></td><td class="sub mono">84</td><td><div class="cellinp sel">Points</div></td><td><span class="pill ok">&check; required</span></td></tr>
+                  <tr><td><b>Last Activity</b><div class="sub mono">column I</div></td><td class="sub">Blood Donation Drive</td><td><div class="cellinp sel">Note (kept as text)</div></td><td><span class="pill flat">optional</span></td></tr>
+                  <tr style="opacity:.6"><td><b>Remarks</b><div class="sub mono">column J</div></td><td class="sub">&mdash;</td><td><div class="cellinp sel">Don't import</div></td><td><span class="pill flat">skipped</span></td></tr>
+                </tbody>
+              </table></div>
+              <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub"><b>312 rows</b> ready to read &middot; 3,180 points total &middot; 0 unreadable values</span></div>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:276px">
+            <div class="card"><div class="card-h"><h3>How to bring the points in</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:11px">
+              <div class="role on"><b>&#9679; As opening balances</b><small>One locked entry per member: &ldquo;Carried forward &mdash; 2025/26 workbook&rdquo;. Best when your sheet holds one running total per person.</small></div>
+              <div class="role"><b>&#9675; As full history</b><small>One entry per row, keeping event names and dates. Use this if your sheet lists every activity separately.</small></div>
+              <div class="hint">Either way the entries are marked <b>imported</b>, locked against editing, and attributed to this import batch.</div>
+            </div></div>
+            <div class="card"><div class="card-h"><h3>Safety</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:10px">
+              <div class="note good"><span class="ic">&check;</span><span>This file has <b>not</b> been imported before &mdash; no risk of doubling anyone's total.</span></div>
+              <div class="note good"><span class="ic">&check;</span><span>The import lands as one batch you can undo in full.</span></div>
+              <div class="note info"><span class="ic">i</span><span>Your original file is never modified. It's stored as-is for the record.</span></div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IMPORT 2 ============ -->
+<section class="screen" id="import-match">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National &middot; VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav on"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA &middot; National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb">Excel sync / Import / <b>Match members</b></div><div class="spacer"></div><button class="btn sm">&larr; Back</button><button class="btn pri sm">Next: review &rarr;</button></div>
+      <div class="content">
+        <div class="steps">
+          <div class="step done"><span class="n">&check;</span><b>Upload &amp; map columns</b></div><div class="step-line"></div>
+          <div class="step on"><span class="n">2</span><b>Match members</b></div><div class="step-line"></div>
+          <div class="step "><span class="n">3</span><b>Review &amp; import</b></div>
+        </div>
+        <div class="page-head"><div><h1>Match 312 names to members</h1><p>The same person is often written three different ways in a spreadsheet. Matching now means their old points and their new points land on one profile instead of three.</p></div></div>
+        <div class="grid g4" style="margin-bottom:16px">
+          <div class="tile"><div class="k">Matched automatically</div><div class="v" style="color:var(--accent-2)">284</div><div class="d">by ID or exact name</div></div>
+          <div class="tile hot"><div class="k">Need your decision</div><div class="v">19</div><div class="d">fuzzy or duplicate</div></div>
+          <div class="tile"><div class="k">New members</div><div class="v">9</div><div class="d">will be created</div></div>
+          <div class="tile"><div class="k">Unusable rows</div><div class="v">0</div><div class="d">no blank names</div></div>
+        </div>
+        <div class="row" style="align-items:flex-start">
+          <div class="card" style="flex:2.1;min-width:0">
+            <div class="card-h"><h3>Rows needing a decision</h3><span class="pill pend">19</span><div class="spacer"></div><button class="btn sm">Accept all suggestions</button></div>
+            <div class="scroll-x"><table>
+              <thead><tr><th>Name in your sheet</th><th class="num">Pts</th><th>Suggested member</th><th>Confidence</th><th style="width:186px">Decision</th></tr></thead>
+              <tbody>
+                <tr style="background:#fffdf7"><td><b>L. Khoury</b><div class="sub mono">row 14 &middot; AUB</div></td><td class="num mono">12</td><td><div class="who"><span class="ava">LK</span><div><b>Lea Khoury</b><small>LEM-2341 &middot; already row 9</small></div></div></td><td><span class="pill pend">86% &middot; duplicate</span></td><td><div class="cellinp sel">Merge &mdash; total 96</div></td></tr>
+                <tr><td><b>Karim Nasar</b><div class="sub mono">row 31 &middot; AUB</div></td><td class="num mono">38</td><td><div class="who"><span class="ava">KN</span><div><b>Karim Nassar</b><small>LEM-2502</small></div></div></td><td><span class="pill mod">92% &middot; spelling</span></td><td><div class="cellinp sel">Confirm match</div></td></tr>
+                <tr><td><b>nour abou jaoude</b><div class="sub mono">row 47 &middot; AUB</div></td><td class="num mono">26</td><td><div class="who"><span class="ava">NA</span><div><b>Nour Abou Jaoude</b><small>LEM-2377</small></div></div></td><td><span class="pill mod">97% &middot; casing</span></td><td><div class="cellinp sel">Confirm match</div></td></tr>
+                <tr style="background:#fffdf7"><td><b>Yara D.</b><div class="sub mono">row 52 &middot; USJ</div></td><td class="num mono">19</td><td class="sub">2 possible members<div class="chips" style="margin-top:5px"><span class="pill flat">Yara Dagher</span><span class="pill flat">Yara Doumit</span></div></td><td><span class="pill ret">ambiguous</span></td><td><div class="cellinp sel">Choose a member&hellip;</div></td></tr>
+                <tr><td><b>Hani Khalil</b><div class="sub mono">row 88 &middot; LAU</div></td><td class="num mono">7</td><td class="sub">No member found</td><td><span class="pill flat">new</span></td><td><div class="cellinp sel">Create member</div></td></tr>
+                <tr><td><b>Rami Haddad (LO)</b><div class="sub mono">row 103 &middot; AUB</div></td><td class="num mono">44</td><td><div class="who"><span class="ava">RH</span><div><b>Rami Haddad</b><small>LEM-2190</small></div></div></td><td><span class="pill mod">89% &middot; suffix</span></td><td><div class="cellinp sel">Confirm match</div></td></tr>
+                <tr style="opacity:.62"><td><b>Lea Khoury</b><div class="sub mono">row 9 &middot; AUB</div></td><td class="num mono">84</td><td><div class="who"><span class="ava">LK</span><div><b>Lea Khoury</b><small>LEM-2341</small></div></div></td><td><span class="pill ok">100% &middot; by ID</span></td><td><span class="pill ok">&check; auto-matched</span></td></tr>
+              </tbody>
+            </table></div>
+            <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r);display:flex;align-items:center"><span class="sub">6 of 19 decisions shown &middot; 3 resolved</span><div class="spacer"></div><span class="sub">13 left before you can continue</span></div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:258px">
+            <div class="card"><div class="card-h"><h3>Matching rules</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw on"></span><div><b style="font-size:13px">Match on LeMSIC ID first</b><div class="hint">Names only when the ID is blank</div></div></div>
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw on"></span><div><b style="font-size:13px">Ignore case and accents</b><div class="hint">&ldquo;abou jaoude&rdquo; = &ldquo;Abou Jaoude&rdquo;</div></div></div>
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw on"></span><div><b style="font-size:13px">Flag same person twice</b><div class="hint">Merges their rows into one balance</div></div></div>
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw"></span><div><b style="font-size:13px">Auto-accept above 90%</b><div class="hint">Off &mdash; you review each one</div></div></div>
+              <div class="field"><label>Create missing members as</label><div class="inp sel">Active &middot; LC from sheet</div></div>
+            </div></div>
+            <div class="card"><div class="card-h"><h3>Why this step matters</h3></div><div class="card-b"><div class="sub">Every decision here is remembered. Next time an LO types &ldquo;L. Khoury&rdquo;, the registry already knows it's Lea &mdash; so the duplicates you're cleaning up today don't come back.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IMPORT 3 ============ -->
+<section class="screen" id="import-commit">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National &middot; VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav on"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA &middot; National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb">Excel sync / Import / <b>Review &amp; import</b></div><div class="spacer"></div><button class="btn sm">&larr; Back</button><button class="btn pri sm">&check; Import 312 opening balances</button></div>
+      <div class="content">
+        <div class="steps">
+          <div class="step done"><span class="n">&check;</span><b>Upload &amp; map columns</b></div><div class="step-line"></div>
+          <div class="step done"><span class="n">&check;</span><b>Match members</b></div><div class="step-line"></div>
+          <div class="step on"><span class="n">3</span><b>Review &amp; import</b></div>
+        </div>
+        <div class="page-head"><div><h1>Last look before anything is written</h1><p>Nothing has changed yet. When you press import, 312 locked entries are created in one batch &mdash; and that batch can be undone whole if something looks wrong afterwards.</p></div></div>
+        <div class="card" style="margin-bottom:14px"><div class="card-b" style="display:flex;align-items:center;gap:26px;flex-wrap:wrap">
+          <div><div class="k" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650">Ledger today</div><div style="font-size:30px;font-weight:650;letter-spacing:-.025em">926 <span class="sub" style="font-size:14px">pts</span></div><div class="sub">earned in the app</div></div>
+          <div style="font-size:24px;color:var(--muted)">&plus;</div>
+          <div><div class="k" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650">Carried forward</div><div style="font-size:30px;font-weight:650;letter-spacing:-.025em;color:var(--blue)">3,180 <span class="sub" style="font-size:14px">pts</span></div><div class="sub">from the 2025/26 workbook</div></div>
+          <div style="font-size:24px;color:var(--muted)">&equals;</div>
+          <div><div class="k" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650">After import</div><div style="font-size:30px;font-weight:650;letter-spacing:-.025em;color:var(--accent-2)">4,106 <span class="sub" style="font-size:14px">pts</span></div><div class="sub">across 312 members</div></div>
+          <div class="spacer" style="flex:1"></div>
+          <div class="chips" style="max-width:250px;justify-content:flex-end"><span class="pill ok">284 matched</span><span class="pill mod">19 resolved</span><span class="pill flat">9 members created</span><span class="pill pend">4 duplicates merged</span></div>
+        </div></div>
+        <div class="row" style="align-items:flex-start">
+          <div style="flex:1.8;min-width:0;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>By local committee</h3><div class="spacer"></div><small>what each LC starts the term with</small></div>
+              <table>
+                <thead><tr><th>Local committee</th><th class="num">Rows in file</th><th class="num">Carried forward</th><th class="num">Already in app</th><th class="num">New total</th></tr></thead>
+                <tbody>
+                  <tr><td><b>LC AUB</b></td><td class="num">71</td><td class="num mono">720</td><td class="num mono">192</td><td class="num"><b>912</b></td></tr>
+                  <tr><td><b>LC USJ</b></td><td class="num">64</td><td class="num mono">620</td><td class="num mono">148</td><td class="num"><b>768</b></td></tr>
+                  <tr><td><b>LC LU</b></td><td class="num">58</td><td class="num mono">517</td><td class="num mono">131</td><td class="num"><b>648</b></td></tr>
+                  <tr><td><b>LC LAU</b></td><td class="num">47</td><td class="num mono">467</td><td class="num mono">64</td><td class="num"><b>531</b></td></tr>
+                  <tr><td><b>LC Balamand</b></td><td class="num">30</td><td class="num mono">497</td><td class="num mono">41</td><td class="num"><b>538</b></td></tr>
+                  <tr><td><b>LC BAU</b></td><td class="num">42</td><td class="num mono">359</td><td class="num mono">88</td><td class="num"><b>447</b></td></tr>
+                  <tr><td><b>LC USEK</b><div class="sub">new LC — no rows in the old sheet</div></td><td class="num">0</td><td class="num mono" style="color:var(--muted)">0</td><td class="num mono">262</td><td class="num"><b>262</b></td></tr>
+                </tbody>
+              </table>
+              <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;border-radius:0 0 var(--r) var(--r)"><span class="sub"><b>312 rows</b> across 6 committees</span><div class="spacer"></div><span class="sub">3,180 carried + 926 in app =</span>&nbsp;<b>4,106 pts</b></div>
+              <table style="display:none"><tbody>
+              </table>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>What gets written</h3><div class="spacer"></div><small>preview of the first entries</small></div>
+              <table>
+                <thead><tr><th>Entry</th><th>Member</th><th>Source</th><th class="num">Pts</th><th>State</th></tr></thead>
+                <tbody>
+                  <tr><td class="mono">#0001</td><td><div class="who"><span class="ava">LK</span><div><b>Lea Khoury</b><small>LEM-2341</small></div></div></td><td class="sub">Carried forward &mdash; 2025/26 workbook<div class="sub mono" style="font-size:11px">IMP-2026-01 &middot; rows 9 + 14 merged</div></td><td class="num"><b>96</b></td><td><span class="pill flat">&#128274; locked</span></td></tr>
+                  <tr><td class="mono">#0002</td><td><div class="who"><span class="ava">HZ</span><div><b>Hadi Zein</b><small>LEM-2104</small></div></div></td><td class="sub">Carried forward &mdash; 2025/26 workbook<div class="sub mono" style="font-size:11px">IMP-2026-01 &middot; row 10</div></td><td class="num"><b>74</b></td><td><span class="pill flat">&#128274; locked</span></td></tr>
+                  <tr><td class="mono">#0003</td><td><div class="who"><span class="ava">PG</span><div><b>Perla Gemayel</b><small>LEM-2456</small></div></div></td><td class="sub">Carried forward &mdash; 2025/26 workbook<div class="sub mono" style="font-size:11px">IMP-2026-01 &middot; row 11</div></td><td class="num"><b>63</b></td><td><span class="pill flat">&#128274; locked</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:270px">
+            <div class="card"><div class="card-h"><h3>Before you press import</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:10px">
+              <div class="note warn"><span class="ic">!</span><span><b>Stop editing the old file after this.</b> From now on the app owns the numbers and writes the workbook. If people keep typing into the old sheet, the two drift apart and nobody knows which is right.</span></div>
+              <div class="note good"><span class="ic">&check;</span><span>The old file is archived read-only as <span class="mono">IMP-2026-01</span>, exactly as you uploaded it.</span></div>
+              <div class="note good"><span class="ic">&check;</span><span>Undo stays available: one click removes all 312 entries and nothing else.</span></div>
+              <div class="note info"><span class="ic">i</span><span>Imported points show as <b>carried forward</b> everywhere, never mixed up with points the VPA approved.</span></div>
+            </div></div>
+            <div class="card"><div class="card-b"><button class="btn pri" style="width:100%;justify-content:center;padding:11px">&check; Import 312 opening balances</button><div class="hint" style="text-align:center;margin-top:9px">Takes about 10 seconds</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EXCEL SYNC ============ -->
+<section class="screen" id="excel-sync">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National &middot; VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav on"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA &middot; National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb"><b>Excel sync</b></div><div class="spacer"></div><div class="syncbar"><span class="dot"></span>Last write 40 s ago &middot; 1,842 rows</div><button class="btn sm">Sync now</button></div>
+      <div class="content">
+        <div class="page-head"><div><h1>Excel sync</h1><p>The app holds the record; Excel holds the copy everyone's used to opening. Every approval rewrites the workbook, so the file on the drive is never more than a few seconds out of date.</p></div></div>
+        <div class="row" style="align-items:flex-start">
+          <div style="flex:1.9;min-width:0;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>Master workbook</h3><div class="spacer"></div><span class="pill ok">&#9679; connected</span></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--surface-2)">
+                  <span style="font-size:20px">&#128202;</span>
+                  <div style="flex:1"><b style="font-size:13.4px">LeMSIC Points 2026-2027.xlsx</b><div class="sub">OneDrive &middot; LeMSIC VPA / Points &middot; 1.1 MB</div></div>
+                  <button class="btn sm">Open in Excel</button><button class="btn sm">&#8681; Download</button>
+                </div>
+                <div class="grid g2" style="gap:13px">
+                  <div class="field"><label>Write to the workbook</label><div class="inp sel">On every approval</div><div class="hint">Also hourly as a safety net</div></div>
+                  <div class="field"><label>If the file is open by someone</label><div class="inp sel">Queue and retry for 10 min</div></div>
+                </div>
+                <div>
+                  <div class="hint" style="margin-bottom:8px">Sheets the app writes &mdash; these are rebuilt on every sync</div>
+                  <table style="border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden">
+                    <thead><tr><th>Sheet</th><th>Contents</th><th class="num">Rows</th><th>Owner</th></tr></thead>
+                    <tbody>
+                      <tr><td><b>Ledger</b></td><td class="sub">Every entry: member, event, points, approver, timestamp</td><td class="num mono">1,842</td><td><span class="pill ok">app</span></td></tr>
+                      <tr><td><b>Totals by member</b></td><td class="sub">Carried forward &middot; this term &middot; total</td><td class="num mono">312</td><td><span class="pill ok">app</span></td></tr>
+                      <tr><td><b>Events</b></td><td class="sub">One row per approved submission</td><td class="num mono">61</td><td><span class="pill ok">app</span></td></tr>
+                      <tr><td><b>By LC</b></td><td class="sub">Totals and ranking per local committee</td><td class="num mono">7</td><td><span class="pill ok">app</span></td></tr>
+                      <tr style="opacity:.75"><td><b>VPA notes</b></td><td class="sub">Your own sheet &mdash; the app never reads or touches it</td><td class="num mono">&mdash;</td><td><span class="pill flat">yours</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="note warn"><span class="ic">!</span><span><b>Don't type into the app's sheets.</b> They're rebuilt from scratch on every sync, so edits made in Excel are overwritten. Corrections go through the app &mdash; add your own sheets freely, those are left alone.</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Sync log</h3><div class="spacer"></div><small>last 24 hours</small></div>
+              <div class="card-b"><div class="timeline">
+                <div class="tl on"><span class="tdot"></span><div class="tb"><b>Wrote 14 ledger rows &mdash; World Diabetes Day Screening</b><small>today 12:52 &middot; 0.9 s &middot; triggered by approval</small></div></div>
+                <div class="tl on"><span class="tdot"></span><div class="tb"><b>Hourly safety sync &mdash; no changes</b><small>today 12:00</small></div></div>
+                <div class="tl"><span class="tdot"></span><div class="tb"><b style="color:var(--amber)">Retry &mdash; file was locked by another user, succeeded on attempt 2</b><small>today 09:14 &middot; delayed 3 min</small></div></div>
+                <div class="tl on"><span class="tdot"></span><div class="tb"><b>Wrote 19 ledger rows &mdash; Peer Education Training</b><small>yesterday 18:41</small></div></div>
+                <div class="tl on"><span class="tdot"></span><div class="tb"><b>Imported 312 opening balances &mdash; IMP-2026-01</b><small>01 Sep 2026 &middot; 3,180 pts carried forward</small></div></div>
+              </div></div>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:270px">
+            <div class="card"><div class="card-h"><h3>Other ways to get the file</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:12px">
+              <button class="btn" style="justify-content:center">&#8681; Download the workbook now</button>
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw on"></span><div><b style="font-size:13px">Email it to the VPA weekly</b><div class="hint">Sunday 20:00, fresh copy attached</div></div></div>
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw on"></span><div><b style="font-size:13px">Keep a dated archive copy</b><div class="hint">One snapshot per month, never overwritten</div></div></div>
+              <div style="display:flex;align-items:center;gap:10px"><span class="sw"></span><div><b style="font-size:13px">Give LOs their LC's workbook</b><div class="hint">Their own committee's rows only</div></div></div>
+              <div class="hint">No OneDrive? Turn the connection off and work from downloads &mdash; the workbook is identical either way.</div>
+            </div></div>
+            <div class="card"><div class="card-h"><h3>Imports</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:11px">
+              <div style="border:1px solid var(--line);border-radius:var(--r-sm);padding:11px"><b style="font-size:13px">IMP-2026-01</b><div class="sub">LeMSIC Points 2025-2026.xlsx &middot; 312 balances &middot; 3,180 pts</div><div class="chips" style="margin-top:7px"><span class="pill ok">applied 01 Sep</span><span class="pill flat">&#128274; archived</span></div></div>
+              <button class="btn sm" style="justify-content:center">&#8679; Import another sheet</button>
+              <button class="btn danger sm" style="justify-content:center">&#8630; Undo IMP-2026-01</button>
+              <div class="hint">Undo removes exactly the 312 entries this import created. Points approved since then are untouched.</div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ 9. RUBRIC & RULES ============ -->
 <section class="screen" id="rubric">
   <div class="shell">
@@ -750,6 +1128,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         <div class="nav"><span class="ic">▤</span>All submissions</div>
         <div class="nav"><span class="ic">≡</span>Points sheet</div>
         <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
         <div class="nav on"><span class="ic">◉</span>Rubric &amp; rules</div>
         <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
         <div class="nav"><span class="ic">⟲</span>Audit log</div>
@@ -859,7 +1238,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 </section>
 
 <script>
-var ORDER=["login","lo-dash","lo-event","lo-volunteers","lo-send","vpa-queue","vpa-review","ledger","rubric","member"];
+var ORDER=["login","lo-dash","lo-event","lo-volunteers","lo-send","vpa-queue","vpa-review","ledger","by-member","import-upload","import-match","import-commit","excel-sync","rubric","member"];
 function show(id){
   document.querySelectorAll(".screen").forEach(function(s){s.classList.toggle("active", s.id===id);});
   if(location.hash.slice(1)!==id){history.replaceState(null,"","#"+id);}
