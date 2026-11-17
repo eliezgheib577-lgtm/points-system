@@ -1031,6 +1031,89 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   </div>
 </section>
 
+<!-- ============ CONNECT ONEDRIVE ============ -->
+<section class="screen" id="connect-onedrive">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National &middot; VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav on"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA &middot; National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb">Excel sync / <b>Connect Microsoft 365</b></div><div class="spacer"></div><button class="btn sm">Skip &mdash; use downloads instead</button><button class="btn pri sm">Connect &amp; create workbook</button></div>
+      <div class="content">
+        <div class="page-head"><div><h1>Connect the workbook</h1><p>One-time setup. Once connected, every approval writes straight into the .xlsx &mdash; no exporting, no re-uploading, no version called <span class="mono">final_v3_USE THIS.xlsx</span>.</p></div></div>
+        <div class="row" style="align-items:flex-start">
+          <div style="flex:1.8;min-width:0;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>1 &middot; Microsoft account</h3><div class="spacer"></div><span class="pill ok">&#9679; signed in</span></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:13px">
+                <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--surface-2)">
+                  <div class="avatar" style="background:var(--blue-soft);color:var(--blue);width:32px;height:32px">M</div>
+                  <div style="flex:1"><b style="font-size:13.4px">vpa@lemsic.org</b><div class="sub">LeMSIC organisation account &middot; Microsoft 365</div></div>
+                  <button class="btn sm">Switch account</button>
+                </div>
+                <div class="note good"><span class="ic">&check;</span><span><b>Good choice &mdash; this is an organisation account.</b> It survives the handover to next year's VPA. A personal student account stops working the day they graduate, and the sync dies with it.</span></div>
+                <div>
+                  <div class="hint" style="margin-bottom:7px">Permissions the app is asking for</div>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <div class="sub">&check; Read and write <b>the one folder you choose below</b> &mdash; nothing else in the drive</div>
+                    <div class="sub">&check; Keep writing while nobody is signed in, so approvals sync at 2 a.m. too</div>
+                    <div class="sub" style="color:var(--muted)">&times; No access to mail, calendar, Teams or any other file</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>2 &middot; Where the workbook lives</h3><div class="spacer"></div><small>pick a folder the whole board can reach</small></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:11px">
+                <div class="role on" style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:17px">&#128194;</span><div><b>LeMSIC Team &rsaquo; VPA &rsaquo; Points</b><small>SharePoint &middot; shared with 6 board members &middot; recommended</small></div><span class="pill ok" style="margin-left:auto">selected</span></div>
+                <div class="role" style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:17px">&#128194;</span><div><b>LeMSIC Team &rsaquo; Documents</b><small>SharePoint &middot; shared with 40 members</small></div></div>
+                <div class="role" style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:17px">&#128100;</span><div><b>My OneDrive &rsaquo; Points</b><small>Personal to this account &mdash; not recommended for handover</small></div></div>
+                <div class="note info"><span class="ic">i</span><span>A shared SharePoint or Teams folder means the board can open the workbook even if the VPA is unreachable &mdash; and next year's VPA inherits it without a migration.</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>3 &middot; The file</h3></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:11px">
+                <div class="role on" style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:17px">&#10010;</span><div><b>Create a new workbook</b><small><span class="mono">LeMSIC Points 2026-2027.xlsx</span> &mdash; built fresh with the Ledger, Totals, Events and By LC tabs</small></div><span class="pill ok" style="margin-left:auto">selected</span></div>
+                <div class="role" style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:17px">&#128202;</span><div><b>Use a file that's already there</b><small>The app adds its own tabs and leaves everything else alone</small></div></div>
+                <div class="note warn"><span class="ic">!</span><span>This is the <b>output</b> file, not your old points sheet. Importing last year's points is a separate step &mdash; and it should happen before you tell LOs to start submitting.</span></div>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:272px">
+            <div class="card"><div class="card-h"><h3>Setup checklist</h3></div><div class="card-b"><div class="timeline">
+              <div class="tl on"><span class="tdot"></span><div class="tb"><b>Connect Microsoft 365</b><small>you are here</small></div></div>
+              <div class="tl"><span class="tdot"></span><div class="tb"><b>Import last year's sheet</b><small>opening balances for everyone</small></div></div>
+              <div class="tl"><span class="tdot"></span><div class="tb"><b>Check the rubric</b><small>categories and point bands</small></div></div>
+              <div class="tl"><span class="tdot"></span><div class="tb"><b>Create the LO accounts</b><small>one per local committee</small></div></div>
+              <div class="tl"><span class="tdot"></span><div class="tb"><b>Send out credentials</b><small>LOs can start submitting</small></div></div>
+            </div></div></div>
+            <div class="card"><div class="card-h"><h3>If this doesn't work</h3></div><div class="card-b" style="display:flex;flex-direction:column;gap:10px">
+              <div class="sub">Some university tenants block third-party apps from connecting. If yours does, nothing is lost &mdash; the workbook is identical, you just download it instead of it being written for you.</div>
+              <button class="btn sm" style="justify-content:center">Use downloads instead</button>
+              <div class="hint">You can connect a drive later without redoing anything.</div>
+            </div></div>
+            <div class="card"><div class="card-h"><h3>Next year's handover</h3></div><div class="card-b"><div class="sub">When the VPA changes, the new one signs in to the same organisation account and the sync continues untouched. Nothing is tied to a person's laptop or their university login.</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ EXCEL SYNC ============ -->
 <section class="screen" id="excel-sync">
   <div class="shell">
@@ -1238,7 +1321,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 </section>
 
 <script>
-var ORDER=["login","lo-dash","lo-event","lo-volunteers","lo-send","vpa-queue","vpa-review","ledger","by-member","import-upload","import-match","import-commit","excel-sync","rubric","member"];
+var ORDER=["login","lo-dash","lo-event","lo-volunteers","lo-send","vpa-queue","vpa-review","ledger","by-member","import-upload","import-match","import-commit","connect-onedrive","excel-sync","rubric","member"];
 function show(id){
   document.querySelectorAll(".screen").forEach(function(s){s.classList.toggle("active", s.id===id);});
   if(location.hash.slice(1)!==id){history.replaceState(null,"","#"+id);}
