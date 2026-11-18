@@ -1,0 +1,31 @@
+{
+  "name": "lemsic-points",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Volunteering points tracking for LeMSIC: local officers submit, the VPA approves, the workbook follows.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "node --env-file=.env --import tsx --watch src/server.ts",
+    "start": "node --env-file=.env --import tsx src/server.ts",
+    "migrate": "node --env-file=.env --import tsx scripts/migrate.ts",
+    "seed": "node --env-file=.env --import tsx scripts/seed.ts",
+    "test": "node --env-file=.env.test --import tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bcryptjs": "3.0.2",
+    "cookie-parser": "1.4.7",
+    "express": "5.1.0",
+    "pg": "8.16.3",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "1.4.9",
+    "@types/express": "5.0.3",
+    "@types/node": "22.15.3",
+    "@types/pg": "8.15.5",
+    "tsx": "4.20.3",
+    "typescript": "5.9.2"
+  }
+}
