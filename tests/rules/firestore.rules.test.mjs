@@ -73,6 +73,8 @@ describe("the points are the VPA's alone", () => {
     await assertFails(getDocs(collection(aub(), "decisions")));
     await assertFails(getDocs(collection(aub(), "audit")));
     await assertFails(getDocs(collection(aub(), "imports")));
+    await assertFails(getDoc(doc(aub(), "settings/excel")));
+    await assertFails(setDoc(doc(aub(), "settings/excel"), { itemId: "hijack" }));
   });
   it("the VPA keeps the record of imports, which can be marked undone but never deleted", async () => {
     await assertSucceeds(updateDoc(doc(vpa(), "imports/i1"), { status: "reversed" }));

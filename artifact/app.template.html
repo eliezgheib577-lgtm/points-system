@@ -218,7 +218,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, undoArmed: null,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -272,6 +272,7 @@ function subscribe(kind) {
     watchColl("decisions", "decisions");
     watchColl("audit", "audit", (a, b) => (b.at || 0) - (a.at || 0));
     watchColl("imports", "imports", (a, b) => (b.at || 0) - (a.at || 0));
+    offs.push(S.store.watchDoc("settings/excel", (doc) => { S.excel = doc; changed(); }, onErr));
     offs.push(S.store.watch("subs", (list, meta) => {
       S.loIds = list.map((x) => x.id);
       S.loIds.forEach(watchItems);
@@ -307,6 +308,7 @@ async function bootFirebase(cfg) {
     F.connectFirestoreEmulator(db, cfg.emulator.host, cfg.emulator.firestorePort);
   }
   S.fb = { auth, AU };
+  if (msConfig()) msal().then(changed).catch(() => null);
   S.store = firestoreStore(db, F);
   S.mode = "live"; S.liveAvailable = true;
   await new Promise((resolve) => {
@@ -514,12 +516,12 @@ const dis = () => (S.busy ? "disabled" : "");
 const lockNote = `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><div class="note info" style="border:0;background:transparent;padding:0"><span class="ic">🔒</span><span>Point totals, member balances and the points sheet are held by the VPA — your own points included. You'll see whether a submission was approved, never the figures it ended up with.</span></div></div>`;
 
 // ---------- navigation ----------
-const TOP = ["home", "new", "submissions", "review", "ledger", "import", "members", "rubric", "access", "audit"];
+const TOP = ["home", "new", "submissions", "review", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
 const NAV = {
   lo: [["home", "◆", "Dashboard"], ["new", "＋", "New submission"], ["submissions", "▤", "My submissions"], ["rubric", "◉", "Points rubric"]],
-  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
+  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
 };
-const VPA_ONLY = new Set(["review", "reviewSub", "ledger", "import", "members", "access", "audit"]);
+const VPA_ONLY = new Set(["review", "reviewSub", "ledger", "import", "excel", "members", "access", "audit"]);
 function go(name, params) {
   S.route = Object.assign({ name }, params || {});
   if (TOP.includes(name)) { try { if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name); } catch (e) { /* framed */ } }
@@ -1185,6 +1187,7 @@ async function applyImport() {
   await S.store.update("imports/" + impId, { status: "applied", appliedAt: Date.now() });
   await audit("import.applied", `${ref}: carried forward ${plan.total} pts for ${plan.people} members from ${I.filename}`);
   S.imp = { step: "done", result: { ref, people: plan.people, total: plan.total, created: plan.newOnes.size } };
+  syncSoon();
 }
 async function undoImport(id) {
   const imp = S.imports.find((x) => x.id === id);
@@ -1197,6 +1200,173 @@ async function undoImport(id) {
   }
   await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now(), reversedBy: S.uid });
   await audit("import.reversed", `${imp.ref} undone: ${entries.length} starting balances reversed`);
+  syncSoon();
+}
+
+// ---------- Excel: the three sheets the app owns ----------
+/** The app writes exactly these sheets. Any other sheet in the workbook is left alone. */
+function workbookSheets() {
+  const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission"]].concat(
+    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || ""]));
+  const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
+  const lcs = {}; S.ledger.forEach((e) => { const x = lcs[e.lc] || (lcs[e.lc] = [e.lc, new Set(), 0, 0, 0]); x[1].add(e.memberId); if (e.kind === "opening_balance") x[2] += e.pts; else x[3] += e.pts; x[4] += e.pts; });
+  const byLc = [["LC", "Members credited", "Carried forward", "This term", "Total"]].concat(Object.values(lcs).sort((a, b) => b[4] - a[4]).map((x) => [x[0], x[1].size, x[2], x[3], x[4]]));
+  return [["Totals by member", totals], ["Ledger", ledger], ["By LC", byLc]];
+}
+async function workbookBytes() {
+  const X = await loadXlsx(), wb = X.utils.book_new();
+  workbookSheets().forEach(([name, rows]) => X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(rows), name));
+  return X.write(wb, { bookType: "xlsx", type: "array" });
+}
+
+// ---------- Excel: keeping the workbook on SharePoint / OneDrive up to date ----------
+// Only the VPA's browser ever writes to it, straight after the VPA changes the
+// ledger, using the VPA's own Microsoft 365 sign-in. No server is involved.
+const MSAL_URL = "https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js";
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const MS_SCOPES = ["Files.ReadWrite.All"];
+let msalApp = null;
+const msConfig = () => (window.LEMSIC_MICROSOFT && window.LEMSIC_MICROSOFT.clientId ? window.LEMSIC_MICROSOFT : null);
+function loadScript(src) {
+  return new Promise((res, rej) => { const el = document.createElement("script"); el.src = src; el.onload = res; el.onerror = () => rej(new UserError("Couldn't load Microsoft's sign-in. Check the connection and try again.")); document.head.appendChild(el); });
+}
+async function msal() {
+  if (msalApp) return msalApp;
+  const cfg = msConfig();
+  if (!cfg) throw new UserError("Microsoft 365 isn't set up for this site yet — see SETUP.md.");
+  if (!window.msal) await loadScript(MSAL_URL);
+  msalApp = new window.msal.PublicClientApplication({
+    // The sign-in pop-up lands on a blank page next to this one (docs/ms-redirect.html),
+    // which is the address registered in LeMSIC's Microsoft 365.
+    auth: { clientId: cfg.clientId, authority: "https://login.microsoftonline.com/" + (cfg.tenantId || "organizations"), redirectUri: location.origin + location.pathname.replace(/[^/]*$/, "") + "ms-redirect.html" },
+    cache: { cacheLocation: "localStorage" },
+  });
+  await msalApp.initialize();
+  try { await msalApp.handleRedirectPromise(); } catch (e) { /* no redirect in progress */ }
+  S.msAccount = msalApp.getAllAccounts()[0] || null;
+  return msalApp;
+}
+/** A Graph token. interactive=false never opens a window: it is for the automatic update after an approval. */
+async function msToken(interactive) {
+  const app = await msal();
+  let account = app.getAllAccounts()[0];
+  if (!account) {
+    if (!interactive) return null;
+    account = (await app.loginPopup({ scopes: MS_SCOPES, prompt: "select_account" })).account;
+  }
+  S.msAccount = account;
+  try { return (await app.acquireTokenSilent({ scopes: MS_SCOPES, account })).accessToken; }
+  catch (e) { if (!interactive) return null; return (await app.acquireTokenPopup({ scopes: MS_SCOPES, account })).accessToken; }
+}
+async function graph(token, method, path, body, headers) {
+  const binary = body instanceof ArrayBuffer || ArrayBuffer.isView(body);
+  const r = await fetch(GRAPH + path, {
+    method,
+    headers: Object.assign({ Authorization: "Bearer " + token }, body !== undefined && !binary ? { "Content-Type": "application/json" } : {}, headers || {}),
+    body: body === undefined ? undefined : binary ? body : JSON.stringify(body),
+  });
+  if (!r.ok) {
+    let msg = ""; try { msg = (await r.json()).error.message; } catch (e) { /* no JSON body */ }
+    const err = new UserError(r.status === 423 || r.status === 409 ? "The workbook is locked by someone editing it. It will be updated next time." : r.status === 401 || r.status === 403 ? "Microsoft refused access to the workbook. Sign in again, or check it's still shared with you." : r.status === 404 ? "The workbook wasn't found — it may have been moved or deleted." : "Microsoft said: " + (msg || r.statusText));
+    err.status = r.status; throw err;
+  }
+  return r.status === 204 ? null : r.json().catch(() => null);
+}
+const shareId = (url) => "u!" + btoa(unescape(encodeURIComponent(url))).replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
+async function connectWorkbook(link) {
+  const token = await msToken(true);
+  let item;
+  if (link) item = await graph(token, "GET", "/shares/" + shareId(link) + "/driveItem");
+  else item = await graph(token, "PUT", "/me/drive/root:/LeMSIC Points/LeMSIC Points.xlsx:/content", new Uint8Array(await workbookBytes()));
+  if (!/\.xlsx$/i.test(item.name || "")) throw new UserError("That link isn't to an Excel workbook (.xlsx).");
+  await S.store.set("settings/excel", { driveId: item.parentReference.driveId, itemId: item.id, name: item.name, webUrl: item.webUrl || null, auto: true, connectedAt: Date.now(), lastSyncAt: null, lastError: null });
+  await audit("excel.connected", `Keeping ${item.name} up to date`);
+  await syncExcel(true);
+}
+let syncQueued = false;
+/** Rewrite the app's three sheets in the workbook. Called after every change to the ledger. */
+async function syncExcel(interactive) {
+  const xs = S.excel || (await S.store.get("settings/excel"));
+  if (!xs || !xs.itemId || !msConfig()) return;
+  if (S.xlBusy) { syncQueued = true; return; }
+  S.xlBusy = true; changed();
+  let rows = 0;
+  try {
+    const token = await msToken(!!interactive);
+    if (!token) throw new UserError("Sign in to Microsoft again on the Excel screen to keep the workbook up to date.");
+    const base = `/drives/${encodeURIComponent(xs.driveId)}/items/${encodeURIComponent(xs.itemId)}/workbook`;
+    const session = await graph(token, "POST", base + "/createSession", { persistChanges: true });
+    const H = { "workbook-session-id": session.id };
+    try {
+      const existing = (await graph(token, "GET", base + "/worksheets", undefined, H)).value || [];
+      for (const [name, data] of workbookSheets()) {
+        const ws = existing.find((w) => w.name === name) || (await graph(token, "POST", base + "/worksheets/add", { name }, H));
+        const wsPath = base + "/worksheets/" + encodeURIComponent(ws.id);
+        const used = await graph(token, "GET", wsPath + "/usedRange(valuesOnly=true)?$select=address", undefined, H);
+        const addr = used && used.address ? String(used.address).split("!").pop() : "A1";
+        await graph(token, "POST", wsPath + `/range(address='${addr}')/clear`, { applyTo: "Contents" }, H);
+        const width = Math.max(...data.map((r) => r.length));
+        for (let start = 0; start < data.length; start += 2000) {
+          const chunk = data.slice(start, start + 2000).map((r) => Array.from({ length: width }, (_, i) => (r[i] == null ? "" : r[i])));
+          await graph(token, "PATCH", wsPath + `/range(address='A${start + 1}:${colLetter(width - 1)}${start + chunk.length}')`, { values: chunk }, H);
+        }
+        rows += data.length - 1;
+      }
+    } finally {
+      await graph(token, "POST", base + "/closeSession", {}, H).catch(() => null);
+    }
+    await S.store.update("settings/excel", { lastSyncAt: Date.now(), lastError: null, rows });
+  } catch (e) {
+    const msg = failMessage(e);
+    await S.store.update("settings/excel", { lastError: msg, lastErrorAt: Date.now() }).catch(() => null);
+    if (interactive) throw e; else toast("Excel wasn't updated: " + msg, true);
+  } finally {
+    S.xlBusy = false; changed();
+    if (syncQueued) { syncQueued = false; syncExcel(false); }
+  }
+}
+/** After the ledger changes: update the workbook in the background, without holding up the screen. */
+function syncSoon() { if (S.excel && S.excel.itemId && S.excel.auto !== false && msConfig()) setTimeout(() => syncExcel(false), 50); }
+
+function vExcel() {
+  const cfg = msConfig(), xs = S.excel;
+  const sheetsCard = `<div class="card"><div class="card-h"><h3>What the app writes</h3></div><div class="card-b stack">
+    <div class="sub">Three sheets, rewritten after every change to the points: <b>Totals by member</b>, <b>Ledger</b> and <b>By LC</b>.</div>
+    <div class="sub">Any other sheet in the workbook — your own notes, charts, pivot tables — is never read or touched.</div>
+    ${note("warn", "Don't type into the app's three sheets: the next update replaces them. Corrections go through the points sheet here.")}
+  </div></div>`;
+  const download = `<button class="btn" data-act="exportXlsx" ${dis()}>⇩ Download the workbook now</button>`;
+  if (!cfg) {
+    return head("Excel", "Keep a workbook on LeMSIC's SharePoint or OneDrive up to date by itself, every time you approve.") +
+      `<div class="row split" style="align-items:flex-start"><div class="col-main"><div class="card"><div class="card-b stack">
+        ${note("info", window.claude ? "Live Excel updates run on the GitHub version of this site. Here you can download the same workbook at any time." : "Microsoft 365 isn't connected to this site yet. Whoever manages LeMSIC's 365 sets it up once — SETUP.md, part 2 — and then this screen lets you choose the workbook.")}
+        <div>${download}</div></div></div></div><div class="col-side">${sheetsCard}</div></div>`;
+  }
+  const acct = S.msAccount;
+  return head("Excel", "The workbook on LeMSIC's SharePoint or OneDrive is updated by itself after every approval, correction or import.") +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <div class="card"><div class="card-h"><h3>Microsoft 365</h3><div class="spacer"></div>${acct ? `<span class="pill ok">● signed in</span>` : `<span class="pill flat">not signed in</span>`}</div>
+        <div class="card-b stack">
+          ${acct ? `<div class="sub">Signed in as <b>${esc(acct.username || acct.name || "your Microsoft account")}</b>. Updates are written with this account, so it needs to be able to edit the workbook.</div>` : `<div class="sub">Sign in with the LeMSIC Microsoft 365 account that can edit the workbook. It's only used from this browser, to write the workbook.</div>`}
+          <div><button class="btn ${acct ? "" : "pri"}" data-act="msConnect" ${dis()}>${acct ? "Switch account" : "Sign in to Microsoft"}</button></div>
+        </div></div>
+      <div class="card"><div class="card-h"><h3>The workbook</h3><div class="spacer"></div>${xs && xs.itemId ? (xs.lastError ? `<span class="pill ret">● needs attention</span>` : `<span class="pill ok">● connected</span>`) : ""}</div>
+        <div class="card-b stack">
+          ${xs && xs.itemId ? `
+            <div style="display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 13px;background:var(--surface-2)">
+              <span style="font-size:20px">▦</span><div style="flex:1;min-width:0"><b>${esc(xs.name)}</b><div class="sub">${xs.lastSyncAt ? "Updated " + timeAgo(xs.lastSyncAt) + (xs.rows != null ? ` · ${xs.rows} rows written` : "") : "Not updated yet"}</div></div>
+              ${xs.webUrl ? `<a class="btn sm" href="${esc(xs.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Open in Excel</a>` : ""}
+            </div>
+            ${xs.lastError ? note("warn", `<b>The last update didn't go through:</b> ${esc(xs.lastError)}`) : ""}
+            <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn pri" data-act="xlSync" ${S.xlBusy || S.busy ? "disabled" : ""}>${S.xlBusy ? "Updating…" : "Update now"}</button>
+              <button class="btn" data-act="xlForget" ${dis()}>Use a different workbook</button></div>`
+          : `<div class="sub">Use the workbook you already keep, or start a fresh one.</div>
+            <form class="stack" data-submit="xlLink"><div class="field"><label for="xl-link">Link to the existing workbook</label>${inp("xl", "link", "", `id="xl-link" placeholder="In Excel or SharePoint: Share → Copy link, and paste it here"`)}</div>
+              <div><button class="btn pri" type="submit" ${dis()}>Use this workbook</button></div></form>
+            <div class="sub">or</div>
+            <div><button class="btn" data-act="xlCreate" ${dis()}>Create “LeMSIC Points.xlsx” in my OneDrive</button></div>`}
+        </div></div>
+    </div><div class="col-side">${sheetsCard}<div class="card"><div class="card-b">${download}</div></div></div></div>`;
 }
 
 // ---------- shell ----------
@@ -1215,7 +1385,7 @@ function render() {
   if (S.role === "none") view = vNoAccess();
   else if (isVpa()) {
     view = r === "review" ? vReview() : r === "reviewSub" ? vReviewSub() : r === "submissions" ? vVpaSubmissions() : r === "sub" ? vSub()
-      : r === "ledger" ? vLedger() : r === "import" ? vImport() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
+      : r === "ledger" ? vLedger() : r === "import" ? vImport() : r === "excel" ? vExcel() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
       : r === "edit" ? vSub() : vVpaHome();
   } else {
     if (VPA_ONLY.has(r)) S.route = { name: "home" };
@@ -1427,6 +1597,7 @@ const SUBMITS = {
       await audit("submission.approved", `${sub.ref} approved for ${total} pts across ${decided.filter((x) => x.pts > 0).length} members`);
       clearForm(key);
       S.route = { name: "review" };
+      syncSoon();
     }, "Approved. The points are on the sheet.");
   },
   returnSub(d) {
@@ -1451,6 +1622,7 @@ const SUBMITS = {
       await S.store.set("ledger/" + newId("c"), { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "correction", pts, reason, at: Date.now(), by: S.uid });
       await audit("ledger.correction", `${pts > 0 ? "+" : ""}${pts} pts for ${m.name}: ${reason}`);
       clearForm("corr");
+      syncSoon();
     }, "Correction added.");
   },
   addMember() {
@@ -1489,6 +1661,14 @@ const SUBMITS = {
       await audit("committee.created", `Added LC ${code} — ${name}`);
       clearForm("lc_new");
     }, "Committee added.");
+  },
+  xlLink() {
+    const link = String(fv("xl", "link", "")).trim();
+    act(async () => {
+      if (!/^https:\/\//.test(link)) throw new UserError("Paste the workbook's link — it starts with https://");
+      await connectWorkbook(link);
+      clearForm("xl");
+    }, "Workbook connected and filled in.");
   },
   requestAccess() {
     const f = S.forms.req || {};
@@ -1588,6 +1768,10 @@ const ACTIONS = {
   },
   leaveDemo() { location.reload(); },
   impReset() { S.imp = null; changed(); },
+  msConnect() { act(async () => { const app = await msal(); const r = await app.loginPopup({ scopes: MS_SCOPES, prompt: "select_account" }); S.msAccount = r.account; }, "Signed in to Microsoft."); },
+  xlCreate() { act(() => connectWorkbook(null), "Workbook created in your OneDrive and filled in."); },
+  xlSync() { act(() => syncExcel(true), "Workbook updated."); },
+  xlForget() { act(async () => { await S.store.set("settings/excel", { itemId: null, forgottenAt: Date.now() }); await audit("excel.disconnected", "Stopped updating the workbook"); }); },
   impBack() { if (S.imp) { S.imp.step = "map"; changed(); } },
   impMatch() { if (S.imp) { buildGroups(S.imp); S.imp.step = "match"; changed(); } },
   impApply() { act(applyImport, "Import finished."); },
@@ -1610,16 +1794,7 @@ const ACTIONS = {
   signOut() { if (S.fb) S.fb.AU.signOut(S.fb.auth); },
   async exportXlsx() {
     act(async () => {
-      const X = await loadXlsx(), wb = X.utils.book_new();
-      const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission"]].concat(
-        S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || ""]));
-      const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
-      const lcs = {}; S.ledger.forEach((e) => { const x = lcs[e.lc] || (lcs[e.lc] = [e.lc, new Set(), 0, 0, 0]); x[1].add(e.memberId); if (e.kind === "opening_balance") x[2] += e.pts; else x[3] += e.pts; x[4] += e.pts; });
-      const byLc = [["LC", "Members credited", "Carried forward", "This term", "Total"]].concat(Object.values(lcs).sort((a, b) => b[4] - a[4]).map((x) => [x[0], x[1].size, x[2], x[3], x[4]]));
-      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(totals), "Totals by member");
-      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(ledger), "Ledger");
-      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(byLc), "By LC");
-      const buf = X.write(wb, { bookType: "xlsx", type: "array" });
+      const buf = await workbookBytes();
       const filename = `LeMSIC Points ${today()}${S.mode === "demo" ? " (demo)" : ""}.xlsx`;
       if (!S.downloads) { // a normal website (the GitHub build): hand the browser the file
         const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));

@@ -13,6 +13,8 @@ const fs = require('fs'), path = require('path'), http = require('http');
 const ROOT = path.join(__dirname, '..', '..', '..');
 const SHOTS = process.env.E2E_SHOTS || path.join(ROOT, 'docs', 'screens');
 const SHEETJS = process.env.SHEETJS_PATH || path.join(ROOT, 'node_modules', 'xlsx', 'dist', 'xlsx.full.min.js');
+const MS = require('../fixtures/fake-microsoft.cjs');
+const WORKBOOK = MS.createWorkbook();
 const OLD_SHEET = require('../fixtures/old-sheet.cjs')(path.join(require('os').tmpdir(), 'lemsic-old-points-site-' + process.pid + '.xlsx'));
 const PROJECT = 'demo-lemsic', KEY = 'fake-api-key', PW = 'test-password-2026';
 const AUTH = 'http://127.0.0.1:9099', FS = 'http://127.0.0.1:8080';
@@ -33,9 +35,9 @@ async function resetEmulators() {
 
 function serve() {
   const index = fs.readFileSync(path.join(ROOT, 'docs', 'index.html'), 'utf8');
-  const config = `window.LEMSIC_FIREBASE = ${JSON.stringify({ apiKey: KEY, authDomain: `${PROJECT}.firebaseapp.com`, projectId: PROJECT, emulator: { auth: AUTH, host: '127.0.0.1', firestorePort: 8080 } })};`;
+  const config = `window.LEMSIC_FIREBASE = ${JSON.stringify({ apiKey: KEY, authDomain: `${PROJECT}.firebaseapp.com`, projectId: PROJECT, emulator: { auth: AUTH, host: '127.0.0.1', firestorePort: 8080 } })};\nwindow.LEMSIC_MICROSOFT = { clientId: 'test-client-id', tenantId: 'test-tenant' };`;
   const server = http.createServer((req, res) => {
-    if (req.url.startsWith('/firebase-config.js')) { res.writeHead(200, { 'content-type': 'application/javascript' }); return res.end(config); }
+    if (req.url.startsWith('/site-settings.js')) { res.writeHead(200, { 'content-type': 'application/javascript' }); return res.end(config); }
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(index);
   });
   return new Promise((r) => server.listen(0, '127.0.0.1', () => r(server)));
@@ -49,6 +51,7 @@ async function open(browser, base) {
     path: path.join(ROOT, 'node_modules', 'firebase', path.basename(new URL(r.request().url()).pathname)),
     contentType: 'application/javascript', headers: { 'access-control-allow-origin': '*' },
   }));
+  await MS.install(p, WORKBOOK);
   if (SHEETJS) await p.route('**/xlsx.full.min.js', (r) => r.fulfill({ path: SHEETJS, contentType: 'application/javascript' }));
   await p.goto(base);
   await p.waitForFunction(() => document.querySelector('.authbox, .shell') || /isn't one of/.test(document.body.innerText), null, { timeout: 20000 });
@@ -162,6 +165,36 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await vpa.click('button[data-act="impUndo"]'); await settle(vpa); await vpa.click('button[data-act="impUndo"]'); await settle(vpa, 2000);
   await nav(vpa, 'Points sheet');
   check('undo works without deleting anything: grand total back to 16', /grand total\s*16\b/i.test(await text(vpa)) && (await text(vpa)).includes('Undo of IMP-'));
+  console.log('\n— keeping the Excel workbook up to date —');
+  const xl = (name) => (WORKBOOK.sheets.find((x) => x.name === name) || { cells: [] }).cells;
+  await nav(vpa, 'Excel');
+  check('Excel starts disconnected, offering Microsoft sign-in', await vpa.isVisible('button[data-act="msConnect"]'));
+  await vpa.click('button[data-act="msConnect"]'); await settle(vpa, 600);
+  check('signed in to Microsoft 365', (await text(vpa)).includes('vpa@lemsic.org'));
+  const redirect = await vpa.evaluate(() => window.__msalConfig && window.__msalConfig.auth.redirectUri);
+  check(`the pop-up returns to the blank page next to the site (${redirect})`, /\/ms-redirect\.html$/.test(redirect || ''));
+  await vpa.fill('#xl-link', MS.LINK); await vpa.click('form[data-submit="xlLink"] button[type=submit]'); await settle(vpa, 2500);
+  check('the pasted SharePoint link is found and connected', (await text(vpa)).includes('LeMSIC Points.xlsx') && await vpa.isVisible('button[data-act="xlSync"]'));
+  const rejected = WORKBOOK.calls.filter((c) => c.startsWith('REJECTED'));
+  check(`every call matched the documented API (${rejected.length} rejected${rejected.length ? ': ' + rejected[0] : ''})`, rejected.length === 0);
+  check('the app’s three sheets were created and filled', ['Totals by member', 'Ledger', 'By LC'].every((n) => xl(n).length > 1) && xl('Ledger')[0][0] === 'Date');
+  check('your own “VPA notes” sheet is untouched', JSON.stringify(xl('VPA notes')) === JSON.stringify([['My own notes'], ['Keep this']]));
+  const leaTotal = () => { const r = xl('Totals by member').find((row) => row[0] === 'Lea Khoury'); return r ? r[5] : null; };
+  check(`Lea's total in Excel matches the app (${leaTotal()})`, leaTotal() === 12);
+  await vpa.screenshot({ path: `${SHOTS}/35-site-excel.png`, fullPage: true });
+  await nav(vpa, 'Points sheet');
+  await vpa.selectOption('form[data-submit="correction"] select[name="member"]', { label: 'Lea Khoury · AUB' });
+  await vpa.fill('form[data-submit="correction"] input[name="pts"]', '5'); await vpa.fill('form[data-submit="correction"] input[name="reason"]', 'Late credit for the poster');
+  await vpa.click('form[data-submit="correction"] button[type=submit]'); await settle(vpa, 2500);
+  check(`a correction reaches Excel by itself (Lea now ${leaTotal()})`, leaTotal() === 17);
+  WORKBOOK.lockNext = true;
+  await vpa.fill('form[data-submit="correction"] input[name="pts"]', '-2'); await vpa.fill('form[data-submit="correction"] input[name="reason"]', 'Double-counted shift');
+  await vpa.selectOption('form[data-submit="correction"] select[name="member"]', { label: 'Lea Khoury · AUB' });
+  await vpa.click('form[data-submit="correction"] button[type=submit]'); await settle(vpa, 2500);
+  await nav(vpa, 'Excel');
+  check('a locked workbook is reported, not silently missed', (await text(vpa)).includes('locked by someone editing it'));
+  await vpa.click('button[data-act="xlSync"]'); await settle(vpa, 2500);
+  check(`“Update now” catches up once it's free (Lea ${leaTotal()})`, leaTotal() === 15 && !(await text(vpa)).includes('needs attention'));
   check(`the VPA screens never hit a refusal (${(await errors(vpa)).length})`, (await errors(vpa)).length === 0);
 
   await lo.reload(); await lo.waitForSelector('.shell'); await settle(lo, 1000);

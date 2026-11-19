@@ -59,8 +59,8 @@ position), open that user here, choose **Reset password**, and set a new one.
    `LeMSIC Points`), leave Firebase Hosting off, and **Register app**.
 3. Firebase shows a block starting `const firebaseConfig = {`. Copy everything
    between the `{` and the `}`.
-4. In this repository, open `docs/firebase-config.js` and replace the last line
-   with:
+4. In this repository, open `docs/site-settings.js` and replace the
+   `window.LEMSIC_FIREBASE = null;` line with:
 
    ```js
    window.LEMSIC_FIREBASE = {
@@ -99,3 +99,66 @@ go to **APIs & Services → Credentials**, open the **Browser key**, and under
 **Application restrictions** choose **Websites** and add
 `https://<your-github-username>.github.io/*`. The rules already protect the
 data; this only stops other sites from using your project's sign-in.
+
+---
+
+# Part 2 — Keeping the Excel workbook up to date
+
+Optional, and it can be done any time. Without it, the VPA downloads the
+workbook from the Excel screen whenever they want a copy. With it, every
+approval, correction and import rewrites the workbook on LeMSIC's SharePoint or
+OneDrive by itself.
+
+It needs **someone who manages LeMSIC's Microsoft 365** for steps 1–3, once.
+
+## 1. Register the app
+
+1. Sign in to <https://entra.microsoft.com> with a LeMSIC admin account.
+2. **Identity → Applications → App registrations → New registration**.
+3. Name: `LeMSIC Points`.
+4. Supported account types: **Accounts in this organizational directory only**.
+5. Redirect URI: choose **Single-page application (SPA)** and enter the site's
+   address followed by `ms-redirect.html`, for example
+   `https://<your-github-username>.github.io/points-system/ms-redirect.html`.
+6. **Register**.
+
+## 2. Allow it to edit files
+
+1. In the new app: **API permissions → Add a permission → Microsoft Graph →
+   Delegated permissions**.
+2. Tick **Files.ReadWrite.All** → **Add permissions**.
+3. Choose **Grant admin consent for LeMSIC** and confirm. (If you skip this, the
+   VPA is asked to agree the first time they sign in — some organisations don't
+   allow that, in which case the admin has to grant it here.)
+
+"Delegated" means the site can only ever touch files the signed-in person
+could open themselves, and only while they use the site.
+
+## 3. Put the two IDs into the site
+
+On the app's **Overview** page, copy the **Application (client) ID** and the
+**Directory (tenant) ID**. In `docs/site-settings.js`, replace
+`window.LEMSIC_MICROSOFT = null;` with:
+
+```js
+window.LEMSIC_MICROSOFT = { clientId: "<Application (client) ID>", tenantId: "<Directory (tenant) ID>" };
+```
+
+Both are identifiers, not secrets.
+
+## 4. Choose the workbook
+
+1. Sign in to the site as `vpa` and open **Excel**.
+2. **Sign in to Microsoft** with the LeMSIC account that can edit the workbook.
+3. Either paste the link to the workbook you already keep (in Excel or SharePoint:
+   **Share → Copy link**), or let the site create `LeMSIC Points.xlsx` in that
+   account's OneDrive.
+
+The site writes three sheets — **Totals by member**, **Ledger** and **By LC** —
+and rewrites them after every change. Any other sheet in the workbook is never
+touched, so notes, charts and pivot tables of your own are safe. Don't type into
+those three sheets; corrections go through the site.
+
+Updates happen in the VPA's browser, straight after the VPA changes something,
+so there is no server to run. If the workbook is open and locked when an update
+is due, the Excel screen says so, and **Update now** catches up.

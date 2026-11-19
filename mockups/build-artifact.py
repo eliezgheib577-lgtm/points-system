@@ -6,7 +6,7 @@
   artifact/lemsic-points.html  the claude.ai test build (no document skeleton: the
                                Artifact host wraps the page in its own).
   docs/index.html              the GitHub Pages build: a complete page that reads its
-                               Firebase settings from docs/firebase-config.js.
+                               Firebase and Microsoft settings from docs/site-settings.js.
 
 All three share one design source and one app source (artifact/app.template.html),
 so a change made once reaches every build.
@@ -54,19 +54,20 @@ site_head = head_part.replace('<meta name="claude:viewport-fit-sides" content="c
 site = ("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n"
         + site_head.strip() + "\n</head>\n<body>\n" + app_div.strip() + "\n" + seed_tag
-        + '<script src="firebase-config.js"></script>\n' + app_script.strip() + "\n</body>\n</html>\n")
+        + '<script src="site-settings.js"></script>\n' + app_script.strip() + "\n</body>\n</html>\n")
 docs = root / "docs"
 docs.mkdir(exist_ok=True)
 (docs / "index.html").write_text(site)
 (docs / ".nojekyll").write_text("")
-config = docs / "firebase-config.js"
+# Microsoft's sign-in pop-up returns here; the page that opened it reads the result.
+(docs / "ms-redirect.html").write_text(
+    "<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Signing in…</title></head>\n"
+    "<body style=\"font:14px system-ui,sans-serif;color:#6b807a;display:grid;place-items:center;min-height:90vh\">Signing in…</body></html>\n")
+config = docs / "site-settings.js"
 if not config.exists():  # never overwrite real settings once they are in
     config.write_text(
-        "// Firebase settings for the GitHub Pages build.\n"
-        "// Paste your project's web settings here: Firebase console → Project settings →\n"
-        "// Your apps → Web app → SDK setup and configuration → Config.\n"
-        "// These values are meant to be public. The rules in firestore.rules protect the data.\n"
-        "// While this is null the page runs as a demo.\n"
-        "window.LEMSIC_FIREBASE = null;\n")
+        "// Settings for the GitHub Pages build. Every value here is meant to be public.\n"
+        "window.LEMSIC_FIREBASE = null;\n"
+        "window.LEMSIC_MICROSOFT = null;\n")
 
 print(f"app.css {len(css):,} · artifact {len(artifact):,} · docs/index.html {len(site):,} bytes")

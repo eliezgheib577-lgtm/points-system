@@ -28,11 +28,28 @@ for the two browser builds, one app source (`artifact/app.template.html`).
 `python3 mockups/build-artifact.py` rebuilds the two browser builds and the
 server stylesheet.
 
+### What the browser builds do
+
+- **Local Officers:** log an event and its volunteers against the rubric, see
+  the checks, send it to the VPA, fix what comes back. They never see figures.
+- **The VPA:** review row by row with reasons, approve or return, corrections,
+  the points sheet by entry, member and committee, the member registry, rubric
+  editing, committees, and an audit log.
+- **Import old sheet:** brings last year's workbook in once as starting
+  balances. It handles any layout, matches names written several ways, refuses
+  the same file twice, and can be undone.
+- **Excel:** a download at any time; on the GitHub build, the workbook on
+  LeMSIC's SharePoint or OneDrive is rewritten after every change, leaving
+  any other sheets alone (SETUP.md, part 2).
+- **Demo:** anyone without access gets the whole app in their browser with
+  example data.
+
 ### Tests for the GitHub Pages build
 
 ```bash
 npm run test:rules   # firestore.rules, case by case, on Google's Firestore emulator
-npm run test:site    # the whole site on the Auth and Firestore emulators
+npm run test:site    # the whole site on the Auth and Firestore emulators,
+                     # including import and Excel (against a strict fake of Microsoft 365)
 ```
 
 Both start Google's emulators (Java required). `test:site` serves the Firebase
@@ -132,10 +149,8 @@ Built and working:
 - sign-in throttling: ten wrong passwords pauses a username for fifteen
   minutes, fifty from one address pauses that address
 
-Not built yet:
+Not built yet in any build:
 
-- Excel sync to OneDrive/SharePoint via Microsoft Graph
-- the one-time import of the existing workbook
 - attachments (proof of activity)
 - rubric editing in the app (seeded, and read-only for now)
 

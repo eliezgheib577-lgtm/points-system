@@ -27,6 +27,11 @@
       "write": "owner"
     },
     {
+      "path": "settings",
+      "read": "owner",
+      "write": "owner"
+    },
+    {
       "path": "subs",
       "read": "owner",
       "write": "owner"
