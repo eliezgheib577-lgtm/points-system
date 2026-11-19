@@ -1,0 +1,151 @@
+{
+ "_comment": "Starting setup for the live database: term, committees and a placeholder rubric. No people. Written once after the first publish; edit both from the app afterwards.",
+ "docs": {
+  "config/app": {
+   "term": "2026–2027 · Semester 1"
+  },
+  "committees/AUB": {
+   "code": "AUB",
+   "name": "American University of Beirut",
+   "active": true
+  },
+  "committees/USJ": {
+   "code": "USJ",
+   "name": "Université Saint-Joseph",
+   "active": true
+  },
+  "committees/LAU": {
+   "code": "LAU",
+   "name": "Lebanese American University",
+   "active": true
+  },
+  "committees/BAU": {
+   "code": "BAU",
+   "name": "Beirut Arab University",
+   "active": true
+  },
+  "committees/LU": {
+   "code": "LU",
+   "name": "Lebanese University",
+   "active": true
+  },
+  "committees/Balamand": {
+   "code": "Balamand",
+   "name": "University of Balamand",
+   "active": true
+  },
+  "committees/USEK": {
+   "code": "USEK",
+   "name": "Holy Spirit University of Kaslik",
+   "active": true
+  },
+  "rubric/participant": {
+   "label": "Participant / attendee",
+   "description": "Attended, no task assigned",
+   "def": 1,
+   "min": 0,
+   "max": 2,
+   "requires": null,
+   "maxPerEvent": null,
+   "loCanExceed": false,
+   "order": 0,
+   "active": true
+  },
+  "rubric/volunteer_half": {
+   "label": "Volunteer — half day",
+   "description": "Up to 4 h on site",
+   "def": 3,
+   "min": 2,
+   "max": 4,
+   "requires": "Attendance proof",
+   "maxPerEvent": null,
+   "loCanExceed": false,
+   "order": 1,
+   "active": true
+  },
+  "rubric/volunteer_full": {
+   "label": "Volunteer — full day",
+   "description": "More than 4 h on site",
+   "def": 5,
+   "min": 4,
+   "max": 6,
+   "requires": "Attendance proof",
+   "maxPerEvent": null,
+   "loCanExceed": false,
+   "order": 2,
+   "active": true
+  },
+  "rubric/design": {
+   "label": "Design / social media",
+   "description": "Posters, reels, coverage",
+   "def": 3,
+   "min": 2,
+   "max": 5,
+   "requires": "Link or file",
+   "maxPerEvent": null,
+   "loCanExceed": true,
+   "order": 3,
+   "active": true
+  },
+  "rubric/logistics": {
+   "label": "Logistics & procurement",
+   "description": "Supplies, transport, venue",
+   "def": 4,
+   "min": 3,
+   "max": 6,
+   "requires": null,
+   "maxPerEvent": null,
+   "loCanExceed": false,
+   "order": 4,
+   "active": true
+  },
+  "rubric/report": {
+   "label": "Report / documentation",
+   "description": "Activity report, data entry",
+   "def": 4,
+   "min": 3,
+   "max": 6,
+   "requires": "Document",
+   "maxPerEvent": null,
+   "loCanExceed": false,
+   "order": 5,
+   "active": true
+  },
+  "rubric/oc_member": {
+   "label": "OC member",
+   "description": "Organising committee",
+   "def": 8,
+   "min": 6,
+   "max": 10,
+   "requires": null,
+   "maxPerEvent": null,
+   "loCanExceed": false,
+   "order": 6,
+   "active": true
+  },
+  "rubric/trainer": {
+   "label": "Trainer / facilitator",
+   "description": "Delivered a session",
+   "def": 10,
+   "min": 8,
+   "max": 12,
+   "requires": "Session title",
+   "maxPerEvent": null,
+   "loCanExceed": true,
+   "order": 7,
+   "active": true
+  },
+  "rubric/oc_coordinator": {
+   "label": "OC coordinator",
+   "description": "Leads the organising committee",
+   "def": 12,
+   "min": 10,
+   "max": 15,
+   "requires": null,
+   "maxPerEvent": 1,
+   "loCanExceed": false,
+   "order": 8,
+   "active": true
+  }
+ }
+}

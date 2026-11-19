@@ -1,0 +1,15 @@
+{
+  "_comment": "Access rules for the published Artifact's database. Declared at publish; enforced by the platform. owner = the artifact's own owner (the VPA). interact = Contributor and above, which includes the Editors LOs are invited as.",
+  "rules": [
+    { "path": "",                "read": "interact", "write": "owner" },
+    { "path": "ledger",          "read": "owner",    "write": "owner" },
+    { "path": "decisions",       "read": "owner",    "write": "owner" },
+    { "path": "audit",           "read": "owner",    "write": "owner" },
+    { "path": "subs",            "read": "owner",    "write": "owner" },
+    { "path": "subs/{self}",     "read": "interact", "write": "interact" },
+    { "path": "requests",        "read": "owner",    "write": "owner" },
+    { "path": "requests/{self}", "read": "interact", "write": "interact" },
+    { "path": "roster",          "read": "owner",    "write": "owner" },
+    { "path": "roster/{self}",   "read": "interact", "write": "owner" }
+  ]
+}

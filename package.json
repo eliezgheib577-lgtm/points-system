@@ -14,7 +14,9 @@
     "seed": "node --env-file=.env --import tsx scripts/seed.ts",
     "test": "node --env-file=.env.test --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "npm run seed && node --env-file=.env tests/e2e/submissions.e2e.cjs && npm run seed && node --env-file=.env tests/e2e/credentials.e2e.cjs"
+    "test:e2e": "npm run seed && node --env-file=.env tests/e2e/submissions.e2e.cjs && npm run seed && node --env-file=.env tests/e2e/credentials.e2e.cjs",
+    "build:artifact": "python3 mockups/build-artifact.py",
+    "test:artifact": "python3 mockups/build-artifact.py && node tests/e2e/artifact/artifact.e2e.cjs"
   },
   "dependencies": {
     "bcryptjs": "3.0.2",

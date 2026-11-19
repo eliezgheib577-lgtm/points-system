@@ -85,9 +85,9 @@ migrations/            plain SQL, applied in filename order
 public/app.css         design system, extracted from mockups/prototype.html
 ```
 
-`public/app.css` is generated, not hand-edited: `python3 mockups/build-artifact.py`
-rebuilds it from `mockups/prototype.html`, along with the published preview.
-Change the prototype, run the script, and both pick up the same change.
+`public/app.css` and `artifact/lemsic-points.html` are generated, not hand-edited:
+`python3 mockups/build-artifact.py` rebuilds both from `mockups/prototype.html`'s CSS
+(and the artifact's template). Change the design once and both builds follow.
 
 ## Status
 
@@ -114,6 +114,50 @@ Not built yet:
 - the one-time import of the existing workbook
 - attachments (proof of activity)
 - rubric editing in the app (seeded, and read-only for now)
+
+## The published Artifact
+
+`artifact/lemsic-points.html` is a second, self-contained build of the same
+platform that runs inside a claude.ai Artifact — no server to host. It is built
+from `artifact/app.template.html` with the design CSS inlined:
+
+```bash
+npm run build:artifact      # python3 mockups/build-artifact.py
+npm run test:artifact       # demo mode + a three-person live run against a rule-enforcing mock
+```
+
+It runs in one of two modes, decided per visitor:
+
+- **Live** — the artifact's shared database. The artifact's **owner is the VPA**.
+  Local Officers are people invited by email as **Editors**; the first time they
+  open the page they ask for a committee, and the VPA approves them on the Access
+  screen.
+- **Demo** — anyone else (a public link, a signed-out visitor, someone not yet
+  invited) gets the full app running only in their own browser with example
+  data, so they can try every screen. Nothing they do reaches anyone else.
+
+Who may read and write what is declared in `artifact/db-rules.json` and enforced
+by the platform: the ledger, the VPA's decisions and the audit log are readable
+by the owner alone; each LO reads and writes only their own submissions; the
+rubric, committees and member names are readable by everyone the page admits.
+`artifact/live-seed.json` is the starting setup written into a fresh database
+(term, committees, a placeholder rubric — no people).
+
+Limits worth knowing, compared with the server build:
+
+- On a personal Claude plan, an outside person can only save changes as an
+  **Editor**, and only while sharing by public link is **off**. Turning the public
+  link on drops invited LOs to view-only (they get the demo).
+- Editors can publish new versions of the page, including looser rules. The rules
+  keep LOs out of the numbers in normal use; they do not stop an Editor who sets
+  out to rewrite the page. That would show in the artifact's version history.
+- The ledger is append-only by the page's own code, not by the database — the
+  owner could overwrite an entry with a direct write. The server build enforces
+  this with a trigger.
+- Only the artifact's owner can be the VPA. Handing the role to next year's VPA
+  means transferring the artifact or republishing with different rules.
+- The database holds up to 25,000 documents — around ten years of a few thousand
+  ledger entries a year.
 
 ## Deployment notes
 

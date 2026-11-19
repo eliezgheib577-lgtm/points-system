@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Build both things derived from mockups/prototype.html.
+"""Build everything derived from the design source.
 
-  mockups/preview.html  the published Artifact. The host wraps every Artifact in
-                        its own <!doctype>/<html>/<head>/<body>, so this copy
-                        carries only the page content.
-  public/app.css        the real application's stylesheet: the prototype's CSS
-                        minus the bits that only drive the click-through demo.
+  public/app.css                the server app's stylesheet: mockups/prototype.html's
+                                CSS minus the bits that only drive the click-through.
+  artifact/lemsic-points.html   the published, working Artifact:
+                                artifact/app.template.html with that same CSS inlined
+                                (Artifacts may not load stylesheets from elsewhere).
 
-prototype.html is the single source. Edit it, run this, and the published
-preview and the running app pick up the same change.
+One design source, two consumers: change the prototype's CSS, run this, and the
+server app and the Artifact pick up the same change.
 """
 import pathlib
 import re
@@ -16,18 +16,6 @@ import re
 here = pathlib.Path(__file__).resolve().parent
 root = here.parent
 src = (here / "prototype.html").read_text()
-
-# --- the Artifact -----------------------------------------------------------
-out = src
-for tag in ['<meta charset="utf-8">',
-            '<meta name="viewport" content="width=device-width, initial-scale=1">',
-            "<!doctype html>", '<html lang="en">', "<head>", "</head>",
-            "<body>", "</body>", "</html>"]:
-    out = out.replace(tag + "\n", "").replace(tag, "")
-out = re.sub(r"\n{3,}", "\n\n", out).strip() + "\n"
-assert "<!doctype" not in out.lower() and "<body" not in out.lower()
-assert "<title>" in out and "--accent" in out
-(here / "preview.html").write_text(out)
 
 # --- the app stylesheet -----------------------------------------------------
 css = re.search(r"<style>(.*?)</style>", src, re.S).group(1)
@@ -41,4 +29,10 @@ header = ("/* LeMSIC Points design system — GENERATED, do not edit by hand.\n"
           "   Source: mockups/prototype.html. Rebuild: python3 mockups/build-artifact.py */\n")
 (root / "public" / "app.css").write_text(header + css.strip() + "\n")
 
-print(f"preview.html {len(out):,} bytes · app.css {len(css):,} bytes")
+
+template = (root / "artifact" / "app.template.html").read_text()
+assert "/*__APP_CSS__*/" in template
+page = template.replace("/*__APP_CSS__*/", css.strip())
+assert "<!doctype" not in page.lower() and "<body" not in page.lower()
+(root / "artifact" / "lemsic-points.html").write_text(page)
+print(f"app.css {len(css):,} bytes · lemsic-points.html {len(page):,} bytes")
