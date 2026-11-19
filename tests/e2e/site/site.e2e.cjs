@@ -179,6 +179,9 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check(`every call matched the documented API (${rejected.length} rejected${rejected.length ? ': ' + rejected[0] : ''})`, rejected.length === 0);
   check('the app’s three sheets were created and filled', ['Totals by member', 'Ledger', 'By LC'].every((n) => xl(n).length > 1) && xl('Ledger')[0][0] === 'Date');
   check('your own “VPA notes” sheet is untouched', JSON.stringify(xl('VPA notes')) === JSON.stringify([['My own notes'], ['Keep this']]));
+  const owned = WORKBOOK.sheets.filter((x) => ['Totals by member', 'Ledger', 'By LC'].includes(x.name));
+  check('the app’s sheets are locked against accidental typing; yours is not', owned.every((x) => x.protected) && !WORKBOOK.sheets.find((x) => x.name === 'VPA notes').protected);
+  check(`the shared file says when it was last updated (“${(xl('Totals by member')[1] || [])[7]}”)`, xl('Totals by member')[0][7] === 'Last updated' && /LeMSIC Points$/.test((xl('Totals by member')[1] || [])[7] || ''));
   const leaTotal = () => { const r = xl('Totals by member').find((row) => row[0] === 'Lea Khoury'); return r ? r[5] : null; };
   check(`Lea's total in Excel matches the app (${leaTotal()})`, leaTotal() === 12);
   await vpa.screenshot({ path: `${SHOTS}/35-site-excel.png`, fullPage: true });
@@ -195,6 +198,27 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check('a locked workbook is reported, not silently missed', (await text(vpa)).includes('locked by someone editing it'));
   await vpa.click('button[data-act="xlSync"]'); await settle(vpa, 2500);
   check(`“Update now” catches up once it's free (Lea ${leaTotal()})`, leaTotal() === 15 && !(await text(vpa)).includes('needs attention'));
+
+  // The VPA works on another device that has never signed in to Microsoft.
+  const phoneVpa = await open(b, base);
+  await signIn(phoneVpa, 'vpa', PW);
+  await nav(phoneVpa, 'Points sheet');
+  const phoneCorrection = async (pts, why) => {
+    await phoneVpa.selectOption('form[data-submit="correction"] select[name="member"]', { label: 'Lea Khoury · AUB' });
+    await phoneVpa.fill('form[data-submit="correction"] input[name="pts"]', String(pts)); await phoneVpa.fill('form[data-submit="correction"] input[name="reason"]', why);
+    await phoneVpa.click('form[data-submit="correction"] button[type=submit]');
+  };
+  await phoneCorrection(3, 'Approved from a phone'); await settle(phoneVpa, 4500);
+  check(`while a signed-in device has the site open, a change made on the phone reaches Excel within seconds (Lea ${leaTotal()})`, leaTotal() === 18);
+
+  await vpa.goto('about:blank');                       // nobody signed in to Microsoft has the site open now
+  await phoneCorrection(1, 'Another from the phone'); await settle(phoneVpa, 2500);
+  check(`with no signed-in device open, Excel waits (Lea still ${leaTotal()})`, leaTotal() === 18);
+  check('…and the phone says the workbook is behind', (await phoneVpa.innerText('.topbar')).includes('Excel: behind'));
+  await vpa.goto(base); await vpa.waitForSelector('.shell'); await settle(vpa, 4500);
+  check(`opening the site on the signed-in device catches it up by itself (Lea ${leaTotal()})`, leaTotal() === 19);
+  check('…and the badge goes back to “Excel ✓”', (await vpa.innerText('.topbar')).includes('Excel ✓'));
+  await phoneVpa.context().close();
   check(`the VPA screens never hit a refusal (${(await errors(vpa)).length})`, (await errors(vpa)).length === 0);
 
   await lo.reload(); await lo.waitForSelector('.shell'); await settle(lo, 1000);

@@ -14,10 +14,10 @@ const TOKEN = 'fake-graph-token';
 const fakeMsal = `window.msal = { PublicClientApplication: class {
   constructor(cfg) { window.__msalConfig = cfg; }
   async initialize() {} async handleRedirectPromise() { return null; }
-  getAllAccounts() { return window.__msalSignedIn ? [{ username: 'vpa@lemsic.org', name: 'LeMSIC VPA' }] : []; }
-  async loginPopup() { window.__msalSignedIn = true; return { account: this.getAllAccounts()[0] }; }
-  async acquireTokenSilent() { if (!window.__msalSignedIn) throw new Error('interaction_required'); return { accessToken: '${TOKEN}' }; }
-  async acquireTokenPopup() { window.__msalSignedIn = true; return { accessToken: '${TOKEN}' }; }
+  getAllAccounts() { return localStorage.getItem('fakeMsal') ? [{ username: 'vpa@lemsic.org', name: 'LeMSIC VPA' }] : []; }
+  async loginPopup() { localStorage.setItem('fakeMsal', '1'); return { account: this.getAllAccounts()[0] }; }
+  async acquireTokenSilent() { if (!localStorage.getItem('fakeMsal')) throw new Error('interaction_required'); return { accessToken: '${TOKEN}' }; }
+  async acquireTokenPopup() { localStorage.setItem('fakeMsal', '1'); return { accessToken: '${TOKEN}' }; }
 } };`;
 
 const col = (s) => s.split('').reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
@@ -79,12 +79,16 @@ async function install(page, wb) {
     const sheet = wb.sheets.find((x) => x.id === m[1]);
     if (!sheet) return bad('no such sheet ' + m[1]);
     const op = m[2];
+    if (op === 'protection' && req.method() === 'GET') return json(200, { protected: !!sheet.protected, options: {} });
+    if (op === 'protection/protect') { if (sheet.protected) return bad('sheet is already protected'); sheet.protected = true; return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' } }); }
+    if (op === 'protection/unprotect') { sheet.protected = false; return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*' } }); }
     if (op.startsWith('usedRange(valuesOnly=true)')) {
       const rows = sheet.cells.length, cols = Math.max(0, ...sheet.cells.map((r) => r.length));
       return json(200, { address: `${sheet.name}!A1${rows && cols ? ':' + letter(cols - 1) + rows : ''}` });
     }
     const rm = /^range\(address='([A-Z0-9:]+)'\)(\/clear)?$/.exec(op);
     if (!rm) return bad('unknown range call ' + op);
+    if (sheet.protected) return bad('cannot change a protected sheet');
     const { c1, r1, c2, r2 } = parse(rm[1]);
     if (rm[2]) {
       if (JSON.parse(req.postData()).applyTo !== 'Contents') return bad('clear should only clear contents');

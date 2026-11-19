@@ -159,6 +159,28 @@ and rewrites them after every change. Any other sheet in the workbook is never
 touched, so notes, charts and pivot tables of your own are safe. Don't type into
 those three sheets; corrections go through the site.
 
-Updates happen in the VPA's browser, straight after the VPA changes something,
-so there is no server to run. If the workbook is open and locked when an update
-is due, the Excel screen says so, and **Update now** catches up.
+Those three sheets are locked against accidental typing (Excel shows them as
+protected), so nobody edits them by mistake and then loses the edit.
+
+## 5. Share the workbook
+
+Share it from Excel or SharePoint as usual — **view-only** is right for most
+people. Every update the site makes shows up for everyone who has it open, and
+the **Totals by member** sheet says when it was last updated.
+
+**Whoever you share it with sees every member's points.** Share it with the
+board; don't share it with Local Officers, or they see what the site keeps from
+them.
+
+## How updates reach the workbook
+
+Updates are written from the VPA's browser, so there is no server to run:
+
+- Approve, correct or import on a device signed in to Microsoft, and the
+  workbook updates within seconds.
+- Do it on a device that isn't (a phone, say), and the workbook still updates
+  within seconds **if the site is open on a signed-in device** at the time.
+- If it isn't, the site shows **Excel: behind** at the top, and the workbook
+  catches up by itself the next time the site is opened on a signed-in device.
+- If the workbook is locked by someone editing it, the Excel screen says so,
+  and **Update now** catches up.
