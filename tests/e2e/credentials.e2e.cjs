@@ -37,9 +37,9 @@ const pin = () => addEventListener('DOMContentLoaded',()=>document.querySelector
 
   console.log('\n— issuing —');
   await vpa.fill('#display_name','Perla Gemayel');
-  await vpa.fill('#username','lo.balamand');
+  await vpa.fill('#username','lo.uob');
   await vpa.selectOption('#role','lo');
-  const balamand = await vpa.$$eval('#lc_id option',o=>o.find(x=>x.textContent.includes('Balamand')).value);
+  const balamand = await vpa.$$eval('#lc_id option',o=>o.find(x=>x.textContent.includes('LC UOB')).value);
   await vpa.selectOption('#lc_id',balamand);
   await vpa.click('form[action="/accounts"] button[type=submit]');
   await vpa.waitForLoadState('networkidle');
@@ -49,11 +49,11 @@ const pin = () => addEventListener('DOMContentLoaded',()=>document.querySelector
   await vpa.screenshot({path:`${SHOT}/15-credential-slip.png`, fullPage:true});
 
   const stored = require('child_process').execSync(
-    `psql "${process.env.DATABASE_URL}" -tAc "select password_hash from users where username='lo.balamand'"`).toString().trim();
+    `psql "${process.env.DATABASE_URL}" -tAc "select password_hash from users where username='lo.uob'"`).toString().trim();
   check('the password is stored only as a bcrypt hash', stored.startsWith('$2') && !stored.includes(oneTime));
 
   await vpa.goto(BASE+'/accounts');
-  await vpa.fill('#display_name','Someone Else'); await vpa.fill('#username','lo.balamand');
+  await vpa.fill('#display_name','Someone Else'); await vpa.fill('#username','lo.uob');
   await vpa.selectOption('#lc_id',balamand);
   await vpa.click('form[action="/accounts"] button[type=submit]'); await vpa.waitForLoadState('networkidle');
   check('a taken username is refused', (await vpa.textContent('body')).includes('already taken'));
@@ -67,7 +67,7 @@ const pin = () => addEventListener('DOMContentLoaded',()=>document.querySelector
   console.log('\n— first sign-in —');
   const loCtx = await b.newContext({ viewport:{width:1440,height:900}, deviceScaleFactor:2 });
   const lo = await loCtx.newPage();
-  await signIn(lo,'lo.balamand',oneTime);
+  await signIn(lo,'lo.uob',oneTime);
   check('first sign-in lands on the password screen', lo.url().endsWith('/password'));
   await lo.screenshot({path:`${SHOT}/16-first-sign-in.png`, fullPage:true});
   await lo.goto(BASE+'/');
@@ -75,27 +75,27 @@ const pin = () => addEventListener('DOMContentLoaded',()=>document.querySelector
   await lo.fill('#current',oneTime); await lo.fill('#next','short');
   const shortOk = await lo.$eval('#next', el => el.checkValidity());
   check('a short new password is rejected', !shortOk);
-  await lo.fill('#next','balamand-blood-drive-2026');
+  await lo.fill('#next','uob-blood-drive-2026');
   await lo.click('form[action="/password"] button[type=submit]'); await lo.waitForLoadState('networkidle');
   check('after choosing a password they reach their dashboard', (await lo.textContent('h1')).includes('Welcome back, Perla'));
-  check('…scoped to their own committee', (await lo.textContent('body')).includes('LC Balamand'));
+  check('…scoped to their own committee', (await lo.textContent('body')).includes('LC UOB'));
 
   const oldCtx = await b.newContext(); const old = await oldCtx.newPage();
-  await signIn(old,'lo.balamand',oneTime);
+  await signIn(old,'lo.uob',oneTime);
   check('the one-time password stops working once replaced', old.url().includes('/login'));
   await oldCtx.close();
 
   console.log('\n— reset —');
   await vpa.goto(BASE+'/accounts');
-  const row = vpa.locator('tr', { hasText: 'lo.balamand' });
+  const row = vpa.locator('tr', { hasText: 'lo.uob' });
   await row.locator('form[action$="/reset"] button').click(); await vpa.waitForLoadState('networkidle');
   const second = (await vpa.textContent('#slip-pass')).trim();
   check('a reset issues a different password', second !== oneTime && /^[a-z]+-[a-z]+-[a-z]+-\d{4}$/.test(second));
   await lo.goto(BASE+'/');
   check('a reset signs them out of the session they had', lo.url().includes('/login'));
-  await signIn(lo,'lo.balamand','balamand-blood-drive-2026');
+  await signIn(lo,'lo.uob','uob-blood-drive-2026');
   check('their own password stops working after a reset', lo.url().includes('/login'));
-  await signIn(lo,'lo.balamand',second);
+  await signIn(lo,'lo.uob',second);
   check('the reset password works and forces a change again', lo.url().endsWith('/password'));
 
   console.log('\n— switching off —');
@@ -109,11 +109,11 @@ const pin = () => addEventListener('DOMContentLoaded',()=>document.querySelector
   check(`and posting it anyway is refused (HTTP ${selfOff.status()})`, selfOff.status()===400);
 
   await vpa.goto(BASE+'/accounts');
-  await vpa.locator('tr', { hasText: 'lo.balamand' }).locator('form[action$="/active"] button').click();
+  await vpa.locator('tr', { hasText: 'lo.uob' }).locator('form[action$="/active"] button').click();
   await vpa.waitForLoadState('networkidle');
   await lo.goto(BASE+'/');
   check('switching an account off ends its session', lo.url().includes('/login'));
-  await signIn(lo,'lo.balamand',second);
+  await signIn(lo,'lo.uob',second);
   check('a switched-off account cannot sign in', lo.url().includes('/login'));
 
   await vpa.goto(BASE+'/accounts');

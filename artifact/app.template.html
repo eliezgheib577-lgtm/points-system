@@ -85,7 +85,7 @@ const days = (ms) => (Date.now() - ms) / 86400000;
 class UserError extends Error {}
 
 // ---------- reference data the demo is built from ----------
-const COMMITTEES = [["AUB", "American University of Beirut"], ["USJ", "Université Saint-Joseph"], ["LAU", "Lebanese American University"], ["BAU", "Beirut Arab University"], ["LU", "Lebanese University"], ["Balamand", "University of Balamand"], ["USEK", "Holy Spirit University of Kaslik"]];
+const COMMITTEES = [["AUB", "American University of Beirut"], ["USJ", "Université Saint-Joseph"], ["LAU", "Lebanese American University"], ["BAU", "Beirut Arab University"], ["LU", "Lebanese University"], ["UOB", "University of Balamand"], ["USEK", "Holy Spirit University of Kaslik"]];
 const RUBRIC = [
   ["participant", "Participant / attendee", "Attended, no task assigned", 1, 0, 2, null, null, false],
   ["volunteer_half", "Volunteer — half day", "Up to 4 h on site", 3, 2, 4, "Attendance proof", null, false],
@@ -97,7 +97,7 @@ const RUBRIC = [
   ["trainer", "Trainer / facilitator", "Delivered a session", 10, 8, 12, "Session title", null, true],
   ["oc_coordinator", "OC coordinator", "Leads the organising committee", 12, 10, 15, null, 1, false],
 ];
-const DEMO_MEMBERS = [["m01", "Lea Khoury", "LEM-2341", "AUB", "Med 3"], ["m02", "Karim Nassar", "LEM-2502", "AUB", "Med 2"], ["m03", "Maya Saad", "LEM-2488", "AUB", "Med 4"], ["m04", "Jad Mansour", "LEM-2611", "AUB", "Med 2"], ["m05", "Nour Abou Jaoude", "LEM-2377", "AUB", "Med 3"], ["m06", "Tala Fares", "LEM-2690", "AUB", "Med 1"], ["m07", "Omar Chehab", "LEM-2745", "AUB", "Med 1"], ["m08", "Hani Khalil", "LEM-2801", "AUB", "Med 1"], ["m09", "Elias Rizk", "LEM-2015", "USJ", "Med 6"], ["m10", "Yara Doumit", "LEM-2061", "USJ", "Med 3"], ["m11", "Perla Gemayel", "LEM-2456", "Balamand", "Med 4"], ["m12", "Hadi Zein", "LEM-2104", "LU", "Med 5"], ["m13", "Sara Itani", "LEM-2233", "BAU", "Med 2"], ["m14", "Dana Ayoub", "LEM-2309", "LAU", "Med 3"], ["m15", "Joelle Haddad", "LEM-2412", "USJ", "Med 2"]];
+const DEMO_MEMBERS = [["m01", "Lea Khoury", "LEM-2341", "AUB", "Med 3"], ["m02", "Karim Nassar", "LEM-2502", "AUB", "Med 2"], ["m03", "Maya Saad", "LEM-2488", "AUB", "Med 4"], ["m04", "Jad Mansour", "LEM-2611", "AUB", "Med 2"], ["m05", "Nour Abou Jaoude", "LEM-2377", "AUB", "Med 3"], ["m06", "Tala Fares", "LEM-2690", "AUB", "Med 1"], ["m07", "Omar Chehab", "LEM-2745", "AUB", "Med 1"], ["m08", "Hani Khalil", "LEM-2801", "AUB", "Med 1"], ["m09", "Elias Rizk", "LEM-2015", "USJ", "Med 6"], ["m10", "Yara Doumit", "LEM-2061", "USJ", "Med 3"], ["m11", "Perla Gemayel", "LEM-2456", "UOB", "Med 4"], ["m12", "Hadi Zein", "LEM-2104", "LU", "Med 5"], ["m13", "Sara Itani", "LEM-2233", "BAU", "Med 2"], ["m14", "Dana Ayoub", "LEM-2309", "LAU", "Med 3"], ["m15", "Joelle Haddad", "LEM-2412", "USJ", "Med 2"]];
 const DEMO_PEOPLE = { "demo-lo-aub": "Rami Haddad", "demo-lo-usj": "Elias Rizk", "demo-vpa": "Yara Dagher" };
 const STANDING = ["SCOPH", "SCORA", "SCORP", "SCOME", "SCOPE", "SCORE", "Internal", "PR & Media"];
 const ACTIVITY = ["Campaign / Screening", "Workshop / Training", "School visit", "Conference / GA", "Fundraiser", "Social", "Webinar", "Other"];

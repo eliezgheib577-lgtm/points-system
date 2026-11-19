@@ -13,7 +13,7 @@ const COMMITTEES = [
   ["LAU", "Lebanese American University"],
   ["BAU", "Beirut Arab University"],
   ["LU", "Lebanese University"],
-  ["Balamand", "University of Balamand"],
+  ["UOB", "University of Balamand"],
   ["USEK", "Holy Spirit University of Kaslik"],
 ] as const;
 
@@ -41,7 +41,7 @@ const MEMBERS: Array<[string, string, string, string]> = [
   ["Rami Haddad", "LEM-2190", "AUB", "Med 4"],
   ["Elias Rizk", "LEM-2015", "USJ", "Med 6"],
   ["Yara Doumit", "LEM-2061", "USJ", "Med 3"],
-  ["Perla Gemayel", "LEM-2456", "Balamand", "Med 4"],
+  ["Perla Gemayel", "LEM-2456", "UOB", "Med 4"],
   ["Hadi Zein", "LEM-2104", "LU", "Med 5"],
   ["Sara Itani", "LEM-2233", "BAU", "Med 2"],
   ["Dana Ayoub", "LEM-2309", "LAU", "Med 3"],

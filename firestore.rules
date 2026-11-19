@@ -5,7 +5,7 @@ rules_version = '2';
 //
 // Every login is <username>@lemsic-points.app, and the username is the role:
 //   vpa         the VPA: reads and writes everything
-//   lo.<code>   the Local Officer for that committee (lo.aub → AUB, lo.balamand → Balamand)
+//   lo.<code>   the Local Officer for that committee (lo.aub → AUB, lo.uob → UOB)
 // Any other account can sign in but reads and writes nothing.
 
 service cloud.firestore {
