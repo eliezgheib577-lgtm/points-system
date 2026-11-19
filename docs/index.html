@@ -395,10 +395,11 @@ function seedDemo() {
 
   [["m01", 84], ["m02", 38], ["m03", 55], ["m09", 58], ["m12", 74], ["m11", 63], ["m13", 51], ["m14", 40]].forEach(([mid, pts], i) => {
     const m = DEMO_MEMBERS.find((x) => x[0] === mid);
-    put("ledger/ob_" + mid, { memberId: mid, name: m[1], lemsicId: m[2], lc: m[3], kind: "opening_balance", pts, reason: "Carried forward — 2025/26 workbook", at: now - 80 * DAY + i, by: "demo-vpa" });
+    put("ledger/ob_imp_demo_" + mid, { memberId: mid, name: m[1], lemsicId: m[2], lc: m[3], kind: "opening_balance", pts, reason: "Carried forward — LeMSIC Points 2025-2026.xlsx", importId: "imp_demo", at: now - 80 * DAY + i, by: "demo-vpa" });
   });
   blood.rows.forEach((r, i) => put("ledger/aw_s_blood_" + i, { memberId: r.memberId, name: r.name, lemsicId: r.lemsicId, lc: "AUB", kind: "award", pts: r.pts, reason: blood.title + " — " + r.catLabel, subId: "s_blood", subRef: blood.ref, cat: r.cat, at: now - 35 * DAY + i, by: "demo-vpa" }));
   put("decisions/s_blood", { lo: "demo-lo-aub", subId: "s_blood", subRef: blood.ref, rows: blood.rows.map((r) => ({ memberId: r.memberId, name: r.name, pts: r.pts, state: "kept", note: null })), total: 38, vpaNote: null, at: now - 35 * DAY, by: "demo-vpa" });
+  put("imports/imp_demo", { ref: "IMP-2609-DEMO1", filename: "LeMSIC Points 2025-2026.xlsx", sha256: "demo", status: "applied", members: 8, created: 0, total: 463, at: now - 80 * DAY, by: "demo-vpa" });
   put("audit/a1", { at: now - 80 * DAY, action: "import.applied", summary: "Carried forward 463 pts for 8 members from the 2025/26 workbook", by: "demo-vpa" });
   put("audit/a2", { at: now - 35 * DAY, action: "submission.approved", summary: "SUB-2610-BLD01 approved for 38 pts across 5 members", by: "demo-vpa" });
   put("audit/a3", { at: now - 12 * DAY, action: "submission.returned", summary: "SUB-2611-MHW02 returned to the LO", by: "demo-vpa" });
@@ -437,8 +438,8 @@ function liveStore(db) {
 function localStore() {
   // Bump this whenever the demo's example data changes: a browser holding an
   // older copy then starts fresh instead of showing stale names and committees.
-  const KEY = "lemsic-points-demo-v2";
-  try { localStorage.removeItem("lemsic-points-demo-v1"); } catch (e) { /* storage blocked */ }
+  const KEY = "lemsic-points-demo-v3";
+  try { ["lemsic-points-demo-v1", "lemsic-points-demo-v2"].forEach((k) => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
   let docs = null;
   try { docs = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { docs = null; }
   if (!docs || typeof docs !== "object") docs = seedDemo();
@@ -479,7 +480,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], loIds: [],
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, undoArmed: null,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -502,7 +503,7 @@ function stopWatching() {
   offs.splice(0).forEach((f) => { try { f(); } catch (e) { /* already closed */ } });
   Object.keys(itemWatch).forEach((k) => { try { itemWatch[k](); } catch (e) { /* closed */ } delete itemWatch[k]; });
   started.clear();
-  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
+  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], imports: [], imp: null, members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
 }
 function arrived(meta) { if (!meta || !meta.fromCache) { S.loaded = true; S.stale = false; } }
 function watchColl(path, key, sortFn) {
@@ -532,6 +533,7 @@ function subscribe(kind) {
     watchColl("ledger", "ledger", (a, b) => (b.at || 0) - (a.at || 0));
     watchColl("decisions", "decisions");
     watchColl("audit", "audit", (a, b) => (b.at || 0) - (a.at || 0));
+    watchColl("imports", "imports", (a, b) => (b.at || 0) - (a.at || 0));
     offs.push(S.store.watch("subs", (list, meta) => {
       S.loIds = list.map((x) => x.id);
       S.loIds.forEach(watchItems);
@@ -774,12 +776,12 @@ const dis = () => (S.busy ? "disabled" : "");
 const lockNote = `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><div class="note info" style="border:0;background:transparent;padding:0"><span class="ic">🔒</span><span>Point totals, member balances and the points sheet are held by the VPA — your own points included. You'll see whether a submission was approved, never the figures it ended up with.</span></div></div>`;
 
 // ---------- navigation ----------
-const TOP = ["home", "new", "submissions", "review", "ledger", "members", "rubric", "access", "audit"];
+const TOP = ["home", "new", "submissions", "review", "ledger", "import", "members", "rubric", "access", "audit"];
 const NAV = {
   lo: [["home", "◆", "Dashboard"], ["new", "＋", "New submission"], ["submissions", "▤", "My submissions"], ["rubric", "◉", "Points rubric"]],
-  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["ledger", "≡", "Points sheet"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
+  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
 };
-const VPA_ONLY = new Set(["review", "reviewSub", "ledger", "members", "access", "audit"]);
+const VPA_ONLY = new Set(["review", "reviewSub", "ledger", "import", "members", "access", "audit"]);
 function go(name, params) {
   S.route = Object.assign({ name }, params || {});
   if (TOP.includes(name)) { try { if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name); } catch (e) { /* framed */ } }
@@ -1183,6 +1185,282 @@ function vCommittees() {
     </div></div>`;
 }
 
+// ---------- importing the old points sheet ----------
+async function loadXlsx() {
+  if (window.XLSX) return window.XLSX;
+  await new Promise((res, rej) => { const el = document.createElement("script"); el.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; el.onload = res; el.onerror = () => rej(new UserError("Couldn't load the spreadsheet reader. Check the connection and try again.")); document.head.appendChild(el); });
+  return window.XLSX;
+}
+async function sha256(buf) {
+  const h = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function editClose(a, b) { // at most one typo apart: "Nasar" / "Nassar"
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+const cleanName = (n) => {
+  const t = String(n || "").replace(/\(.*?\)/g, " ").replace(/\s+/g, " ").trim();
+  // "nour abou jaoude" or "NOUR ABOU JAOUDE" → "Nour Abou Jaoude"; mixed case is left as written.
+  return t === t.toLowerCase() || t === t.toUpperCase() ? t.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : t;
+};
+/** How alike two names are, 0–1. "L. Khoury"/"Lea Khoury" and "Karim Nasar"/"Karim Nassar" both pass 0.75. */
+function nameSimilarity(a, b) {
+  const L = new Set(norm(cleanName(a)).split(" ").filter(Boolean)), R = new Set(norm(cleanName(b)).split(" ").filter(Boolean));
+  if (!L.size || !R.size) return 0;
+  let shared = 0;
+  for (const t of L) {
+    if (R.has(t)) { shared += 1; continue; }
+    for (const o of R) {
+      if ((t.length === 1 && o.startsWith(t)) || (o.length === 1 && t.startsWith(o))) { shared += 0.5; break; }
+      if (t.length > 3 && o.length > 3 && editClose(t, o)) { shared += 0.8; break; }
+    }
+  }
+  return shared / Math.max(L.size, R.size);
+}
+const colLetter = (i) => { let out = ""; let n = i + 1; while (n > 0) { const m = (n - 1) % 26; out = String.fromCharCode(65 + m) + out; n = Math.floor((n - 1) / 26); } return out; };
+const isNum = (v) => typeof v === "number" || (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v.replace(/[, ]/g, ""))));
+const toNum = (v) => (typeof v === "number" ? v : Number(String(v).replace(/[, ]/g, "")));
+/** "AUB", "LC AUB", "American University of Beirut" → the committee's id. */
+function lcFrom(raw) {
+  const r = norm(raw); if (!r) return null;
+  const c = S.committees.find((x) => norm(x.id) === r || norm(x.name) === r || (r.length > 3 && norm(x.name).includes(r)) || r.split(" ").includes(norm(x.id)));
+  return c ? c.id : null;
+}
+function guessHeader(rows) {
+  for (let r = 0; r < Math.min(rows.length, 20); r++) {
+    const texty = (rows[r] || []).filter((v) => String(v).trim() !== "" && !isNum(v)).length;
+    if (texty >= 2) return r;
+  }
+  return 0;
+}
+function guessColumns(headers) {
+  const h = headers.map((x) => norm(x));
+  const find = (re, not) => h.findIndex((x) => re.test(x) && !(not && not.test(x)));
+  let pts = find(/\btotal\b/); if (pts < 0) pts = find(/point|pts|score/);
+  return {
+    name: find(/name|student|member|volunteer/, /\bid\b|committee|university|event/),
+    id: find(/\bid\b|lemsic|\bno\b|number/, /name|total|point/),
+    lc: find(/\blc\b|committee|university|\buni\b|local|school|faculty/),
+    pts,
+  };
+}
+function pickSheet(I, ix) {
+  I.sheetIx = ix;
+  const rows = I.sheets[ix].rows;
+  I.header = guessHeader(rows);
+  I.col = guessColumns(rows[I.header] || []);
+}
+
+/** Group the sheet's rows into people and suggest who each one is. */
+function buildGroups(I) {
+  const rows = I.sheets[I.sheetIx].rows.slice(I.header + 1);
+  const groups = new Map();
+  let unreadable = 0, fractional = false;
+  rows.forEach((r, i) => {
+    r = r || [];
+    const name = String(r[I.col.name] ?? "").trim();
+    const id = I.col.id >= 0 ? String(r[I.col.id] ?? "").trim() : "";
+    if (!name && !id) return;
+    const raw = r[I.col.pts];
+    if (!isNum(raw)) { unreadable++; return; }
+    const pts = toNum(raw);
+    if (!Number.isInteger(pts)) fractional = true;
+    const lcRaw = I.col.lc >= 0 ? String(r[I.col.lc] ?? "").trim() : "";
+    const key = id ? "id:" + id.toLowerCase() : "nm:" + norm(cleanName(name)) + "|" + norm(lcRaw);
+    const g = groups.get(key) || { key, names: [], id, lcRaw, lc: lcFrom(lcRaw), pts: 0, rows: [] };
+    if (name && !g.names.includes(name)) g.names.push(name);
+    g.pts += pts; g.rows.push(I.header + 2 + i);
+    groups.set(key, g);
+  });
+  const list = Array.from(groups.values());
+  const dec = {};
+  list.forEach((g, gi) => {
+    g.pts = Math.round(g.pts);
+    g.name = cleanName(g.names[0] || g.id);
+    g.cands = [];
+    if (g.id) { const m = S.members.find((x) => (x.lemsicId || "").toLowerCase() === g.id.toLowerCase()); if (m) g.cands.push({ memberId: m.id, score: 1, how: "ID" }); }
+    if (!g.cands.length) {
+      S.members.forEach((m) => {
+        if (g.lc && m.lc !== g.lc) return;
+        const sc = norm(m.name) === norm(g.name) ? 1 : nameSimilarity(g.name, m.name);
+        if (sc >= 0.5) g.cands.push({ memberId: m.id, score: sc, how: sc === 1 ? "name" : "similar" });
+      });
+      g.cands.sort((a, b) => b.score - a.score).splice(3);
+    }
+    // Someone written two ways in the same sheet, neither yet in the registry.
+    g.twins = list.slice(0, gi).filter((o) => o.key !== g.key && (!g.lc || !o.lc || g.lc === o.lc) && nameSimilarity(g.name, o.name) >= 0.75).map((o) => o.key);
+    const best = g.cands[0];
+    dec[g.key] = best && best.score >= 0.75 ? best.memberId : g.twins.length ? "same:" + g.twins[0] : "new";
+    g.check = !!(best && best.score >= 0.75 && best.score < 1) || (!best && g.twins.length > 0);
+  });
+  I.groups = list; I.decisions = dec; I.unreadable = unreadable; I.fractional = fractional;
+}
+function resolveTarget(I, key, seen) {
+  const d = I.decisions[key];
+  if (d && d.startsWith("same:")) { const k = d.slice(5); return (seen || new Set()).has(k) ? "new:" + key : resolveTarget(I, k, (seen || new Set()).add(key)); }
+  if (d === "new") return "new:" + key;
+  return d; // a member id, or "skip"
+}
+function importPlan(I) {
+  const totals = new Map(), newOnes = new Map();
+  I.groups.forEach((g) => {
+    const t = resolveTarget(I, g.key);
+    if (!t || t === "skip") return;
+    if (t.startsWith("new:")) { const k = t.slice(4); const src = I.groups.find((x) => x.key === k) || g; newOnes.set(k, src); }
+    totals.set(t, (totals.get(t) || 0) + g.pts);
+  });
+  const needLc = Array.from(newOnes.values()).filter((g) => !g.lc).length;
+  return { totals, newOnes, needLc, total: sum(Array.from(totals.values())), people: totals.size };
+}
+
+function impSteps(n) {
+  const one = (i, label) => `<div class="step ${i < n ? "done" : i === n ? "on" : ""}"><span class="n">${i < n ? "✓" : i}</span><b>${label}</b></div>`;
+  return `<div class="steps">${one(1, "Choose the file")}<div class="step-line"></div>${one(2, "Match the columns")}<div class="step-line"></div>${one(3, "Check the names &amp; import")}</div>`;
+}
+function vImport() {
+  const I = S.imp;
+  let body;
+  if (!I || I.step === "file") {
+    body = impSteps(1) + `<div class="card" style="max-width:760px"><div class="card-b stack">
+      <label class="drop" style="display:block;cursor:pointer">
+        <b style="display:block;font-size:14px;color:var(--ink);margin-bottom:4px">Choose the old points file</b>
+        Excel (.xlsx, .xls) or .csv · any layout — one row per member or one row per activity
+        <input type="file" accept=".xlsx,.xls,.csv" data-act-file="importFile" style="display:block;margin:12px auto 0">
+      </label>
+      ${note("info", "The file is read here in your browser and never uploaded. Only each person's total is saved, as a starting balance.")}
+    </div></div>`;
+  } else if (I.step === "dup") {
+    body = impSteps(1) + `<div style="max-width:760px" class="stack">${note("warn", `<b>${esc(I.filename)}</b> was already imported as ${esc(I.dup.ref)} on ${fmtDate(new Date(I.dup.at).toISOString())}. Importing it again would count everyone's old points twice. Undo that import below first if you really mean to bring it in again.`)}
+      <div><button class="btn" data-act="impReset">Choose a different file</button></div></div>`;
+  } else if (I.step === "map") {
+    const sheet = I.sheets[I.sheetIx], rows = sheet.rows, headers = rows[I.header] || [];
+    const colSel = (field, label, required) => `<div class="field"><label>${label}${required ? " *" : ""}</label><select class="inp" data-imp="col.${field}">${required ? opt(-1, "Choose a column…", I.col[field]) : opt(-1, "— not in this file —", I.col[field])}${headers.map((hv, i) => opt(i, `${colLetter(i)} · ${String(hv).trim() || "(no heading)"}`, I.col[field])).join("")}</select></div>`;
+    const data = rows.slice(I.header + 1).filter((r) => (r || []).some((v) => String(v).trim() !== ""));
+    const ok = I.col.name >= 0 && I.col.pts >= 0;
+    const cols = [["name", "Name"], ["id", "LeMSIC ID"], ["lc", "Committee"], ["pts", "Points"]].filter(([k]) => I.col[k] >= 0);
+    body = impSteps(2) + `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <div class="card"><div class="card-h"><h3>${esc(I.filename)}</h3><div class="spacer"></div><button class="btn sm" data-act="impReset">Choose another file</button></div>
+        <div class="card-b stack">
+          ${I.sheets.length > 1 ? `<div class="field"><label>Sheet</label><select class="inp" data-imp="sheet">${I.sheets.map((sh, i) => opt(i, `${sh.name} · ${sh.rows.length} rows`, I.sheetIx)).join("")}</select></div>` : ""}
+          <div class="field" style="max-width:220px"><label>Headings are on row</label><input class="inp" type="number" min="1" max="${rows.length}" value="${I.header + 1}" data-imp="header"></div>
+          <div class="grid g2">${colSel("name", "Member name", true)}${colSel("pts", "Points", true)}${colSel("id", "LeMSIC ID", false)}${colSel("lc", "Committee", false)}</div>
+        </div></div>
+      <div class="card"><div class="card-h"><h3>How the first rows read</h3><div class="spacer"></div><span class="sub">${data.length} rows with data</span></div>
+        ${cols.length ? `<div class="scroll-x"><table><thead><tr>${cols.map(([, l]) => `<th>${l}</th>`).join("")}</tr></thead><tbody>${data.slice(0, 6).map((r) => `<tr>${cols.map(([k]) => `<td>${esc(r[I.col[k]])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<div class="card-b"><span class="sub">Pick the columns above.</span></div>`}
+      </div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn pri" data-act="impMatch" ${ok ? "" : "disabled"}>Next: check the names →</button></div>
+    </div>
+    <div class="col-side"><div class="card"><div class="card-h"><h3>Either layout works</h3></div><div class="card-b stack">
+      <div class="sub"><b>One row per member</b> with a total: each row becomes that person's starting balance.</div>
+      <div class="sub"><b>One row per activity:</b> the rows are added up per person, so everyone still gets one starting balance.</div>
+      <div class="sub">I guessed the columns from the headings. Correct anything that's wrong.</div></div></div></div></div>`;
+  } else if (I.step === "match") {
+    const plan = importPlan(I);
+    const memberLabel = (id) => { const m = S.members.find((x) => x.id === id); return m ? `${m.name} · LC ${m.lc}` : "?"; };
+    const counts = { matched: 0, fresh: 0, check: 0, skip: 0 };
+    I.groups.forEach((g) => { const d = I.decisions[g.key]; if (d === "skip") counts.skip++; else if (d === "new" || d.startsWith("same:")) counts.fresh++; else counts.matched++; if (g.check) counts.check++; });
+    body = impSteps(3) + `<div class="grid g4" style="margin-bottom:14px">${tile("People in the file", I.groups.length, `${sum(I.groups, (g) => g.rows.length)} rows read`)}${tile("Matched to members", counts.matched, "already in the registry")}${tile("New members", counts.fresh, "will be added")}${tile("Worth a look", counts.check, "similar names", counts.check > 0)}</div>
+      ${I.unreadable ? `<div style="margin-bottom:14px">${note("warn", `${I.unreadable} row${I.unreadable === 1 ? " has" : "s have"} a name but no readable points and will be left out.`)}</div>` : ""}
+      ${I.fractional ? `<div style="margin-bottom:14px">${note("info", "Some points have decimals. Each person's total is rounded to a whole number.")}</div>` : ""}
+      ${plan.needLc ? `<div class="card" style="margin-bottom:14px"><div class="card-b inline-form">${note("warn", `${plan.needLc} new member${plan.needLc === 1 ? "" : "s"} can't be placed in a committee from the file.`)}<div class="field" style="max-width:260px"><label>Put them in</label><select class="inp" data-imp="defaultLc">${opt("", "Choose…", I.defaultLc || "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, I.defaultLc || "")).join("")}</select></div></div></div>` : ""}
+      <div class="card"><div class="card-h"><h3>Who is who</h3><div class="spacer"></div><small>One profile per person keeps totals honest</small></div>
+        <div class="scroll-x"><table><thead><tr><th>In the file</th><th>Committee</th><th class="num">Points</th><th style="min-width:260px">Is this…</th></tr></thead><tbody>
+        ${I.groups.map((g) => {
+          const d = I.decisions[g.key];
+          const choices = g.cands.map((c) => opt(c.memberId, `${memberLabel(c.memberId)}${c.how === "ID" ? " (same ID)" : c.how === "name" ? "" : " (similar name)"}`, d))
+            .concat(g.twins.map((k) => { const o = I.groups.find((x) => x.key === k); return opt("same:" + k, `The same person as “${o.name}” (row ${o.rows[0]})`, d); }))
+            .concat([opt("new", "Someone new — add to the registry", d), opt("skip", "Leave out", d)]).join("");
+          return `<tr${g.check ? ` style="background:var(--flag-row)"` : ""}><td>${who(g.name, `row${g.rows.length > 1 ? "s" : ""} ${g.rows.slice(0, 4).join(", ")}${g.rows.length > 4 ? "…" : ""}${g.id ? " · " + g.id : ""}`)}${g.names.length > 1 ? `<div class="sub">also written ${esc(g.names.slice(1).join(", "))}</div>` : ""}</td>
+            <td>${g.lc ? "LC " + esc(g.lc) : g.lcRaw ? `<span class="sub">“${esc(g.lcRaw)}” — not a committee here</span>` : `<span class="sub">—</span>`}</td>
+            <td class="num"><b>${g.pts}</b></td>
+            <td><select class="inp" data-imp="dec" data-key="${esc(g.key)}">${choices}</select>${g.check ? `<div class="sub" style="color:var(--amber)">check this match</div>` : ""}</td></tr>`;
+        }).join("")}</tbody></table></div>
+        <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-radius:0 0 var(--r) var(--r)">
+          <span class="sub">${plan.people} starting balances · ${plan.newOnes.size} new members${counts.skip ? ` · ${counts.skip} left out` : ""}</span><div class="spacer"></div>
+          <span><span class="sub">Carried forward</span> <b style="font-size:17px">${plan.total}</b> <span class="sub">pts</span></span>
+        </div></div>
+      ${I.progress ? `<div class="card" style="margin-top:14px"><div class="card-b stack"><b>Importing… ${I.progress.done} of ${I.progress.total}</b><div class="bar"><i style="width:${Math.round(100 * I.progress.done / Math.max(1, I.progress.total))}%"></i></div><span class="sub">Keep this page open until it finishes. If it's interrupted, choose the same file again and it carries on where it stopped.</span></div></div>` :
+      `<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap"><button class="btn" data-act="impBack">← Back to the columns</button>
+        <button class="btn pri" data-act="impApply" ${plan.people && !(plan.needLc && !I.defaultLc) && !S.busy ? "" : "disabled"}>Import ${plan.people} starting balance${plan.people === 1 ? "" : "s"} (${plan.total} pts)</button></div>`}`;
+  } else {
+    body = `<div style="max-width:760px" class="stack">${note("good", `<b>Imported.</b> ${I.result.people} members start with ${I.result.total} carried-forward points${I.result.created ? `, and ${I.result.created} were added to the registry` : ""}. It's recorded below as ${esc(I.result.ref)} and can be undone.`)}
+      <div style="display:flex;gap:10px"><button class="btn pri" data-act="go" data-r="ledger" data-view="member">See totals by member →</button><button class="btn" data-act="impReset">Import another file</button></div></div>`;
+  }
+  const done = S.imports;
+  return head("Import the old points sheet", "Bring last year's points in once, as each member's starting balance. Points approved from now on are added on top.") + body +
+    `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Imports so far</h3><span class="pill flat">${done.length}</span></div>
+      ${done.length === 0 ? `<div class="card-b"><span class="sub">Nothing imported yet.</span></div>` :
+      `<div class="scroll-x"><table><thead><tr><th>Import</th><th>File</th><th>When</th><th class="num">Members</th><th class="num">Points</th><th>State</th><th></th></tr></thead><tbody>
+      ${done.map((x) => `<tr${x.status === "reversed" ? ` style="opacity:.6"` : ""}><td class="mono">${esc(x.ref)}</td><td>${esc(x.filename)}</td><td class="sub">${timeAgo(x.at)}</td><td class="num">${x.members || 0}</td><td class="num"><b>${x.total || 0}</b></td>
+        <td><span class="pill ${x.status === "applied" ? "ok" : x.status === "reversed" ? "flat" : "pend"}">${x.status === "applied" ? "in the ledger" : x.status === "reversed" ? "undone" : "interrupted"}</span></td>
+        <td style="text-align:right">${x.status === "applied" ? `<button class="btn sm ${S.undoArmed === x.id ? "danger" : ""}" data-act="impUndo" data-id="${esc(x.id)}" ${dis()}>${S.undoArmed === x.id ? "Really undo? Click again" : "Undo"}</button>` : ""}</td></tr>`).join("")}
+      </tbody></table></div>`}
+    </div>`;
+}
+async function readImportFile(file) {
+  act(async () => {
+    if (!file) return;
+    const X = await loadXlsx();
+    const buf = await file.arrayBuffer();
+    const hash = await sha256(buf);
+    let wb;
+    try { wb = X.read(buf, { type: "array" }); } catch (e) { throw new UserError("That file couldn't be read as a spreadsheet. Use .xlsx, .xls or .csv."); }
+    const sheets = wb.SheetNames.map((n) => ({ name: n, rows: X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }) })).filter((x) => x.rows.length);
+    if (!sheets.length) throw new UserError("That file has no rows in it.");
+    const dup = S.imports.find((x) => x.sha256 === hash && x.status === "applied");
+    const resume = S.imports.find((x) => x.sha256 === hash && x.status === "applying");
+    S.imp = { step: dup ? "dup" : "map", dup, resume, filename: file.name, hash, sheets };
+    const quality = sheets.map((x) => x.rows.filter((r) => (r || []).some(isNum)).length);
+    pickSheet(S.imp, quality.indexOf(Math.max(...quality)));
+  });
+}
+async function applyImport() {
+  const I = S.imp; const plan = importPlan(I);
+  const impId = I.resume ? I.resume.id : "imp_" + I.hash.slice(0, 12) + "_" + Date.now().toString(36);
+  const ref = I.resume ? I.resume.ref : "IMP-" + today().slice(2, 4) + today().slice(5, 7) + "-" + rand().toUpperCase().slice(0, 5);
+  const label = "Carried forward — " + I.filename;
+  const write = async (path, data) => { if (!(await S.store.get(path))) await S.store.set(path, data); };
+  // The record goes first, so an interrupted import can be found and finished.
+  if (!I.resume) await S.store.set("imports/" + impId, { ref, filename: I.filename, sha256: I.hash, status: "applying", members: plan.people, created: plan.newOnes.size, total: plan.total, at: Date.now(), by: S.uid });
+  I.progress = { done: 0, total: plan.newOnes.size + plan.totals.size }; changed();
+  const memberFor = {};
+  for (const [key, g] of plan.newOnes) {
+    // Deterministic ids: a resumed import finds the members it already added.
+    const id = "m_" + impId.slice(4, 16) + "_" + norm(g.name).replace(/ /g, "-").slice(0, 40);
+    memberFor[key] = id;
+    await write("members/" + id, { name: g.name, norm: norm(g.name), lemsicId: g.id || null, lc: g.lc || I.defaultLc, year: null, status: "active", createdAt: Date.now(), importId: impId });
+    I.progress.done++; changed();
+  }
+  for (const [target, pts] of plan.totals) {
+    const memberId = target.startsWith("new:") ? memberFor[target.slice(4)] : target;
+    const m = S.members.find((x) => x.id === memberId) || (() => { const g = plan.newOnes.get(target.slice(4)); return { name: g.name, lemsicId: g.id || null, lc: g.lc || I.defaultLc }; })();
+    if (pts !== 0) await write("ledger/ob_" + impId + "_" + memberId, { memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "opening_balance", pts, reason: label, importId: impId, at: Date.now(), by: S.uid });
+    I.progress.done++; changed();
+  }
+  await S.store.update("imports/" + impId, { status: "applied", appliedAt: Date.now() });
+  await audit("import.applied", `${ref}: carried forward ${plan.total} pts for ${plan.people} members from ${I.filename}`);
+  S.imp = { step: "done", result: { ref, people: plan.people, total: plan.total, created: plan.newOnes.size } };
+}
+async function undoImport(id) {
+  const imp = S.imports.find((x) => x.id === id);
+  if (!imp || imp.status !== "applied") throw new UserError("That import isn't in the ledger.");
+  // Nothing is deleted: each balance gets a matching negative entry, so the history shows both.
+  const entries = S.ledger.filter((e) => e.importId === id && e.kind === "opening_balance" && !e.reverses);
+  for (const e of entries) {
+    const path = "ledger/rv_" + id + "_" + e.memberId;
+    if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "opening_balance", pts: -e.pts, reason: "Undo of " + imp.ref + " — " + imp.filename, importId: id, reverses: e.id, at: Date.now(), by: S.uid });
+  }
+  await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now(), reversedBy: S.uid });
+  await audit("import.reversed", `${imp.ref} undone: ${entries.length} starting balances reversed`);
+}
+
 // ---------- shell ----------
 function render() {
   const app = document.getElementById("app");
@@ -1199,7 +1477,7 @@ function render() {
   if (S.role === "none") view = vNoAccess();
   else if (isVpa()) {
     view = r === "review" ? vReview() : r === "reviewSub" ? vReviewSub() : r === "submissions" ? vVpaSubmissions() : r === "sub" ? vSub()
-      : r === "ledger" ? vLedger() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
+      : r === "ledger" ? vLedger() : r === "import" ? vImport() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
       : r === "edit" ? vSub() : vVpaHome();
   } else {
     if (VPA_ONLY.has(r)) S.route = { name: "home" };
@@ -1269,6 +1547,17 @@ document.addEventListener("input", (e) => {
 });
 document.addEventListener("change", (e) => {
   const el = e.target;
+  if (el.getAttribute && el.getAttribute("data-act-file") === "importFile") { readImportFile(el.files && el.files[0]); return; }
+  const impField = el.getAttribute && el.getAttribute("data-imp");
+  if (impField && S.imp) {
+    const I = S.imp;
+    if (impField === "sheet") pickSheet(I, Number(el.value));
+    else if (impField === "header") { const n = Math.max(1, Math.min(Number(el.value) || 1, I.sheets[I.sheetIx].rows.length)); I.header = n - 1; I.col = guessColumns(I.sheets[I.sheetIx].rows[I.header] || []); }
+    else if (impField.startsWith("col.")) I.col[impField.slice(4)] = Number(el.value);
+    else if (impField === "dec") I.decisions[el.getAttribute("data-key")] = el.value;
+    else if (impField === "defaultLc") I.defaultLc = el.value;
+    changed(); return;
+  }
   if (el.getAttribute && el.getAttribute("data-act-change") === "previewLc") { S.previewLc = el.value; changed(); return; }
   const form = el.getAttribute && el.getAttribute("data-form");
   if (form && (el.tagName === "SELECT" || el.type === "checkbox")) setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value });
@@ -1560,6 +1849,15 @@ const ACTIONS = {
     startDemo(); S.forms = {}; go("home");
   },
   leaveDemo() { location.reload(); },
+  impReset() { S.imp = null; changed(); },
+  impBack() { if (S.imp) { S.imp.step = "map"; changed(); } },
+  impMatch() { if (S.imp) { buildGroups(S.imp); S.imp.step = "match"; changed(); } },
+  impApply() { act(applyImport, "Import finished."); },
+  impUndo(d) {
+    if (S.undoArmed !== d.id) { S.undoArmed = d.id; changed(); setTimeout(() => { if (S.undoArmed === d.id) { S.undoArmed = null; changed(); } }, 5000); return; }
+    S.undoArmed = null;
+    act(() => undoImport(d.id), "Import undone. Those starting balances are back to zero.");
+  },
   loadSetup() {
     act(async () => {
       const el = document.getElementById("lemsic-seed");
@@ -1574,10 +1872,7 @@ const ACTIONS = {
   signOut() { if (S.fb) S.fb.AU.signOut(S.fb.auth); },
   async exportXlsx() {
     act(async () => {
-      if (!window.XLSX) {
-        await new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload = res; s.onerror = () => rej(new UserError("Couldn't load the Excel library. Check the connection and try again.")); document.head.appendChild(s); });
-      }
-      const X = window.XLSX, wb = X.utils.book_new();
+      const X = await loadXlsx(), wb = X.utils.book_new();
       const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission"]].concat(
         S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || ""]));
       const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));

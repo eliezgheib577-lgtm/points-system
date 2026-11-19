@@ -56,6 +56,9 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     match /decisions/{id} { allow read, create, update: if isVpa(); allow delete: if false; }
+    // A record of each import of the old sheet. Undoing one writes reversing
+    // entries to the ledger and marks the record; nothing is deleted.
+    match /imports/{id}   { allow read, create, update: if isVpa(); allow delete: if false; }
     match /audit/{id}     { allow read, create: if isVpa(); allow update, delete: if false; }
   }
 }

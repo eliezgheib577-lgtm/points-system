@@ -37,6 +37,7 @@ beforeEach(async () => {
     await setDoc(doc(db, "ledger/e1"), { memberId: "m1", pts: 8, kind: "award" });
     await setDoc(doc(db, "decisions/d1"), { total: 8 });
     await setDoc(doc(db, "audit/a1"), { action: "x" });
+    await setDoc(doc(db, "imports/i1"), { filename: "old.xlsx", total: 463, status: "applied" });
   });
 });
 
@@ -71,6 +72,11 @@ describe("the points are the VPA's alone", () => {
     await assertFails(getDoc(doc(aub(), "ledger/e1")));
     await assertFails(getDocs(collection(aub(), "decisions")));
     await assertFails(getDocs(collection(aub(), "audit")));
+    await assertFails(getDocs(collection(aub(), "imports")));
+  });
+  it("the VPA keeps the record of imports, which can be marked undone but never deleted", async () => {
+    await assertSucceeds(updateDoc(doc(vpa(), "imports/i1"), { status: "reversed" }));
+    await assertFails(deleteDoc(doc(vpa(), "imports/i1")));
   });
   it("an LO cannot award points", async () => {
     await assertFails(setDoc(doc(aub(), "ledger/x"), { memberId: "m1", pts: 50, kind: "award" }));
