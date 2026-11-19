@@ -14,6 +14,30 @@ Two rules shape everything here:
    cannot see point totals, member balances, rankings or the points sheet —
    their own included. That is enforced on every request, not by hiding links.
 
+## Which build is which
+
+There are three builds of the same platform. All three share one design and,
+for the two browser builds, one app source (`artifact/app.template.html`).
+
+| Build | Where it runs | Data and sign-in | Use it for |
+|---|---|---|---|
+| `docs/index.html` | GitHub Pages | Firebase: one login per position | **LeMSIC's real platform** — see [SETUP.md](SETUP.md) |
+| `artifact/lemsic-points.html` | a claude.ai Artifact | the Artifact's database | testing and showing it to people |
+| `src/` (Node + Postgres) | any server | Postgres, usernames issued in-app | an alternative if you ever host a server |
+
+`python3 mockups/build-artifact.py` rebuilds the two browser builds and the
+server stylesheet.
+
+### Tests for the GitHub Pages build
+
+```bash
+npm run test:rules   # firestore.rules, case by case, on Google's Firestore emulator
+npm run test:site    # the whole site on the Auth and Firestore emulators
+```
+
+Both start Google's emulators (Java required). `test:site` serves the Firebase
+SDK from `node_modules/firebase`, the same build the page loads from Google.
+
 ## Running it locally
 
 Needs Node 22+ and PostgreSQL 16+.

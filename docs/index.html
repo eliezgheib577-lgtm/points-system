@@ -1,0 +1,1613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LeMSIC Points</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  /* layout: fixed app shell — dark rail, light canvas, floating screen switcher */
+  --bg:#f4f6f4; --surface:#ffffff; --surface-2:#fafbfa;
+  --ink:#101f1b; --ink-2:#36514a; --muted:#6b807a;
+  --line:#e0e7e3; --line-2:#eef2ef;
+  --accent:#0f6b56; --accent-2:#0b513f; --accent-soft:#e7f1ed; --accent-ink:#ffffff; --accent-ring:#e7f1ed;
+  --amber:#9a5b06; --amber-soft:#fdf2e0; --amber-line:#f2e0c0; --amber-ink:#6f4204;
+  --red:#a1312a; --red-soft:#fbeceb; --red-line:#edd4d2;
+  --blue:#1a5a8c; --blue-soft:#e9f1f8; --blue-line:#d3e4f1; --blue-ink:#154a74;
+  --violet:#5b3f9e; --violet-soft:#efeafb;
+  --good-line:#cfe5dd; --flag-row:#fffdf7;
+  --hot-line:#f0dfc2; --hot-top:#fffaf1; --hot-bot:#ffffff;
+  --chip-bg:#eef2ef; --chip-fg:#55665f; --step-bg:#e9efec; --knob:#ffffff;
+  --dot:#1cab84; --dot-ring:#d6f2e9;
+  --side-bg:#0c1a16; --side-fg:#cfdcd7; --side-head:#ffffff; --side-muted:#7e948d; --side-label:#6c827b;
+  --side-on:#163028; --side-line:#1b332c; --side-chip:#1e4034; --side-chip-fg:#9fe8cf; --side-foot-b:#eaf2ef;
+  --auth-fg:#dbe7e3; --auth-sub:#9bb0a9; --auth-step:#b9cbc5;
+  --scrim:rgba(8,18,15,.55);
+  --r:12px; --r-sm:8px;
+  --sans:"Inter","Inter Display",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --shadow:0 1px 2px rgba(16,31,27,.05), 0 8px 24px -12px rgba(16,31,27,.14);
+  --shadow-lift:0 6px 30px -10px rgba(16,31,27,.3);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0c1311; --surface:#121c19; --surface-2:#162120;
+  --ink:#e9f0ed; --ink-2:#b0c4be; --muted:#829791;
+  --line:#26342f; --line-2:#1b2522;
+  --accent:#2fbf96; --accent-2:#86e3c3; --accent-soft:#15322a; --accent-ink:#06211a; --accent-ring:#1b4538;
+  --amber:#e0a35a; --amber-soft:#2e2412; --amber-line:#473314; --amber-ink:#f0c58c;
+  --red:#ef8d83; --red-soft:#321b19; --red-line:#4a2823;
+  --blue:#7fb8e8; --blue-soft:#13273a; --blue-line:#23405c; --blue-ink:#a8d0ef;
+  --violet:#b7a0ea; --violet-soft:#221c38;
+  --good-line:#1f4538; --flag-row:#1e2418;
+  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#121c19;
+  --chip-bg:#1d2927; --chip-fg:#9fb3ac; --step-bg:#1d2927; --knob:#e9f0ed;
+  --dot:#2fbf96; --dot-ring:#17352c;
+  --side-bg:#0f1b17; --side-on:#1b3a30; --side-line:#203b33; --side-chip:#22493c;
+  --scrim:rgba(0,0,0,.62);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.66);
+  --shadow-lift:0 6px 30px -10px rgba(0,0,0,.75);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0c1311; --surface:#121c19; --surface-2:#162120;
+  --ink:#e9f0ed; --ink-2:#b0c4be; --muted:#829791;
+  --line:#26342f; --line-2:#1b2522;
+  --accent:#2fbf96; --accent-2:#86e3c3; --accent-soft:#15322a; --accent-ink:#06211a; --accent-ring:#1b4538;
+  --amber:#e0a35a; --amber-soft:#2e2412; --amber-line:#473314; --amber-ink:#f0c58c;
+  --red:#ef8d83; --red-soft:#321b19; --red-line:#4a2823;
+  --blue:#7fb8e8; --blue-soft:#13273a; --blue-line:#23405c; --blue-ink:#a8d0ef;
+  --violet:#b7a0ea; --violet-soft:#221c38;
+  --good-line:#1f4538; --flag-row:#1e2418;
+  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#121c19;
+  --chip-bg:#1d2927; --chip-fg:#9fb3ac; --step-bg:#1d2927; --knob:#e9f0ed;
+  --dot:#2fbf96; --dot-ring:#17352c;
+  --side-bg:#0f1b17; --side-on:#1b3a30; --side-line:#203b33; --side-chip:#22493c;
+  --scrim:rgba(0,0,0,.62);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.66);
+  --shadow-lift:0 6px 30px -10px rgba(0,0,0,.75);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;letter-spacing:-.015em;font-weight:650}
+a{color:var(--accent);text-decoration:none}
+button{font:inherit;cursor:pointer}
+
+/* ---------- app shell ---------- */
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.side{background:var(--side-bg);color:var(--side-fg);padding-block:18px;padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:14px;display:flex;flex-direction:column;gap:22px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 0}
+.mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,#19a37f,#0c6049);display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;letter-spacing:-.02em}
+.brand b{color:var(--side-head);font-size:14.5px;font-weight:650;display:block;letter-spacing:-.01em}
+.brand span{font-size:11.5px;color:var(--side-muted);display:block}
+.navgroup{display:flex;flex-direction:column;gap:2px}
+.navlabel{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--side-label);padding:0 8px 6px;font-weight:600}
+.nav{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r-sm);color:var(--side-fg);font-size:13.3px}
+.nav.on{background:var(--side-on);color:var(--side-head);font-weight:550}
+.nav .ic{width:16px;text-align:center;opacity:.85;font-size:13px}
+.nav .count{margin-left:auto;background:var(--side-chip);color:var(--side-chip-fg);font-size:11px;padding:1px 7px;border-radius:99px;font-weight:600}
+.nav.on .count{background:var(--accent);color:var(--accent-ink)}
+.side-foot{margin-top:auto;border-top:1px solid var(--side-line);padding-top:12px;display:flex;align-items:center;gap:9px}
+.avatar{width:28px;height:28px;border-radius:99px;background:var(--side-chip);color:var(--side-chip-fg);display:grid;place-items:center;font-size:11.5px;font-weight:650}
+.side-foot small{display:block;color:var(--side-muted);font-size:11px}
+.side-foot b{font-size:12.5px;color:var(--side-foot-b);font-weight:600}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{height:58px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.crumb{color:var(--muted);font-size:13px}
+.crumb b{color:var(--ink);font-weight:600}
+.spacer{flex:1}
+.topbar .spacer{flex:1}
+.termsel{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:12.5px;color:var(--ink-2);background:var(--surface-2)}
+.dot{width:7px;height:7px;border-radius:99px;background:var(--dot);box-shadow:0 0 0 3px var(--dot-ring)}
+.content{padding-block:24px 92px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));max-width:1180px}
+.page-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px}
+.page-head h1{font-size:22px}
+.page-head p{margin:4px 0 0;color:var(--muted);font-size:13.3px;max-width:62ch}
+.page-head .spacer{flex:1}
+
+/* ---------- atoms ---------- */
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:550;display:inline-flex;align-items:center;gap:7px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--red);border-color:var(--red-line);background:var(--red-soft)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.sm{padding:5px 10px;font-size:12.3px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:12px}
+.card-h h3{font-size:14.5px}
+.card-h .spacer{flex:1}
+.card-h small{color:var(--muted);font-size:12px}
+.card-b{padding:18px}
+.pad{padding:16px 18px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:1fr 1fr}
+.row{display:flex;gap:14px}
+.sub{color:var(--muted);font-size:12.4px}
+.mono{font-family:var(--mono);font-size:12.3px}
+
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.tile .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.tile .v{font-size:25px;font-weight:650;letter-spacing:-.025em;margin-top:6px;font-variant-numeric:tabular-nums}
+.tile .d{font-size:12px;color:var(--muted);margin-top:2px}
+.tile.hot{border-color:var(--hot-line);background:linear-gradient(180deg,var(--hot-top),var(--hot-bot))}
+.tile.hot .v{color:var(--amber)}
+
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.pill.draft{background:var(--chip-bg);color:var(--chip-fg)}
+.pill.pend{background:var(--amber-soft);color:var(--amber)}
+.pill.ok{background:var(--accent-soft);color:var(--accent-2)}
+.pill.mod{background:var(--blue-soft);color:var(--blue)}
+.pill.ret{background:var(--red-soft);color:var(--red)}
+.pill.tag{background:var(--violet-soft);color:var(--violet)}
+.pill.flat{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+td{padding:11px 14px;border-bottom:1px solid var(--line-2);font-size:13.2px;vertical-align:middle}
+td .who{min-width:142px}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.who{display:flex;align-items:center;gap:9px}
+.ava{width:26px;height:26px;border-radius:99px;background:var(--accent-soft);color:var(--accent-2);display:grid;place-items:center;font-size:10.8px;font-weight:650;flex:none}
+.who b{font-weight:600;font-size:13.2px;display:block;white-space:nowrap}
+.who small{color:var(--muted);font-size:11.4px;font-family:var(--mono);white-space:nowrap}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12.3px;font-weight:600;color:var(--ink-2)}
+.inp{border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 11px;font-size:13.2px;background:var(--surface);color:var(--ink);font-family:inherit}
+.inp.ph{color:var(--muted)}
+.inp.sel{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.inp.sel::after{content:"▾";color:var(--muted);font-size:10px}
+.hint{font-size:11.6px;color:var(--muted)}
+.cellinp{border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:13px;background:var(--surface);color:var(--ink);width:100%;font-family:inherit}
+.cellinp.sel{display:flex;align-items:center;justify-content:space-between;white-space:nowrap;min-width:150px}
+.cellinp.sel::after{content:"▾";color:var(--muted);font-size:9px}
+.pts{width:72px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--surface);color:var(--ink)}
+.pts.edited{border-color:var(--blue-line);background:var(--blue-soft);color:var(--blue)}
+.delta{font-size:11px;font-weight:650;color:var(--blue);margin-left:6px}
+.delta.down{color:var(--red)}
+
+.note{display:flex;gap:10px;padding:11px 13px;border-radius:var(--r-sm);font-size:12.7px;line-height:1.45}
+.note.warn{background:var(--amber-soft);color:var(--amber-ink);border:1px solid var(--amber-line)}
+.note.info{background:var(--blue-soft);color:var(--blue-ink);border:1px solid var(--blue-line)}
+.note.good{background:var(--accent-soft);color:var(--accent-2);border:1px solid var(--good-line)}
+.note .ic{font-size:14px;line-height:1.2}
+
+.steps{display:flex;align-items:center;gap:0;margin-bottom:20px}
+.step{display:flex;align-items:center;gap:9px;padding-right:14px}
+.step .n{width:22px;height:22px;border-radius:99px;display:grid;place-items:center;font-size:11.5px;font-weight:650;background:var(--step-bg);color:var(--muted)}
+.step b{font-size:12.8px;color:var(--muted);font-weight:600}
+.step.on .n{background:var(--accent);color:var(--accent-ink)}
+.step.on b{color:var(--ink)}
+.step.done .n{background:var(--accent-soft);color:var(--accent-2)}
+.step.done b{color:var(--ink-2)}
+.step-line{height:1px;background:var(--line);flex:1;min-width:22px;margin-right:14px}
+
+.flowbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.flowbar .n{background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-weight:600;color:var(--ink-2)}
+.flowbar .n.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.flowbar .n.now{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber)}
+
+.bar{height:7px;border-radius:99px;background:var(--line-2);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.lb{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line-2)}
+.lb:last-child{border-bottom:0}
+.lb .rank{width:20px;color:var(--muted);font-size:12px;font-weight:650;font-variant-numeric:tabular-nums}
+.lb .nm{flex:1;min-width:0}
+.lb .nm b{font-size:13px;font-weight:600;display:block}
+.lb .nm small{color:var(--muted);font-size:11.3px}
+.lb .pv{font-variant-numeric:tabular-nums;font-weight:650;font-size:13.5px;width:46px;text-align:right}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 18px}
+.tab{padding:11px 12px;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.on{color:var(--accent-2);border-color:var(--accent)}
+
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl{display:flex;gap:11px;padding-bottom:14px;position:relative}
+.tl:not(:last-child)::before{content:"";position:absolute;left:8px;top:18px;bottom:0;width:1px;background:var(--line)}
+.tl .tdot{width:17px;height:17px;border-radius:99px;background:var(--surface);border:2px solid var(--line);flex:none;margin-top:1px}
+.tl.on .tdot{border-color:var(--accent);background:var(--accent-soft)}
+.tl .tb b{font-size:12.8px;font-weight:600;display:block}
+.tl .tb small{color:var(--muted);font-size:11.6px}
+
+/* ---------- login ---------- */
+.auth{min-height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1.05fr .95fr}
+.auth-l{background:var(--side-bg);color:var(--auth-fg);padding-block:46px;padding-left:max(52px,env(safe-area-inset-left,0px));padding-right:52px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.auth-l::after{content:"";position:absolute;width:520px;height:520px;right:-200px;bottom:-240px;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(25,163,127,.3),transparent 62%)}
+.auth-l h2{color:var(--side-head);font-size:28px;line-height:1.22;margin-top:auto;max-width:20ch;letter-spacing:-.02em}
+.auth-l p{color:var(--auth-sub);max-width:42ch;font-size:13.6px;margin:14px 0 0}
+.auth-steps{margin-top:26px;display:flex;flex-direction:column;gap:12px;z-index:1}
+.as{display:flex;gap:11px;align-items:flex-start;font-size:12.8px;color:var(--auth-step)}
+.as .n{width:21px;height:21px;border-radius:99px;background:var(--side-on);color:var(--side-chip-fg);display:grid;place-items:center;font-size:11px;font-weight:650;flex:none}
+.auth-r{display:grid;place-items:center;padding-block:40px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--bg)}
+.authbox{width:100%;max-width:368px}
+.authbox h3{font-size:19px;margin-bottom:5px}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:16px 0 4px}
+.role{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 11px;background:var(--surface);font-size:12.6px}
+.role.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 3px var(--accent-ring)}
+.role b{display:block;font-size:13px;font-weight:650}
+.role small{color:var(--muted);font-size:11.3px}
+
+/* ---------- misc ---------- */
+.kv{display:flex;flex-direction:column;gap:3px}
+.kv .k{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:650}
+.kv .v{font-size:13.3px;font-weight:550}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r-sm);padding:16px;text-align:center;color:var(--muted);font-size:12.6px;background:var(--surface-2)}
+.rowsel{display:flex;gap:6px}
+.sw{width:34px;height:20px;border-radius:99px;background:var(--line);position:relative;flex:none}
+.sw::after{content:"";position:absolute;width:16px;height:16px;border-radius:99px;background:var(--knob);top:2px;left:2px;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw.on{background:var(--accent)}
+.sw.on::after{left:16px}
+.syncbar{display:flex;align-items:center;gap:9px;font-size:12.4px;color:var(--ink-2);background:var(--accent-soft);border:1px solid var(--good-line);border-radius:99px;padding:5px 13px}
+@media(max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .topbar{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .side{display:none}
+  .content{padding-block:14px 100px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .g4,.g3,.g2{grid-template-columns:1fr 1fr}
+  .auth{grid-template-columns:1fr}
+  .auth-l{display:none}
+  .mob-top{display:flex!important}
+  .scroll-x{overflow-x:auto}
+}
+.mob-top{display:none;align-items:center;gap:10px}
+/* Wide tables scroll inside their own box at every width. Without this a table
+   wider than its column spills under the neighbouring column, which then takes
+   its clicks. */
+.scroll-x{overflow-x:auto;max-width:100%}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:10}
+
+/* ---------- working-artifact additions ---------- */
+.mnav{display:none}
+@media(max-width:760px){
+  .mnav{display:flex;gap:6px;overflow-x:auto;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+  .mnav button{flex:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:600}
+  .mnav button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .topbar{height:auto;min-height:58px;flex-wrap:wrap;padding-block:8px}
+}
+.nav{width:100%;border:0;background:transparent;text-align:left;font:inherit}
+.modechip{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;border-radius:99px;padding:5px 10px}
+.modechip.live{background:var(--accent-soft);color:var(--accent-2)}
+.modechip.demo{background:var(--amber-soft);color:var(--amber)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;padding:2px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.toast{position:fixed;z-index:70;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));max-width:min(560px,calc(100% - 32px));background:var(--ink);color:var(--bg);border-radius:12px;padding:11px 16px;font-size:13.2px;box-shadow:var(--shadow-lift)}
+.toast.bad{background:var(--red);color:#fff}
+.boot{min-height:60vh;display:grid;place-items:center;color:var(--muted);font-size:14px;padding:24px}
+textarea.inp{resize:vertical;min-height:70px}
+select.inp,input.inp,textarea.inp{width:100%}
+.linkbtn{border:0;background:none;color:var(--accent);font:inherit;font-weight:600;padding:0;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.stack{display:flex;flex-direction:column;gap:14px}
+.wrap{flex-wrap:wrap}
+.col-main{flex:2;min-width:0;display:flex;flex-direction:column;gap:14px}
+.col-side{flex:1;min-width:260px;display:flex;flex-direction:column;gap:14px}
+@media(max-width:900px){.row.split{flex-direction:column}.col-side{min-width:0}}
+.inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.inline-form .field{min-width:150px;flex:1}
+input.pts{width:72px}
+</style>
+</head>
+<body>
+<div id="app"><div class="boot">Opening LeMSIC Points…</div></div>
+<script type="application/json" id="lemsic-seed">{"docs": {"config/app": {"term": "2026–2027 · Semester 1"}, "committees/AUB": {"code": "AUB", "name": "American University of Beirut", "active": true}, "committees/USJ": {"code": "USJ", "name": "Université Saint-Joseph", "active": true}, "committees/LAU": {"code": "LAU", "name": "Lebanese American University", "active": true}, "committees/BAU": {"code": "BAU", "name": "Beirut Arab University", "active": true}, "committees/LU": {"code": "LU", "name": "Lebanese University", "active": true}, "committees/UOB": {"code": "UOB", "name": "University of Balamand", "active": true}, "committees/USEK": {"code": "USEK", "name": "Holy Spirit University of Kaslik", "active": true}, "rubric/participant": {"label": "Participant / attendee", "description": "Attended, no task assigned", "def": 1, "min": 0, "max": 2, "requires": null, "maxPerEvent": null, "loCanExceed": false, "order": 0, "active": true}, "rubric/volunteer_half": {"label": "Volunteer — half day", "description": "Up to 4 h on site", "def": 3, "min": 2, "max": 4, "requires": "Attendance proof", "maxPerEvent": null, "loCanExceed": false, "order": 1, "active": true}, "rubric/volunteer_full": {"label": "Volunteer — full day", "description": "More than 4 h on site", "def": 5, "min": 4, "max": 6, "requires": "Attendance proof", "maxPerEvent": null, "loCanExceed": false, "order": 2, "active": true}, "rubric/design": {"label": "Design / social media", "description": "Posters, reels, coverage", "def": 3, "min": 2, "max": 5, "requires": "Link or file", "maxPerEvent": null, "loCanExceed": true, "order": 3, "active": true}, "rubric/logistics": {"label": "Logistics & procurement", "description": "Supplies, transport, venue", "def": 4, "min": 3, "max": 6, "requires": null, "maxPerEvent": null, "loCanExceed": false, "order": 4, "active": true}, "rubric/report": {"label": "Report / documentation", "description": "Activity report, data entry", "def": 4, "min": 3, "max": 6, "requires": "Document", "maxPerEvent": null, "loCanExceed": false, "order": 5, "active": true}, "rubric/oc_member": {"label": "OC member", "description": "Organising committee", "def": 8, "min": 6, "max": 10, "requires": null, "maxPerEvent": null, "loCanExceed": false, "order": 6, "active": true}, "rubric/trainer": {"label": "Trainer / facilitator", "description": "Delivered a session", "def": 10, "min": 8, "max": 12, "requires": "Session title", "maxPerEvent": null, "loCanExceed": true, "order": 7, "active": true}, "rubric/oc_coordinator": {"label": "OC coordinator", "description": "Leads the organising committee", "def": 12, "min": 10, "max": 15, "requires": null, "maxPerEvent": 1, "loCanExceed": false, "order": 8, "active": true}}}</script>
+<script src="firebase-config.js"></script>
+<script>
+(function () {
+"use strict";
+
+/* ===================================================================
+   Where things live in the shared database, and who may touch them.
+   The rules are declared at publish time and enforced by the platform,
+   not by this page:
+
+     committees, rubric, members, config   every LO reads · owner writes
+     subs/<lo>/items/<id>                  that LO and the owner only
+     requests/<person>                     that person and the owner only
+     roster/<lo>                           that LO reads · owner writes
+     ledger, decisions, audit              the owner (the VPA) only
+
+   So an LO's screen can't show totals because the data never reaches
+   their browser — not because a link is hidden.
+   =================================================================== */
+
+// ---------- small helpers ----------
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ESC[c]);
+const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const rand = () => Math.random().toString(36).slice(2, 9);
+const newId = (prefix) => prefix + Date.now().toString(36) + rand();
+const today = () => new Date().toISOString().slice(0, 10);
+const first = (name) => String(name || "").split(/\s+/)[0];
+const sum = (xs, f) => xs.reduce((a, x) => a + (f ? f(x) : x), 0);
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(String(iso).length === 10 ? iso + "T12:00:00" : iso);
+  return isNaN(d) ? "—" : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+function span(ms) {
+  const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (s < 60) return null;
+  const m = Math.floor(s / 60); if (m < 60) return m + " min";
+  const h = Math.floor(m / 60); if (h < 24) return h + " hour" + (h === 1 ? "" : "s");
+  const d = Math.floor(h / 24); return d + " day" + (d === 1 ? "" : "s");
+}
+const timeAgo = (ms) => (ms ? (span(ms) ? span(ms) + " ago" : "just now") : "—");
+const waited = (ms) => (ms ? (span(ms) || "under a minute") : "—");
+const days = (ms) => (Date.now() - ms) / 86400000;
+class UserError extends Error {}
+
+// ---------- reference data the demo is built from ----------
+const COMMITTEES = [["AUB", "American University of Beirut"], ["USJ", "Université Saint-Joseph"], ["LAU", "Lebanese American University"], ["BAU", "Beirut Arab University"], ["LU", "Lebanese University"], ["UOB", "University of Balamand"], ["USEK", "Holy Spirit University of Kaslik"]];
+const RUBRIC = [
+  ["participant", "Participant / attendee", "Attended, no task assigned", 1, 0, 2, null, null, false],
+  ["volunteer_half", "Volunteer — half day", "Up to 4 h on site", 3, 2, 4, "Attendance proof", null, false],
+  ["volunteer_full", "Volunteer — full day", "More than 4 h on site", 5, 4, 6, "Attendance proof", null, false],
+  ["design", "Design / social media", "Posters, reels, coverage", 3, 2, 5, "Link or file", null, true],
+  ["logistics", "Logistics & procurement", "Supplies, transport, venue", 4, 3, 6, null, null, false],
+  ["report", "Report / documentation", "Activity report, data entry", 4, 3, 6, "Document", null, false],
+  ["oc_member", "OC member", "Organising committee", 8, 6, 10, null, null, false],
+  ["trainer", "Trainer / facilitator", "Delivered a session", 10, 8, 12, "Session title", null, true],
+  ["oc_coordinator", "OC coordinator", "Leads the organising committee", 12, 10, 15, null, 1, false],
+];
+const DEMO_MEMBERS = [["m01", "Lea Khoury", "LEM-2341", "AUB", "Med 3"], ["m02", "Karim Nassar", "LEM-2502", "AUB", "Med 2"], ["m03", "Maya Saad", "LEM-2488", "AUB", "Med 4"], ["m04", "Jad Mansour", "LEM-2611", "AUB", "Med 2"], ["m05", "Nour Abou Jaoude", "LEM-2377", "AUB", "Med 3"], ["m06", "Tala Fares", "LEM-2690", "AUB", "Med 1"], ["m07", "Omar Chehab", "LEM-2745", "AUB", "Med 1"], ["m08", "Hani Khalil", "LEM-2801", "AUB", "Med 1"], ["m09", "Elias Rizk", "LEM-2015", "USJ", "Med 6"], ["m10", "Yara Doumit", "LEM-2061", "USJ", "Med 3"], ["m11", "Perla Gemayel", "LEM-2456", "UOB", "Med 4"], ["m12", "Hadi Zein", "LEM-2104", "LU", "Med 5"], ["m13", "Sara Itani", "LEM-2233", "BAU", "Med 2"], ["m14", "Dana Ayoub", "LEM-2309", "LAU", "Med 3"], ["m15", "Joelle Haddad", "LEM-2412", "USJ", "Med 2"]];
+const DEMO_PEOPLE = { "demo-lo-aub": "Rami Haddad", "demo-lo-usj": "Elias Rizk", "demo-vpa": "Yara Dagher" };
+const STANDING = ["SCOPH", "SCORA", "SCORP", "SCOME", "SCOPE", "SCORE", "Internal", "PR & Media"];
+const ACTIVITY = ["Campaign / Screening", "Workshop / Training", "School visit", "Conference / GA", "Fundraiser", "Social", "Webinar", "Other"];
+const DURATION = ["Half day (up to 4 h)", "Full day (over 4 h)", "Multi-day", "Online"];
+
+function demoRow(mid, cat, pts, hours, note) {
+  const m = DEMO_MEMBERS.find((x) => x[0] === mid), c = RUBRIC.find((x) => x[0] === cat);
+  return { memberId: mid, name: m[1], lemsicId: m[2], cat, catLabel: c[1], min: c[4], max: c[5], maxPerEvent: c[7], loCanExceed: c[8], hours, note, pts };
+}
+
+/** Example records for the in-browser demo only. The live database is never seeded from here. */
+function seedDemo() {
+  const d = {}, now = Date.now(), DAY = 86400000;
+  const put = (p, o) => { d[p] = o; };
+  put("config/app", { term: "2026–2027 · Semester 1" });
+  COMMITTEES.forEach(([code, name]) => put("committees/" + code, { code, name, active: true }));
+  RUBRIC.forEach((r, i) => put("rubric/" + r[0], { label: r[1], description: r[2], def: r[3], min: r[4], max: r[5], requires: r[6], maxPerEvent: r[7], loCanExceed: r[8], order: i, active: true }));
+  DEMO_MEMBERS.forEach(([id, name, lem, lc, year]) => put("members/" + id, { name, norm: norm(name), lemsicId: lem, lc, year, status: "active", createdAt: now - 120 * DAY }));
+  put("roster/demo-lo-aub", { lc: "AUB", approvedAt: now - 60 * DAY });
+  put("roster/demo-lo-usj", { lc: "USJ", approvedAt: now - 58 * DAY });
+  put("subs/demo-lo-aub", { lc: "AUB", updatedAt: now });
+  put("subs/demo-lo-usj", { lc: "USJ", updatedAt: now });
+
+  const blood = { ref: "SUB-2610-BLD01", lc: "AUB", title: "Blood Donation Drive", date: "2026-10-12", location: "AUBMC Lobby B", sc: "SCOPH", type: "Campaign / Screening", duration: "Full day (over 4 h)", description: "Donor registration and aftercare for the hospital's autumn drive. 96 units collected.", status: "approved", by: "demo-lo-aub", createdAt: now - 38 * DAY, submittedAt: now - 37 * DAY, decidedAt: now - 35 * DAY,
+    rows: [demoRow("m01", "oc_coordinator", 12, 10, "Ran the day, liaised with the blood bank"), demoRow("m02", "oc_member", 8, 8, "Donor registration desk"), demoRow("m03", "trainer", 10, 3, "Briefed volunteers on aftercare"), demoRow("m04", "volunteer_full", 5, 8, "Aftercare station"), demoRow("m05", "volunteer_half", 3, 4, "Morning registration shift")] };
+  put("subs/demo-lo-aub/items/s_blood", blood);
+  put("subs/demo-lo-aub/items/s_mh", { ref: "SUB-2611-MHW02", lc: "AUB", title: "Mental Health Awareness Week", date: "2026-11-03", location: "AUB Campus, West Hall", sc: "SCORA", type: "Campaign / Screening", duration: "Multi-day", description: "Five days of stalls and two talks on student mental health.", status: "returned", vpaNote: "Two volunteers are listed as OC coordinator; the rubric allows one per event. Please correct and resend.", by: "demo-lo-aub", createdAt: now - 15 * DAY, submittedAt: now - 14 * DAY, decidedAt: now - 12 * DAY,
+    rows: [demoRow("m01", "oc_coordinator", 12, 12, "Planned the week"), demoRow("m02", "oc_coordinator", 12, 10, "Ran the stalls"), demoRow("m06", "design", 3, 3, "Posters and stories"), demoRow("m08", "volunteer_half", 3, 4, "Stall shift")] });
+  put("subs/demo-lo-aub/items/s_wdd", { ref: "SUB-2611-WDD03", lc: "AUB", title: "World Diabetes Day Screening Campaign", date: "2026-11-14", location: "Hamra Public Square, Beirut", sc: "SCOPH", type: "Campaign / Screening", duration: "Full day (over 4 h)", description: "Free blood-glucose and BMI screening with referral slips. 240 people screened across 8 hours.", status: "pending", loNote: "Omar covered an extra unplanned shift when a volunteer dropped out — hence 7 instead of 3.", by: "demo-lo-aub", createdAt: now - 4 * DAY, submittedAt: now - 2 * DAY,
+    rows: [demoRow("m01", "oc_coordinator", 12, 10, "Led planning, permits and scheduling"), demoRow("m02", "oc_member", 8, 8, "Logistics and equipment"), demoRow("m03", "trainer", 10, 4, "Glucometer training for volunteers"), demoRow("m04", "volunteer_full", 5, 8, "Screening station 2, ~70 people"), demoRow("m06", "design", 3, 3, "Poster, stories, recap reel"), demoRow("m07", "volunteer_half", 7, 4, "Referral slips and data entry")] });
+  put("subs/demo-lo-usj/items/s_winter", { ref: "SUB-2611-WCD04", lc: "USJ", title: "Winter Clothing Drive", date: "2026-11-07", location: "USJ Medical Campus", sc: "SCORP", type: "Fundraiser", duration: "Multi-day", description: "Collected and sorted 1,400 items for three shelters.", status: "pending", by: "demo-lo-usj", createdAt: now - 9 * DAY, submittedAt: now - 6 * DAY,
+    rows: [demoRow("m09", "oc_coordinator", 12, 14, "Ran collection and sorting"), demoRow("m10", "volunteer_full", 5, 9, "Sorting and delivery"), demoRow("m15", "logistics", 4, 6, "Van and shelter drop-offs")] });
+
+  [["m01", 84], ["m02", 38], ["m03", 55], ["m09", 58], ["m12", 74], ["m11", 63], ["m13", 51], ["m14", 40]].forEach(([mid, pts], i) => {
+    const m = DEMO_MEMBERS.find((x) => x[0] === mid);
+    put("ledger/ob_" + mid, { memberId: mid, name: m[1], lemsicId: m[2], lc: m[3], kind: "opening_balance", pts, reason: "Carried forward — 2025/26 workbook", at: now - 80 * DAY + i, by: "demo-vpa" });
+  });
+  blood.rows.forEach((r, i) => put("ledger/aw_s_blood_" + i, { memberId: r.memberId, name: r.name, lemsicId: r.lemsicId, lc: "AUB", kind: "award", pts: r.pts, reason: blood.title + " — " + r.catLabel, subId: "s_blood", subRef: blood.ref, cat: r.cat, at: now - 35 * DAY + i, by: "demo-vpa" }));
+  put("decisions/s_blood", { lo: "demo-lo-aub", subId: "s_blood", subRef: blood.ref, rows: blood.rows.map((r) => ({ memberId: r.memberId, name: r.name, pts: r.pts, state: "kept", note: null })), total: 38, vpaNote: null, at: now - 35 * DAY, by: "demo-vpa" });
+  put("audit/a1", { at: now - 80 * DAY, action: "import.applied", summary: "Carried forward 463 pts for 8 members from the 2025/26 workbook", by: "demo-vpa" });
+  put("audit/a2", { at: now - 35 * DAY, action: "submission.approved", summary: "SUB-2610-BLD01 approved for 38 pts across 5 members", by: "demo-vpa" });
+  put("audit/a3", { at: now - 12 * DAY, action: "submission.returned", summary: "SUB-2611-MHW02 returned to the LO", by: "demo-vpa" });
+  return d;
+}
+
+// ---------- storage: the shared db, or the visitor's own browser ----------
+/** Google Firestore — the GitHub Pages build. F is the firebase-firestore module. */
+function firestoreStore(db, F) {
+  const rows = (snap) => snap.docs.map((x) => Object.assign({ id: x.id }, x.data()));
+  const meta = (s) => ({ fromCache: s.metadata.fromCache, hasPendingWrites: s.metadata.hasPendingWrites });
+  return {
+    mode: "live",
+    async get(p) { const s = await F.getDoc(F.doc(db, p)); return s.exists() ? s.data() : null; },
+    set: (p, data) => F.setDoc(F.doc(db, p), data),
+    update: (p, data) => F.updateDoc(F.doc(db, p), data),
+    del: (p) => F.deleteDoc(F.doc(db, p)),
+    watch: (c, cb, err) => F.onSnapshot(F.collection(db, c), (s) => cb(rows(s), meta(s)), err),
+    watchDoc: (p, cb, err) => F.onSnapshot(F.doc(db, p), (s) => cb(s.exists() ? s.data() : null, meta(s)), err),
+  };
+}
+
+function liveStore(db) {
+  const rows = (snap) => snap.docs.filter((x) => x.exists).map((x) => Object.assign({ id: x.id }, x.data()));
+  return {
+    mode: "live",
+    async get(p) { const s = await db.doc(p).get(); return s.exists ? s.data() : null; },
+    set: (p, data) => db.doc(p).set(data),
+    update: (p, data) => db.doc(p).update(data),
+    del: (p) => db.doc(p).delete(),
+    watch: (c, cb, err) => db.collection(c).onSnapshot((s) => cb(rows(s), s.metadata), err),
+    watchDoc: (p, cb, err) => db.doc(p).onSnapshot((s) => cb(s.exists ? s.data() : null, s.metadata), err),
+  };
+}
+
+function localStore() {
+  // Bump this whenever the demo's example data changes: a browser holding an
+  // older copy then starts fresh instead of showing stale names and committees.
+  const KEY = "lemsic-points-demo-v2";
+  try { localStorage.removeItem("lemsic-points-demo-v1"); } catch (e) { /* storage blocked */ }
+  let docs = null;
+  try { docs = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { docs = null; }
+  if (!docs || typeof docs !== "object") docs = seedDemo();
+  const watchers = new Set();
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const parent = (p) => p.split("/").slice(0, -1).join("/");
+  const list = (c) => Object.keys(docs).filter((p) => parent(p) === c).sort().map((p) => Object.assign({ id: p.split("/").pop() }, clone(docs[p])));
+  const meta = { fromCache: false, hasPendingWrites: false };
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(docs)); } catch (e) { /* private window: the demo still works for this visit */ } }
+  function notify(p) {
+    const c = parent(p);
+    watchers.forEach((w) => {
+      if (w.c === c) w.cb(list(c), meta);
+      if (w.p === p) w.cb(docs[p] ? clone(docs[p]) : null, meta);
+    });
+  }
+  return {
+    mode: "demo",
+    async get(p) { return docs[p] ? clone(docs[p]) : null; },
+    async set(p, data) { docs[p] = clone(data); save(); notify(p); },
+    async update(p, data) {
+      if (!docs[p]) throw { code: "invalid_argument", message: "Document does not exist" };
+      docs[p] = Object.assign({}, docs[p], clone(data)); save(); notify(p);
+    },
+    async del(p) { delete docs[p]; save(); notify(p); },
+    watch(c, cb) { const w = { c, cb }; watchers.add(w); setTimeout(() => cb(list(c), meta), 0); return () => watchers.delete(w); },
+    watchDoc(p, cb) { const w = { p, cb }; watchers.add(w); setTimeout(() => cb(docs[p] ? clone(docs[p]) : null, meta), 0); return () => watchers.delete(w); },
+    reset() {
+      docs = seedDemo(); save();
+      watchers.forEach((w) => w.c != null ? w.cb(list(w.c), meta) : w.cb(docs[w.p] ? clone(docs[w.p]) : null, meta));
+    },
+  };
+}
+
+// ---------- state ----------
+const S = {
+  booted: false, mode: null, store: null, user: null, downloads: null,
+  uid: null, isOwner: false, myName: "", role: null, lc: null,
+  viewAsLo: false, previewLc: "AUB", liveAvailable: false,
+  config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
+  items: {}, ledger: [], decisions: [], audit: [], loIds: [],
+  profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
+  loaded: false, stale: false, revoked: false,
+};
+
+// ---------- subscriptions ----------
+const offs = [];
+const itemWatch = {};
+let renderQueued = false;
+function changed() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => { renderQueued = false; render(); });
+}
+function onErr(e) {
+  if (e && e.code === "revoked") S.revoked = true;
+  (window.__lemsicErrors = window.__lemsicErrors || []).push((e && e.code) || "error");
+  changed();
+}
+function stopWatching() {
+  offs.splice(0).forEach((f) => { try { f(); } catch (e) { /* already closed */ } });
+  Object.keys(itemWatch).forEach((k) => { try { itemWatch[k](); } catch (e) { /* closed */ } delete itemWatch[k]; });
+  started.clear();
+  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
+}
+function arrived(meta) { if (!meta || !meta.fromCache) { S.loaded = true; S.stale = false; } }
+function watchColl(path, key, sortFn) {
+  offs.push(S.store.watch(path, (list, meta) => { S[key] = sortFn ? list.sort(sortFn) : list; arrived(meta); changed(); }, onErr));
+}
+function watchItems(lo) {
+  if (itemWatch[lo]) return;
+  itemWatch[lo] = S.store.watch("subs/" + lo + "/items", (list, meta) => { S.items[lo] = list; arrived(meta); changed(); }, onErr);
+}
+const started = new Set();
+function subscribe(kind) {
+  if (started.has(kind)) return;
+  started.add(kind);
+  const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0);
+  if (!started.has("common")) {
+    started.add("common");
+    offs.push(S.store.watchDoc("config/app", (doc, meta) => { S.config = doc; arrived(meta); changed(); }, onErr));
+    watchColl("committees", "committees", (a, b) => a.id.localeCompare(b.id));
+    watchColl("rubric", "rubric", byOrder);
+    watchColl("members", "members", (a, b) => String(a.name).localeCompare(String(b.name)));
+  }
+  if (kind === "vpa") {
+    if (S.platform !== "firebase") { // access requests exist only in the claude.ai build
+      watchColl("roster", "roster");
+      watchColl("requests", "requests", (a, b) => (a.at || 0) - (b.at || 0));
+    }
+    watchColl("ledger", "ledger", (a, b) => (b.at || 0) - (a.at || 0));
+    watchColl("decisions", "decisions");
+    watchColl("audit", "audit", (a, b) => (b.at || 0) - (a.at || 0));
+    offs.push(S.store.watch("subs", (list, meta) => {
+      S.loIds = list.map((x) => x.id);
+      S.loIds.forEach(watchItems);
+      arrived(meta); changed();
+    }, onErr));
+    if (S.uid) watchItems(S.uid);
+  }
+  if (kind === "lo") watchItems(S.uid);
+  if (kind === "none") {
+    offs.push(S.store.watchDoc("requests/" + S.uid, (doc, meta) => { S.myRequest = doc; arrived(meta); changed(); }, onErr));
+  }
+  setTimeout(() => { if (!S.loaded) { S.stale = true; changed(); } }, 10000);
+}
+
+// ---------- boot ----------
+const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
+const LOGIN_DOMAIN = "lemsic-points.app";
+
+/** The GitHub Pages build: one login per position, and the username is the role. */
+async function bootFirebase(cfg) {
+  S.platform = "firebase";
+  let A, AU, F;
+  try {
+    [A, AU, F] = await Promise.all(["firebase-app.js", "firebase-auth.js", "firebase-firestore.js"].map((f) => import(FIREBASE_SDK + f)));
+  } catch (e) {
+    S.fatal = "Couldn't reach the sign-in service. Check your connection and reload the page.";
+    return;
+  }
+  const app = A.initializeApp(cfg);
+  const auth = AU.getAuth(app), db = F.getFirestore(app);
+  if (cfg.emulator) { // local testing only
+    AU.connectAuthEmulator(auth, cfg.emulator.auth, { disableWarnings: true });
+    F.connectFirestoreEmulator(db, cfg.emulator.host, cfg.emulator.firestorePort);
+  }
+  S.fb = { auth, AU };
+  S.store = firestoreStore(db, F);
+  S.mode = "live"; S.liveAvailable = true;
+  await new Promise((resolve) => {
+    let first = true;
+    AU.onAuthStateChanged(auth, (u) => {
+      stopWatching();
+      S.viewAsLo = false; S.forms = {}; S.loCode = null;
+      if (!u) { S.role = "signedout"; S.uid = null; S.myName = ""; }
+      else {
+        const name = String(u.email || "").toLowerCase().split("@")[0];
+        S.uid = name; S.myName = positionLabel(name);
+        if (name === "vpa") { S.role = "vpa"; subscribe("vpa"); }
+        else if (/^lo\.[a-z0-9_-]+$/.test(name)) { S.role = "lo"; S.loCode = name.slice(3); subscribe("lo"); }
+        else S.role = "unknown";
+      }
+      S.route = { name: "home" };
+      if (first) { first = false; resolve(); } else changed();
+    });
+  });
+}
+
+/** vpa → "VPA", lo.aub → "LO · AUB" — positions, never people. */
+function positionLabel(name) {
+  if (!name) return "";
+  if (name === "vpa" || name === "demo-vpa") return "VPA";
+  const m = /^lo\.(.+)$/.exec(name);
+  if (!m) return name;
+  const c = S.committees.find((x) => x.id.toLowerCase() === m[1]);
+  return "LO · " + (c ? c.id : m[1].toUpperCase());
+}
+
+async function boot() {
+  const host = window.claude && typeof window.claude.use === "function" ? window.claude : null;
+  const fbConfig = !host && window.LEMSIC_FIREBASE && window.LEMSIC_FIREBASE.apiKey ? window.LEMSIC_FIREBASE : null;
+  if (fbConfig) {
+    await bootFirebase(fbConfig);
+    if (S.store) { S.booted = true; const h0 = location.hash.slice(1); if (TOP.includes(h0)) S.route = { name: h0 }; render(); return; }
+  }
+  let db = null, user = null, downloads = null;
+  if (host) {
+    try { [db, user, downloads] = await Promise.all([host.use("db"), host.use("user"), host.use("downloads")]); } catch (e) { /* run the demo */ }
+  }
+  S.downloads = downloads;
+  if (db && user) {
+    const uid = await user.id();
+    if (uid) {
+      S.user = user; S.uid = uid; S.liveAvailable = true;
+      S.isOwner = await user.isOwner();
+      try { S.myName = (await user.me()).name || ""; } catch (e) { S.myName = ""; }
+      S.store = liveStore(db); S.mode = "live";
+      if (S.isOwner) {
+        S.role = "vpa"; subscribe("vpa");
+      } else {
+        offs.push(S.store.watchDoc("roster/" + uid, (doc, meta) => {
+          S.rosterMe = doc; arrived(meta);
+          if (doc) { S.lc = doc.lc; if (S.role !== "lo") { S.role = "lo"; subscribe("lo"); S.route = { name: "home" }; } }
+          else { if (S.role === "lo") S.route = { name: "home" }; S.role = "none"; subscribe("none"); }
+          changed();
+        }, onErr));
+      }
+    }
+  }
+  if (!S.store) startDemo();
+  S.booted = true;
+  const h = location.hash.slice(1);
+  if (TOP.includes(h)) S.route = { name: h };
+  render();
+}
+
+function startDemo() {
+  S.store = localStore(); S.mode = "demo";
+  S.uid = "demo-lo-aub"; S.role = "lo"; S.lc = "AUB"; S.myName = DEMO_PEOPLE["demo-lo-aub"];
+  subscribe("vpa");
+  ["demo-lo-aub", "demo-lo-usj"].forEach(watchItems);
+}
+
+// ---------- people ----------
+const profileQueue = new Set();
+let profileTimer = null;
+function personName(id) {
+  if (!id) return "Someone";
+  if (S.mode === "demo") return DEMO_PEOPLE[id] || "Someone";
+  if (S.platform === "firebase") return positionLabel(id) || "Someone";
+  if (id === S.uid && S.myName) return S.myName;
+  const p = S.profiles[id];
+  if (!p && S.user) {
+    profileQueue.add(id);
+    if (!profileTimer) profileTimer = setTimeout(async () => {
+      const ids = Array.from(profileQueue); profileQueue.clear(); profileTimer = null;
+      try { Object.assign(S.profiles, await S.user.profiles(ids)); } catch (e) { /* names stay generic */ }
+      ids.forEach((x) => { if (!S.profiles[x]) S.profiles[x] = { name: "" }; });
+      changed();
+    }, 30);
+  }
+  return (p && p.name) || "Someone";
+}
+
+// ---------- derived data ----------
+const isVpa = () => S.role === "vpa" && !S.viewAsLo;
+const isLo = () => S.role === "lo" || (S.role === "vpa" && S.viewAsLo);
+const myLc = () => {
+  if (S.role === "vpa") return S.previewLc;
+  if (S.loCode) { const c = S.committees.find((x) => x.id.toLowerCase() === S.loCode); return c ? c.id : S.loCode.toUpperCase(); }
+  return S.lc;
+};
+const allItems = () => Object.entries(S.items).flatMap(([lo, list]) => list.map((x) => Object.assign({ lo }, x)));
+const myItems = () => (S.items[S.uid] || []).map((x) => Object.assign({ lo: S.uid }, x)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+// Carries the owner's id along: a submission is addressed as subs/<lo>/items/<id>,
+// so every control built from it needs both halves.
+const findItem = (lo, id) => { const x = (S.items[lo] || []).find((y) => y.id === id); return x ? Object.assign({ lo }, x) : undefined; };
+const committee = (code) => S.committees.find((c) => c.id === code);
+const activeCommittees = () => S.committees.filter((c) => c.active !== false);
+const activeRubric = () => S.rubric.filter((c) => c.active !== false);
+const pendingItems = () => allItems().filter((x) => x.status === "pending").sort((a, b) => (a.submittedAt || 0) - (b.submittedAt || 0));
+function balances() {
+  const by = {};
+  for (const e of S.ledger) {
+    const b = by[e.memberId] || (by[e.memberId] = { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId, lc: e.lc, carried: 0, earned: 0, total: 0, last: 0 });
+    if (e.kind === "opening_balance") b.carried += e.pts; else b.earned += e.pts;
+    b.total += e.pts; b.last = Math.max(b.last, e.at || 0);
+  }
+  return Object.values(by).sort((a, b) => b.total - a.total);
+}
+
+function problemsFor(sub, others) {
+  const out = [], seen = new Set();
+  const add = (level, msg) => { if (!seen.has(msg)) { seen.add(msg); out.push({ level, msg }); } };
+  const rows = sub.rows || [];
+  if (!String(sub.title || "").trim()) add("error", "The event needs a name.");
+  if (!sub.date) add("error", "The event needs a date.");
+  else if (sub.date > today()) add("error", "The event date is in the future.");
+  if (!String(sub.location || "").trim()) add("error", "The event needs a location.");
+  if (rows.length === 0) add("error", "Add at least one volunteer.");
+  // Out-of-band points are flagged, never blocked: the LO reports what happened and the VPA judges it.
+  rows.forEach((r) => {
+    if (!r.loCanExceed && (r.pts < r.min || r.pts > r.max))
+      add("warning", `${r.name}: “${r.catLabel}” allows ${r.min}–${r.max} pts, ${r.pts} entered. Explain it in the note or the VPA will likely adjust it.`);
+  });
+  const per = {};
+  rows.forEach((r) => { per[r.cat] = per[r.cat] || { n: 0, r }; per[r.cat].n += 1; });
+  Object.values(per).forEach(({ n, r }) => {
+    if (r.maxPerEvent && n > r.maxPerEvent) add("error", `Only ${r.maxPerEvent} “${r.catLabel}” allowed per event — ${n} listed.`);
+  });
+  if (sub.date && others) {
+    const ids = new Set(rows.map((r) => r.memberId));
+    others.forEach((o) => {
+      if (o.id === sub.id || o.date !== sub.date || !["pending", "approved"].includes(o.status)) return;
+      (o.rows || []).forEach((r) => { if (ids.has(r.memberId)) add("warning", `${r.name} is already credited for ${fmtDate(sub.date)} on ${o.ref}.`); });
+    });
+  }
+  return out;
+}
+
+// ---------- writes ----------
+async function audit(action, summary) {
+  if (!isVpa() && S.mode === "live") return; // the audit log is the VPA's; LOs can't write it
+  await S.store.set("audit/" + newId("a"), { at: Date.now(), action, summary, by: S.uid });
+}
+function failMessage(e) {
+  if (e instanceof UserError) return e.message;
+  const code = e && e.code;
+  if (code === "invalid_argument" || code === "permission-denied") return "That change wasn't allowed. You may not have permission for it — ask the VPA.";
+  if (code === "unavailable" || code === "deadline-exceeded") return "Couldn't reach the database. Check the connection and try again.";
+  if (code === "quota_exceeded") return "The database is full. Tell the VPA; nothing new can be saved until space is freed.";
+  if (code === "resource_exhausted" || code === "resource-exhausted") return "Too many changes at once. Wait a moment and try again.";
+  if (code === "revoked") return "Your access changed while the page was open.";
+  return "That didn't save — the connection may have dropped. Try again.";
+}
+async function act(fn, okMessage) {
+  if (S.busy) return;
+  S.busy = true; changed();
+  try { await fn(); if (okMessage) toast(okMessage); }
+  catch (e) { toast(failMessage(e), true); }
+  finally { S.busy = false; changed(); }
+}
+function toast(msg, bad) {
+  S.toast = { msg, bad: !!bad, at: Date.now() };
+  const at = S.toast.at;
+  setTimeout(() => { if (S.toast && S.toast.at === at) { S.toast = null; changed(); } }, bad ? 6000 : 3500);
+  changed();
+}
+
+// ---------- forms (values survive live re-renders) ----------
+const fv = (form, name, fallback) => {
+  const f = S.forms[form];
+  return f && Object.prototype.hasOwnProperty.call(f, name) ? f[name] : (fallback == null ? "" : fallback);
+};
+const setForm = (form, values) => { S.forms[form] = Object.assign(S.forms[form] || {}, values); };
+const clearForm = (form) => { delete S.forms[form]; };
+const opt = (value, label, current) => `<option value="${esc(value)}"${String(value) === String(current) ? " selected" : ""}>${esc(label)}</option>`;
+const inp = (form, name, value, attrs) => `<input class="inp" data-form="${form}" name="${name}" value="${esc(fv(form, name, value))}" ${attrs || ""}>`;
+
+// ---------- UI atoms ----------
+const STATUS = { draft: ["draft", "Draft"], pending: ["pend", "Pending VPA"], approved: ["ok", "Approved"], returned: ["ret", "Returned"] };
+const pill = (s) => { const [c, l] = STATUS[s] || ["flat", s]; return `<span class="pill ${c}">● ${esc(l)}</span>`; };
+const note = (level, body) => `<div class="note ${level}"><span class="ic">${level === "warn" ? "!" : level === "good" ? "✓" : "i"}</span><span>${body}</span></div>`;
+const tile = (k, v, d, hot) => `<div class="tile${hot ? " hot" : ""}"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>${d ? `<div class="d">${esc(d)}</div>` : ""}</div>`;
+const initials = (n) => String(n || "?").split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).slice(0, 2).map((w) => w[0].toUpperCase()).join("") || "?";
+const who = (name, sub) => `<div class="who"><span class="ava">${esc(initials(name))}</span><div><b>${esc(name)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</div></div>`;
+const head = (h, p, extra) => `<div class="page-head"><div><h1>${h}</h1>${p ? `<p>${p}</p>` : ""}</div>${extra ? `<div class="spacer"></div>${extra}` : ""}</div>`;
+const empty = (t, b) => `<div class="card"><div class="card-b" style="text-align:center;padding:40px 18px"><b style="font-size:15px;display:block;margin-bottom:6px">${t}</b><span class="sub">${b}</span></div></div>`;
+const goBtn = (label, route, extra, cls) => `<button class="btn ${cls || ""}" data-act="go" data-r="${route}" ${extra || ""}>${label}</button>`;
+const goLink = (label, route, extra) => `<button class="linkbtn" data-act="go" data-r="${route}" ${extra || ""}>${label}</button>`;
+const dis = () => (S.busy ? "disabled" : "");
+const lockNote = `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><div class="note info" style="border:0;background:transparent;padding:0"><span class="ic">🔒</span><span>Point totals, member balances and the points sheet are held by the VPA — your own points included. You'll see whether a submission was approved, never the figures it ended up with.</span></div></div>`;
+
+// ---------- navigation ----------
+const TOP = ["home", "new", "submissions", "review", "ledger", "members", "rubric", "access", "audit"];
+const NAV = {
+  lo: [["home", "◆", "Dashboard"], ["new", "＋", "New submission"], ["submissions", "▤", "My submissions"], ["rubric", "◉", "Points rubric"]],
+  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["ledger", "≡", "Points sheet"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
+};
+const VPA_ONLY = new Set(["review", "reviewSub", "ledger", "members", "access", "audit"]);
+function go(name, params) {
+  S.route = Object.assign({ name }, params || {});
+  if (TOP.includes(name)) { try { if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name); } catch (e) { /* framed */ } }
+  window.scrollTo(0, 0);
+  render();
+}
+
+// ---------- views: Local Officer ----------
+function vLoHome() {
+  const items = myItems();
+  const c = { draft: 0, pending: 0, returned: 0, sent: 0 };
+  items.forEach((x) => { if (x.status === "draft") c.draft++; else { c.sent++; if (x.status === "pending") c.pending++; if (x.status === "returned") c.returned++; } });
+  const ret = items.find((x) => x.status === "returned");
+  const lc = committee(myLc());
+  const greeting = S.platform === "firebase" ? `LC ${esc(myLc())} · Local Officer` : `Welcome back${S.myName ? ", " + esc(first(S.myName)) : ""}`;
+  return head(greeting,
+      `${c.returned ? `${c.returned} submission${c.returned === 1 ? " came" : "s came"} back with comments` : "Nothing needs fixing"}${c.pending ? ` and ${c.pending} ${c.pending === 1 ? "is" : "are"} with the VPA` : ""}. Everything you send is reviewed by the VPA before it counts.`,
+      goBtn("＋ New submission", "new", "", "pri sm")) +
+    `<div class="grid g4" style="margin-bottom:16px">${tile("Drafts", c.draft, "not sent yet")}${tile("Pending VPA", c.pending, c.pending ? "with the VPA" : "nothing waiting", c.pending > 0)}${tile("Returned to you", c.returned, c.returned ? "needs a fix" : "all clear")}${tile("Sent this term", c.sent, lc ? "LC " + lc.id : "")}</div>` +
+    (ret ? `<div style="margin-bottom:16px">${note("warn", `<b>Action needed —</b> “${esc(ret.title)}” was returned by the VPA: <i>“${esc(ret.vpaNote || "")}”</i> ${goLink("Open &amp; fix →", "edit", `data-lo="${esc(ret.lo)}" data-id="${esc(ret.id)}"`)}`)}</div>` : "") +
+    (items.length === 0 ? empty("No submissions yet", "Start with the event you ran most recently — it takes about two minutes.") : loTable(items, true));
+}
+function loTable(items, withLock) {
+  return `<div class="card"><div class="card-h"><h3>My submissions</h3><div class="spacer"></div><span class="sub">LC ${esc(myLc())}</span></div>
+    <div class="scroll-x"><table><thead><tr><th>Event</th><th>Date</th><th>Committee</th><th class="num">Volunteers</th><th>Status</th><th></th></tr></thead><tbody>
+    ${items.map((x) => `<tr><td><b>${esc(x.title)}</b><div class="sub">${esc(x.location || "")}</div></td><td>${fmtDate(x.date)}</td>
+      <td>${x.sc ? `<span class="pill tag">${esc(x.sc)}</span>` : `<span class="sub">—</span>`}</td><td class="num">${(x.rows || []).length}</td><td>${pill(x.status)}</td>
+      <td>${x.status === "draft" || x.status === "returned" ? goLink(x.status === "draft" ? "Continue" : "Fix", "edit", `data-lo="${esc(x.lo)}" data-id="${esc(x.id)}"`) : goLink("View", "sub", `data-lo="${esc(x.lo)}" data-id="${esc(x.id)}"`)}</td></tr>`).join("")}
+    </tbody></table></div>${withLock ? lockNote : ""}</div>`;
+}
+function vLoSubmissions() {
+  const items = myItems();
+  return head("Submissions from LC " + esc(myLc()), "Everything your committee has logged this term, newest first.", goBtn("＋ New submission", "new", "", "pri sm")) +
+    (items.length === 0 ? empty("Nothing here yet", "When you start a submission it shows up in this list.") : loTable(items, true));
+}
+
+function eventFields(form, sub) {
+  const lc = committee(myLc());
+  return `<div class="field"><label for="${form}-title">Event name *</label>${inp(form, "title", sub && sub.title, `id="${form}-title" maxlength="160" placeholder="World Diabetes Day Screening Campaign"`)}</div>
+    <div class="grid g3"><div class="field"><label for="${form}-date">Date *</label>${inp(form, "date", sub && sub.date, `id="${form}-date" type="date" max="${today()}"`)}</div>
+      <div class="field"><label for="${form}-duration">Duration</label><select class="inp" id="${form}-duration" data-form="${form}" name="duration">${opt("", "—", "")}${DURATION.map((d) => opt(d, d, fv(form, "duration", sub && sub.duration))).join("")}</select></div>
+      <div class="field"><label>Local committee</label><div class="inp" style="background:var(--surface-2);color:var(--muted)">LC ${esc(lc ? lc.id : myLc())} 🔒</div></div></div>
+    <div class="grid g2"><div class="field"><label for="${form}-location">Location *</label>${inp(form, "location", sub && sub.location, `id="${form}-location" maxlength="160" placeholder="Hamra Public Square, Beirut"`)}</div>
+      <div class="field"><label for="${form}-sc">Standing committee</label><select class="inp" id="${form}-sc" data-form="${form}" name="sc">${opt("", "Choose…", "")}${STANDING.map((s) => opt(s, s, fv(form, "sc", sub && sub.sc))).join("")}</select></div></div>
+    <div class="field"><label for="${form}-type">Activity type</label><select class="inp" id="${form}-type" data-form="${form}" name="type">${opt("", "—", "")}${ACTIVITY.map((t) => opt(t, t, fv(form, "type", sub && sub.type))).join("")}</select></div>
+    <div class="field"><label for="${form}-desc">Short description</label><textarea class="inp" id="${form}-desc" data-form="${form}" name="description" rows="3" maxlength="2000" placeholder="What happened, and how many people it reached.">${esc(fv(form, "description", sub && sub.description))}</textarea></div>`;
+}
+function steps(n) {
+  const s = (i, label) => `<div class="step ${i < n ? "done" : i === n ? "on" : ""}"><span class="n">${i < n ? "✓" : i}</span><b>${label}</b></div>`;
+  return `<div class="steps">${s(1, "Event details")}<div class="step-line"></div>${s(2, "Volunteers &amp; points")}<div class="step-line"></div>${s(3, "Review &amp; send")}</div>`;
+}
+function vNew() {
+  if (activeRubric().length === 0) return head("New submission", "") + note("warn", "The VPA hasn't set up the points rubric yet, so there's nothing to submit against. Check back soon.");
+  return steps(1) + head("Event details", "Describe the activity once. It becomes the record attached to every point you propose.") +
+    `<form class="card" data-submit="createDraft" style="max-width:760px"><div class="card-b stack">${eventFields("ev_new", null)}</div>
+      <div class="pad" style="border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end">${goBtn("Cancel", "home")}<button class="btn pri" type="submit" ${dis()}>Next: volunteers →</button></div></form>`;
+}
+function vEdit() {
+  const sub = findItem(S.route.lo, S.route.id);
+  if (!sub) return empty("Loading this submission…", "If it doesn't appear, it may have been removed.");
+  if (sub.status !== "draft" && sub.status !== "returned") return vSub();
+  const rows = sub.rows || [];
+  const probs = problemsFor(sub, myItems());
+  const blocking = probs.filter((p) => p.level === "error");
+  const members = S.members.filter((m) => m.lc === sub.lc && m.status !== "alumni" && !rows.some((r) => r.memberId === m.id));
+  const rf = "row_" + sub.id, ef = "ev_" + sub.id, sf = "send_" + sub.id;
+  const total = sum(rows, (r) => r.pts);
+  return steps(rows.length ? 3 : 2) +
+    head("Who worked on this?", `<b>${esc(sub.title)}</b> · ${fmtDate(sub.date)} · ${esc(sub.location || "")} · <span class="mono">${esc(sub.ref)}</span>`) +
+    (sub.status === "returned" && sub.vpaNote ? `<div style="margin-bottom:14px">${note("warn", `<b>The VPA sent this back —</b> “${esc(sub.vpaNote)}”`)}</div>` : "") +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <form class="card" data-submit="addRow" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
+        <div class="card-h"><h3>Add a volunteer</h3><div class="spacer"></div><small>From LC ${esc(sub.lc)}'s members — the list shows no points</small></div>
+        <div class="card-b inline-form">
+          <div class="field" style="flex:1.6"><label for="${rf}-m">Member</label><select class="inp" id="${rf}-m" data-form="${rf}" name="member">${opt("", members.length ? "Choose a member…" : "No more members in this committee", "")}${members.map((m) => opt(m.id, m.name + (m.lemsicId ? " · " + m.lemsicId : ""), fv(rf, "member"))).join("")}</select></div>
+          <div class="field" style="flex:1.4"><label for="${rf}-c">Role / effort</label><select class="inp" id="${rf}-c" data-form="${rf}" name="cat" data-defaults="1">${opt("", "From the rubric…", "")}${activeRubric().map((c) => opt(c.id, `${c.label} (${c.min}–${c.max})`, fv(rf, "cat"))).join("")}</select></div>
+          <div class="field" style="flex:0 0 84px;min-width:84px"><label for="${rf}-h">Hours</label>${inp(rf, "hours", "", `id="${rf}-h" type="number" step="0.5" min="0" max="99"`)}</div>
+          <div class="field" style="flex:0 0 90px;min-width:90px"><label for="${rf}-p">Points</label>${inp(rf, "pts", "", `id="${rf}-p" type="number" min="0" max="99"`)}</div>
+          <div class="field" style="flex:2;min-width:200px"><label for="${rf}-n">What they did</label>${inp(rf, "note", "", `id="${rf}-n" maxlength="200" placeholder="Screening station 2, ~70 participants"`)}</div>
+          <button class="btn pri" type="submit" ${dis()}>＋ Add row</button>
+        </div>
+      </form>
+      <div class="card"><div class="card-h"><h3>Volunteers on this event</h3><span class="pill flat">${rows.length}</span></div>
+        ${rows.length === 0 ? `<div class="card-b"><span class="sub">No one added yet — every volunteer needs a row.</span></div>` :
+        `<div class="scroll-x"><table><thead><tr><th>Volunteer</th><th>Role / effort</th><th class="num">Hrs</th><th>What they did</th><th class="num">Points</th><th></th></tr></thead><tbody>
+        ${rows.map((r, i) => { const out = !r.loCanExceed && (r.pts < r.min || r.pts > r.max); return `<tr${out ? ` style="background:var(--flag-row)"` : ""}>
+          <td>${who(r.name, r.lemsicId)}</td><td>${esc(r.catLabel)}${out ? `<div class="sub" style="color:var(--amber)">! band ${r.min}–${r.max}</div>` : ""}</td>
+          <td class="num">${r.hours == null || r.hours === "" ? "—" : esc(r.hours)}</td><td class="sub">${esc(r.note || "—")}</td><td class="num"><b>${r.pts}</b></td>
+          <td><button class="btn ghost sm" data-act="delRow" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}" data-i="${i}" title="Remove this row" ${dis()}>✕</button></td></tr>`; }).join("")}
+        </tbody></table></div>`}
+        <div class="pad" style="border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub">${rows.length} ${rows.length === 1 ? "volunteer" : "volunteers"}</span><div class="spacer"></div><span><span class="sub">Total proposed</span> <b style="font-size:17px">${total}</b> <span class="sub">pts</span></span></div>
+      </div>
+      <form class="card" data-submit="send" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
+        <div class="card-h"><h3>Send to the VPA</h3></div>
+        <div class="card-b stack">
+          ${probs.length === 0 ? note("good", "Everything checks out.") : probs.map((p) => note(p.level === "error" ? "warn" : "info", (p.level === "error" ? "<b>Must fix —</b> " : "") + esc(p.msg))).join("")}
+          <div class="field"><label for="${sf}-n">Note to the VPA (optional)</label><textarea class="inp" id="${sf}-n" data-form="${sf}" name="loNote" rows="2" maxlength="1000" placeholder="Anything that explains an unusual row.">${esc(fv(sf, "loNote", sub.loNote || ""))}</textarea></div>
+          <button class="btn pri" type="submit" style="justify-content:center" ${blocking.length || S.busy ? "disabled" : ""}>Send to VPA →</button>
+          <span class="hint">${blocking.length ? `Fix ${blocking.length} problem${blocking.length === 1 ? "" : "s"} first.` : "Once sent it locks. The VPA can change it; you can't."}</span>
+        </div>
+      </form>
+    </div>
+    <div class="col-side">
+      <form class="card" data-submit="saveEvent" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
+        <div class="card-h"><h3>Event details</h3></div><div class="card-b stack">${eventFields(ef, sub)}<button class="btn" type="submit" ${dis()}>Save details</button></div>
+      </form>
+      <div class="card"><div class="card-h"><h3>Points rubric</h3></div><table><tbody>${activeRubric().map((c) => `<tr><td>${esc(c.label)}${c.maxPerEvent ? `<div class="sub">max ${c.maxPerEvent} per event</div>` : ""}</td><td class="num mono">${c.min}–${c.max}</td></tr>`).join("")}</tbody></table></div>
+      ${sub.status === "draft" ? `<button class="btn danger sm" data-act="delDraft" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}" ${dis()}>Delete this draft</button>` : ""}
+    </div></div>`;
+}
+function vSub() {
+  const sub = findItem(S.route.lo, S.route.id);
+  if (!sub) return empty("Loading this submission…", "If it doesn't appear, it may have been removed.");
+  const vpa = isVpa();
+  const dec = vpa ? S.decisions.find((d) => d.subId === sub.id) : null;
+  return head(esc(sub.title), `LC ${esc(sub.lc)} · ${fmtDate(sub.date)} · ${esc(sub.location || "—")} · submitted by ${esc(personName(sub.by))}${sub.submittedAt ? " · " + timeAgo(sub.submittedAt) : ""} · <span class="mono">${esc(sub.ref)}</span>`, pill(sub.status)) +
+    (sub.status === "returned" && sub.vpaNote ? `<div style="margin-bottom:14px">${note("warn", `<b>Returned —</b> “${esc(sub.vpaNote)}”`)}</div>` : "") +
+    (sub.loNote ? `<div style="margin-bottom:14px">${note("info", `<b>Note from the LO —</b> “${esc(sub.loNote)}”`)}</div>` : "") +
+    `<div class="card"><div class="card-h"><h3>Volunteers</h3><span class="pill flat">${(sub.rows || []).length}</span>${vpa && sub.status === "pending" ? `<div class="spacer"></div>${goBtn("Review →", "reviewSub", `data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}"`, "pri sm")}` : ""}</div>
+      <div class="scroll-x"><table><thead><tr><th>Volunteer</th><th>Role / effort</th><th class="num">Hrs</th><th>What they did</th>${vpa ? `<th class="num">Proposed</th><th class="num">Approved</th>` : ""}</tr></thead><tbody>
+      ${(sub.rows || []).map((r, i) => { const d = dec && dec.rows[i]; return `<tr><td>${who(r.name, r.lemsicId)}</td><td>${esc(r.catLabel)}</td><td class="num">${r.hours == null || r.hours === "" ? "—" : esc(r.hours)}</td><td class="sub">${esc(r.note || "—")}</td>
+        ${vpa ? `<td class="num mono">${r.pts}</td><td class="num">${d ? `<b>${d.pts}</b>${d.state === "rejected" ? ` <span class="pill ret">rejected</span>` : d.state === "edited" ? ` <span class="pill mod">edited</span>` : ""}` : `<span class="sub">—</span>`}</td>` : ""}</tr>`; }).join("")}
+      </tbody></table></div>
+      ${vpa ? `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;border-radius:0 0 var(--r) var(--r)"><span class="sub">Proposed ${sum(sub.rows || [], (r) => r.pts)} pts</span><div class="spacer"></div>${dec ? `<b>Approved ${dec.total} pts</b>` : `<span class="sub">Not decided yet</span>`}</div>` : lockNote}</div>`;
+}
+
+// ---------- views: VPA ----------
+function queueTable(list) {
+  return `<div class="scroll-x"><table><thead><tr><th>Event</th><th>LC</th><th>Submitted by</th><th>Waiting</th><th class="num">Rows</th><th class="num">Proposed</th><th></th></tr></thead><tbody>
+    ${list.map((x) => { const d = days(x.submittedAt || Date.now()); return `<tr><td><b>${esc(x.title)}</b><div class="sub">${fmtDate(x.date)}${x.sc ? " · " + esc(x.sc) : ""}</div></td><td>${esc(x.lc)}</td><td>${esc(personName(x.by))}</td>
+      <td><span class="pill ${d >= 5 ? "ret" : d >= 2 ? "pend" : "flat"}">${waited(x.submittedAt)}</span></td><td class="num">${(x.rows || []).length}</td><td class="num mono">${sum(x.rows || [], (r) => r.pts)}</td>
+      <td>${goLink("<b>Review</b>", "reviewSub", `data-lo="${esc(x.lo)}" data-id="${esc(x.id)}"`)}</td></tr>`; }).join("")}
+  </tbody></table></div>`;
+}
+function vVpaHome() {
+  const pend = pendingItems(), bal = balances();
+  const oldest = pend[0];
+  const totals = { total: sum(S.ledger, (e) => e.pts), carried: sum(S.ledger.filter((e) => e.kind === "opening_balance"), (e) => e.pts) };
+  const setup = activeRubric().length === 0 || S.committees.length === 0;
+  return head(pend.length ? `${pend.length} submission${pend.length === 1 ? "" : "s"} waiting on you` : "Nothing waiting on you",
+      oldest ? `The oldest has been waiting ${waited(oldest.submittedAt)}. Reviewing one takes a couple of minutes.` : "Every submission sent so far has been decided.",
+      pend.length ? goBtn("Start reviewing →", "review", "", "pri sm") : "") +
+    (setup ? `<div class="card" style="margin-bottom:14px"><div class="card-b stack">${note("warn", "There are no committees or rubric yet, so nobody can submit.")}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn pri" data-act="loadSetup" ${dis()}>Load the starting setup</button><span class="sub">The term, the seven committees and a starting rubric. You can change all of it afterwards.</span></div></div></div>` : "") +
+    (S.requests.length ? `<div style="margin-bottom:14px">${note("info", `<b>${S.requests.length} access request${S.requests.length === 1 ? "" : "s"}</b> from people who want to submit for a committee. ${goLink("Review them →", "access")}`)}</div>` : "") +
+    `<div class="grid g4" style="margin-bottom:16px">${tile("Pending", pend.length, pend.length ? "awaiting your call" : "all clear", pend.length > 0)}${tile("Rows to review", sum(pend, (x) => (x.rows || []).length), sum(pend, (x) => sum(x.rows || [], (r) => r.pts)) + " proposed pts")}${tile("Points on the books", totals.total, bal.length + " members credited")}${tile("Carried forward", totals.carried, "from the old workbook")}</div>` +
+    (pend.length === 0 ? empty("The queue is empty", "When a Local Officer sends a submission it appears here.") :
+      `<div class="card"><div class="card-h"><h3>Waiting for you</h3><div class="spacer"></div>${goLink("See the full queue →", "review")}</div>${queueTable(pend.slice(0, 5))}</div>`);
+}
+function vReview() {
+  const pend = pendingItems();
+  return head(`${pend.length} waiting on you`, "Oldest first. Approve the whole thing in one go, or change it row by row.") +
+    (pend.length === 0 ? empty("Nothing to review", "The queue is empty — every submission has been decided.") : `<div class="card">${queueTable(pend)}</div>`);
+}
+function vReviewSub() {
+  const sub = findItem(S.route.lo, S.route.id);
+  if (!sub) return empty("Loading this submission…", "If it doesn't appear, the LO may have deleted it.");
+  if (sub.status !== "pending") return vSub();
+  const f = "rev_" + sub.id;
+  const rows = sub.rows || [];
+  const others = allItems();
+  const probs = problemsFor(sub, others);
+  const capWarn = [];
+  const month = (sub.date || "").slice(0, 7);
+  rows.forEach((r) => {
+    const already = sum(S.ledger.filter((e) => e.memberId === r.memberId && e.kind === "award" && new Date(e.at).toISOString().slice(0, 7) === month), (e) => e.pts);
+    if (already + r.pts > 30) capWarn.push(`${r.name} would reach ${already + r.pts} pts this month — the soft cap is 30.`);
+  });
+  return head(esc(sub.title), `LC ${esc(sub.lc)} · ${fmtDate(sub.date)} · ${esc(sub.location || "—")} · submitted by ${esc(personName(sub.by))} ${timeAgo(sub.submittedAt)} · <span class="mono">${esc(sub.ref)}</span>`, sub.sc ? `<span class="pill tag">${esc(sub.sc)}</span>` : "") +
+    (sub.loNote ? `<div style="margin-bottom:14px">${note("info", `<b>Note from ${esc(first(personName(sub.by)))} —</b> “${esc(sub.loNote)}”`)}</div>` : "") +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <form class="stack" data-submit="approve" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
+        <div class="card"><div class="card-h"><h3>Rows</h3><span class="pill flat">${rows.length}</span><div class="spacer"></div><small>Change a figure and say why — it's kept in the audit log</small></div>
+          <div class="scroll-x"><table><thead><tr><th style="min-width:160px">Volunteer</th><th style="min-width:200px">Role / effort</th><th class="num">Proposed</th><th class="num" style="width:96px">Approved</th><th style="min-width:180px">Your note</th><th>Reject</th></tr></thead><tbody>
+          ${rows.map((r, i) => { const out = !r.loCanExceed && (r.pts < r.min || r.pts > r.max); return `<tr${out ? ` style="background:var(--flag-row)"` : ""}>
+            <td>${who(r.name, r.lemsicId)}</td>
+            <td>${esc(r.catLabel)}<div class="sub">${r.hours ? esc(r.hours) + " h · " : ""}${esc(r.note || "")}</div>${out ? `<div class="sub" style="color:var(--amber)">! band ${r.min}–${r.max}</div>` : ""}</td>
+            <td class="num mono">${r.pts}</td>
+            <td class="num"><input class="pts" type="number" min="0" max="${r.max}" data-form="${f}" name="p${i}" value="${esc(fv(f, "p" + i, Math.min(r.pts, r.max)))}" aria-label="Approved points for ${esc(r.name)}">${r.pts > r.max ? `<div class="sub" style="color:var(--amber)">capped at ${r.max}</div>` : ""}</td>
+            <td><input class="cellinp" data-form="${f}" name="n${i}" maxlength="200" value="${esc(fv(f, "n" + i, ""))}" placeholder="only if you changed it" aria-label="Note for ${esc(r.name)}"></td>
+            <td style="text-align:center"><input type="checkbox" data-form="${f}" name="x${i}" ${fv(f, "x" + i, false) ? "checked" : ""} aria-label="Reject ${esc(r.name)}"></td></tr>`; }).join("")}
+          </tbody></table></div>
+          <div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;border-radius:0 0 var(--r) var(--r)"><span class="sub">${rows.length} rows</span><div class="spacer"></div><span class="sub">Proposed <b class="mono">${sum(rows, (r) => r.pts)}</b></span></div>
+        </div>
+        <div class="card"><div class="card-b stack">
+          <div class="field"><label for="${f}-v">Note on this decision (optional)</label><input class="inp" id="${f}-v" data-form="${f}" name="vnote" maxlength="500" value="${esc(fv(f, "vnote", ""))}" placeholder="Kept for the record; the LO never sees figures."></div>
+          <button class="btn pri" type="submit" style="justify-content:center;padding:11px" ${dis()}>✓ Approve &amp; write to the ledger</button>
+        </div></div>
+      </form>
+      <form class="card" data-submit="returnSub" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
+        <div class="card-h"><h3>Send it back instead</h3></div>
+        <div class="card-b stack"><div class="field"><label for="ret-${esc(sub.id)}">Why — the LO reads this *</label><input class="inp" id="ret-${esc(sub.id)}" data-form="ret_${esc(sub.id)}" name="reason" maxlength="500" value="${esc(fv("ret_" + sub.id, "reason", ""))}" placeholder="Two volunteers are listed as OC coordinator; the rubric allows one."></div>
+          <button class="btn danger" type="submit" style="justify-content:center" ${dis()}>↩ Return to the LO</button></div>
+      </form>
+    </div>
+    <div class="col-side">
+      <div class="card"><div class="card-h"><h3>Integrity checks</h3></div><div class="card-b stack">
+        ${probs.length + capWarn.length === 0 ? note("good", "Nothing flagged on this submission.") : ""}
+        ${probs.map((p) => note(p.level === "error" ? "warn" : "info", esc(p.msg))).join("")}${capWarn.map((m) => note("warn", esc(m))).join("")}
+      </div></div>
+      <div class="card"><div class="card-h"><h3>What approving does</h3></div><div class="card-b"><span class="sub">Writes one ledger entry per row that earns points. The LO sees “Approved” and nothing else. Entries are never edited afterwards — a mistake is fixed with a correction on the points sheet.</span></div></div>
+    </div></div>`;
+}
+function vVpaSubmissions() {
+  const list = allItems().filter((x) => x.status !== "draft").sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+  const drafts = allItems().filter((x) => x.status === "draft").length;
+  return head("All submissions", `Every event sent this term, whatever its state.${drafts ? ` ${drafts} more ${drafts === 1 ? "is" : "are"} still a draft on an LO's side.` : ""}`) +
+    (list.length === 0 ? empty("Nothing sent yet", "Submissions appear here as LOs send them.") :
+      `<div class="card"><div class="scroll-x"><table><thead><tr><th>Reference</th><th>Event</th><th>LC</th><th>Date</th><th class="num">Rows</th><th class="num">Approved</th><th>Status</th><th></th></tr></thead><tbody>
+      ${list.map((x) => { const d = S.decisions.find((y) => y.subId === x.id); return `<tr><td class="mono">${esc(x.ref)}</td><td><b>${esc(x.title)}</b></td><td>${esc(x.lc)}</td><td>${fmtDate(x.date)}</td><td class="num">${(x.rows || []).length}</td>
+        <td class="num">${x.status === "approved" && d ? `<b>${d.total}</b>` : `<span class="sub">—</span>`}</td><td>${pill(x.status)}</td>
+        <td>${goLink("Open", x.status === "pending" ? "reviewSub" : "sub", `data-lo="${esc(x.lo)}" data-id="${esc(x.id)}"`)}</td></tr>`; }).join("")}
+      </tbody></table></div></div>`);
+}
+function vLedger() {
+  const view = S.route.view || "ledger";
+  const bal = balances();
+  const total = sum(S.ledger, (e) => e.pts), carried = sum(S.ledger.filter((e) => e.kind === "opening_balance"), (e) => e.pts);
+  const tabs = `<div class="tabs">${[["ledger", "Ledger"], ["member", "By member"], ["lc", "By LC"]].map(([k, l]) => `<button class="tab${view === k ? " on" : ""}" style="border-top:0;border-left:0;border-right:0;background:none;cursor:pointer" data-act="go" data-r="ledger" data-view="${k}">${l}</button>`).join("")}</div>`;
+  let body = "";
+  if (view === "member") {
+    body = bal.length === 0 ? `<div class="card-b"><span class="sub">No one has points yet.</span></div>` :
+      `<div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th class="num">Carried forward</th><th class="num">This term</th><th class="num">Total</th></tr></thead><tbody>
+      ${bal.map((b) => `<tr><td>${who(b.name, b.lemsicId)}</td><td>${esc(b.lc)}</td><td class="num mono">${b.carried}</td><td class="num mono" style="color:var(--accent-2)">${b.earned >= 0 ? "+" : ""}${b.earned}</td><td class="num"><b>${b.total}</b></td></tr>`).join("")}</tbody></table></div>`;
+  } else if (view === "lc") {
+    const lcs = {};
+    S.ledger.forEach((e) => { const x = lcs[e.lc] || (lcs[e.lc] = { lc: e.lc, members: new Set(), carried: 0, earned: 0, total: 0 }); x.members.add(e.memberId); if (e.kind === "opening_balance") x.carried += e.pts; else x.earned += e.pts; x.total += e.pts; });
+    const list = Object.values(lcs).sort((a, b) => b.total - a.total);
+    body = list.length === 0 ? `<div class="card-b"><span class="sub">No points yet.</span></div>` :
+      `<div class="scroll-x"><table><thead><tr><th>Local committee</th><th class="num">Members credited</th><th class="num">Carried</th><th class="num">This term</th><th class="num">Total</th></tr></thead><tbody>
+      ${list.map((x) => `<tr><td><b>LC ${esc(x.lc)}</b><div class="sub">${esc((committee(x.lc) || {}).name || "")}</div></td><td class="num">${x.members.size}</td><td class="num mono">${x.carried}</td><td class="num mono">${x.earned}</td><td class="num"><b>${x.total}</b></td></tr>`).join("")}</tbody></table></div>`;
+  } else {
+    body = S.ledger.length === 0 ? `<div class="card-b"><span class="sub">The ledger is empty. It fills as you approve submissions.</span></div>` :
+      `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Reason</th><th>LC</th><th class="num">Pts</th><th>When</th></tr></thead><tbody>
+      ${S.ledger.slice(0, 300).map((e) => `<tr${e.pts < 0 ? ` style="background:var(--red-soft)"` : e.kind === "opening_balance" ? ` style="background:var(--blue-soft)"` : ""}><td>${who(e.name, e.lemsicId)}</td>
+        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : ""}</td><td>${esc(e.lc)}</td>
+        <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  const cf = "corr";
+  return head("Live points sheet", "Every row came from an approved submission, an import or a correction. Nothing is typed into it directly, so the history never changes underneath you.",
+      (S.downloads || !window.claude) ? `<button class="btn sm" data-act="exportXlsx" ${dis()}>⇩ Download Excel workbook</button>` : "") +
+    `<div class="grid g4" style="margin-bottom:16px">${tile("Grand total", total, "all members")}${tile("Carried forward", carried, "from the old workbook")}${tile("Earned in app", total - carried, S.decisions.length + " approved events")}${tile("Members credited", bal.length, "with any points")}</div>
+    <div class="row split" style="align-items:flex-start"><div class="col-main"><div class="card">${tabs}${body}</div></div>
+    <div class="col-side"><form class="card" data-submit="correction"><div class="card-h"><h3>Add a correction</h3></div><div class="card-b stack">
+      <div class="field"><label for="corr-m">Member</label><select class="inp" id="corr-m" data-form="${cf}" name="member">${opt("", "Choose…", "")}${S.members.map((m) => opt(m.id, m.name + " · " + m.lc, fv(cf, "member"))).join("")}</select></div>
+      <div class="field"><label for="corr-p">Points (use a minus to take away)</label>${inp(cf, "pts", "", `id="corr-p" type="number" min="-999" max="999"`)}</div>
+      <div class="field"><label for="corr-r">Reason *</label>${inp(cf, "reason", "", `id="corr-r" maxlength="200" placeholder="Duplicate credit for 14 Nov — reverses one award"`)}</div>
+      <button class="btn" type="submit" ${dis()}>Add to the ledger</button><span class="hint">A correction is a new entry. Nothing already on the sheet is changed.</span></div></form></div></div>`;
+}
+function vMembers() {
+  const bal = {}; balances().forEach((b) => { bal[b.memberId] = b; });
+  const mf = "member_new";
+  return head("Member registry", `${S.members.length} people on the books. One profile per person is what keeps totals honest.`) +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">${S.members.length === 0 ? empty("No members yet", "Add the people who volunteer — LOs pick from this list when they submit.") :
+      `<div class="card"><div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th>Year</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>
+      ${S.members.map((m) => `<tr${m.status === "alumni" ? ` style="opacity:.6"` : ""}><td>${who(m.name, m.lemsicId)}</td><td>${esc(m.lc)}</td><td class="sub">${esc(m.year || "—")}</td><td><span class="pill ${m.status === "alumni" ? "flat" : "ok"}">${esc(m.status || "active")}</span></td>
+        <td class="num"><b>${bal[m.id] ? bal[m.id].total : 0}</b></td><td><button class="btn sm" data-act="toggleMember" data-id="${esc(m.id)}" ${dis()}>${m.status === "alumni" ? "Reactivate" : "Mark alumni"}</button></td></tr>`).join("")}</tbody></table></div></div>`}</div>
+    <div class="col-side"><form class="card" data-submit="addMember"><div class="card-h"><h3>Add a member</h3></div><div class="card-b stack">
+      <div class="field"><label for="mn-n">Full name *</label>${inp(mf, "name", "", `id="mn-n" maxlength="80" placeholder="As they write it"`)}</div>
+      <div class="field"><label for="mn-i">LeMSIC ID</label>${inp(mf, "lemsicId", "", `id="mn-i" maxlength="30" placeholder="LEM-0000"`)}</div>
+      <div class="grid g2"><div class="field"><label for="mn-l">Committee *</label><select class="inp" id="mn-l" data-form="${mf}" name="lc">${opt("", "Choose…", "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, fv(mf, "lc"))).join("")}</select></div>
+        <div class="field"><label for="mn-y">Year</label>${inp(mf, "year", "", `id="mn-y" maxlength="20" placeholder="Med 2"`)}</div></div>
+      <button class="btn pri" type="submit" ${dis()}>Add member</button></div></form></div></div>`;
+}
+function vRubric() {
+  const vpa = isVpa();
+  const cats = vpa ? S.rubric : activeRubric();
+  const rows = cats.map((c) => {
+    if (!vpa) return `<tr><td><b>${esc(c.label)}</b>${c.description ? `<div class="sub">${esc(c.description)}</div>` : ""}${c.maxPerEvent ? `<div class="sub">max ${c.maxPerEvent} per event</div>` : ""}</td><td class="num mono">${c.def}</td><td class="num mono">${c.min}–${c.max}</td><td class="sub">${esc(c.requires || "—")}</td></tr>`;
+    const f = "rb_" + c.id;
+    return `<tr${c.active === false ? ` style="opacity:.55"` : ""}><td><input class="cellinp" data-form="${f}" name="label" value="${esc(fv(f, "label", c.label))}" aria-label="Label"><div class="sub">${esc(c.description || "")}</div></td>
+      <td><input class="pts" type="number" data-form="${f}" name="min" value="${esc(fv(f, "min", c.min))}" aria-label="Min"></td>
+      <td><input class="pts" type="number" data-form="${f}" name="def" value="${esc(fv(f, "def", c.def))}" aria-label="Suggested"></td>
+      <td><input class="pts" type="number" data-form="${f}" name="max" value="${esc(fv(f, "max", c.max))}" aria-label="Max"></td>
+      <td><input class="pts" type="number" min="0" data-form="${f}" name="maxPerEvent" value="${esc(fv(f, "maxPerEvent", c.maxPerEvent || ""))}" placeholder="—" aria-label="Max per event"></td>
+      <td style="text-align:center"><input type="checkbox" data-form="${f}" name="loCanExceed" ${fv(f, "loCanExceed", !!c.loCanExceed) ? "checked" : ""} aria-label="LO can exceed"></td>
+      <td><div style="display:flex;gap:6px"><button class="btn sm" data-act="saveCat" data-id="${esc(c.id)}" ${dis()}>Save</button><button class="btn sm" data-act="toggleCat" data-id="${esc(c.id)}" ${dis()}>${c.active === false ? "Restore" : "Retire"}</button></div></td></tr>`;
+  }).join("");
+  const nf = "cat_new";
+  return head(vpa ? "Rubric &amp; rules" : "Points rubric", vpa ? "The rubric is data, not code. Change a band here and every LO sees it at once. Rows already submitted keep the band they were entered under, so past decisions never shift." : "The bands the VPA judges points against. Points outside a band are flagged for the VPA, not blocked.") +
+    (cats.length === 0 ? empty("No rubric yet", vpa ? "Add the first category below." : "The VPA hasn't set it up yet.") :
+      `<div class="card" style="margin-bottom:14px"><div class="scroll-x"><table><thead>${vpa ? `<tr><th>Category</th><th class="num">Min</th><th class="num">Suggested</th><th class="num">Max</th><th class="num">Per event</th><th>LO may exceed</th><th></th></tr>` : `<tr><th>Category</th><th class="num">Suggested</th><th class="num">Band</th><th>Requires</th></tr>`}</thead><tbody>${rows}</tbody></table></div></div>`) +
+    (vpa ? `<form class="card" data-submit="addCat" style="max-width:820px"><div class="card-h"><h3>Add a category</h3></div><div class="card-b inline-form">
+      <div class="field" style="flex:2"><label for="nc-l">Label *</label>${inp(nf, "label", "", `id="nc-l" maxlength="60" placeholder="Fundraising lead"`)}</div>
+      <div class="field" style="flex:0 0 80px;min-width:80px"><label for="nc-min">Min</label>${inp(nf, "min", "", `id="nc-min" type="number" min="0"`)}</div>
+      <div class="field" style="flex:0 0 80px;min-width:80px"><label for="nc-def">Suggested</label>${inp(nf, "def", "", `id="nc-def" type="number" min="0"`)}</div>
+      <div class="field" style="flex:0 0 80px;min-width:80px"><label for="nc-max">Max</label>${inp(nf, "max", "", `id="nc-max" type="number" min="0"`)}</div>
+      <button class="btn pri" type="submit" ${dis()}>Add</button></div></form>` : "");
+}
+function vAccess() {
+  const cf = "lc_new";
+  const lcSel = (form, name, cur) => `<select class="inp" data-form="${form}" name="${name}" style="min-width:150px">${activeCommittees().map((c) => opt(c.id, "LC " + c.id, fv(form, name, cur))).join("")}</select>`;
+  return head("Access &amp; local committees", "Who can submit for which committee. Getting someone in takes two steps: the Share menu lets them open the page, and this screen gives them a committee.") +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <div class="card"><div class="card-h"><h3>Waiting for a committee</h3><span class="pill ${S.requests.length ? "pend" : "flat"}">${S.requests.length}</span></div>
+        ${S.requests.length === 0 ? `<div class="card-b"><span class="sub">No one is waiting. People you've shared the page with ask for a committee the first time they open it.</span></div>` :
+        `<div class="scroll-x"><table><thead><tr><th>Person</th><th>Asked for</th><th>Note</th><th>When</th><th></th></tr></thead><tbody>
+        ${S.requests.map((r) => `<tr><td>${who(personName(r.id), null)}</td><td>${lcSel("req_" + r.id, "lc", r.lc)}</td><td class="sub">${esc(r.note || "—")}</td><td class="sub">${timeAgo(r.at)}</td>
+          <td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn pri sm" data-act="approveReq" data-id="${esc(r.id)}" ${dis()}>Approve</button><button class="btn sm" data-act="declineReq" data-id="${esc(r.id)}" ${dis()}>Decline</button></div></td></tr>`).join("")}</tbody></table></div>`}
+      </div>
+      <div class="card"><div class="card-h"><h3>Local Officers</h3><span class="pill flat">${S.roster.length}</span></div>
+        ${S.roster.length === 0 ? `<div class="card-b"><span class="sub">No Local Officers yet.</span></div>` :
+        `<div class="scroll-x"><table><thead><tr><th>Person</th><th>Committee</th><th>Since</th><th></th></tr></thead><tbody>
+        ${S.roster.map((r) => `<tr><td>${who(personName(r.id), null)}</td><td>${lcSel("ros_" + r.id, "lc", r.lc)}</td><td class="sub">${timeAgo(r.approvedAt)}</td>
+          <td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" data-act="moveLo" data-id="${esc(r.id)}" ${dis()}>Save committee</button><button class="btn danger sm" data-act="removeLo" data-id="${esc(r.id)}" ${dis()}>Remove</button></div></td></tr>`).join("")}</tbody></table></div>`}
+      </div>
+      <div class="card"><div class="card-h"><h3>Local committees</h3></div>
+        <div class="scroll-x"><table><thead><tr><th>Code</th><th>Name</th><th class="num">Members</th><th class="num">Officers</th><th>State</th><th></th></tr></thead><tbody>
+        ${S.committees.map((c) => { const n = S.roster.filter((r) => r.lc === c.id).length; return `<tr${c.active === false ? ` style="opacity:.55"` : ""}><td><b>LC ${esc(c.id)}</b></td><td class="sub">${esc(c.name)}</td><td class="num">${S.members.filter((m) => m.lc === c.id).length}</td>
+          <td class="num">${n === 0 ? `<span class="pill pend">none</span>` : n}</td><td><span class="pill ${c.active === false ? "flat" : "ok"}">${c.active === false ? "archived" : "active"}</span></td>
+          <td style="text-align:right"><button class="btn sm" data-act="toggleLc" data-id="${esc(c.id)}" ${dis()}>${c.active === false ? "Restore" : "Archive"}</button></td></tr>`; }).join("")}</tbody></table></div>
+      </div>
+    </div>
+    <div class="col-side">
+      <div class="card"><div class="card-h"><h3>Bringing an LO in</h3></div><div class="card-b stack">
+        <div class="sub"><b>1.</b> Open this page's <b>Share</b> menu and invite them by email as an <b>Editor</b>. People from outside your Claude organisation can only save changes as Editors, and only while sharing by public link is switched off.</div>
+        <div class="sub"><b>2.</b> They open the page and pick their committee.</div>
+        <div class="sub"><b>3.</b> You approve them here. From then on they can submit for that committee and see nothing else.</div>
+        ${note("info", "Removing someone here takes away their committee. To shut them out completely, remove them from the Share menu too.")}
+      </div></div>
+      <form class="card" data-submit="addLc"><div class="card-h"><h3>Add a committee</h3></div><div class="card-b stack">
+        <div class="field"><label for="lc-c">Short code *</label>${inp(cf, "code", "", `id="lc-c" maxlength="16" placeholder="USEK"`)}</div>
+        <div class="field"><label for="lc-n">Full name *</label>${inp(cf, "name", "", `id="lc-n" maxlength="120" placeholder="Holy Spirit University of Kaslik"`)}</div>
+        <button class="btn" type="submit" ${dis()}>Add committee</button></div></form>
+    </div></div>`;
+}
+function vAudit() {
+  return head("Audit log", "Who did what, newest first.") +
+    (S.audit.length === 0 ? empty("Nothing logged yet", "Approvals, returns, corrections and access changes are recorded here.") :
+      `<div class="card"><div class="scroll-x"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>
+      ${S.audit.slice(0, 300).map((a) => `<tr><td class="sub">${timeAgo(a.at)}</td><td>${esc(personName(a.by))}</td><td><span class="pill flat">${esc(a.action)}</span></td><td class="sub">${esc(a.summary || "—")}</td></tr>`).join("")}</tbody></table></div></div>`);
+}
+function vNoAccess() {
+  const f = "req";
+  const pending = S.myRequest;
+  const canSee = S.committees.length > 0;
+  return `<div style="max-width:560px;margin:6vh auto 0" class="stack">
+    <h1 style="font-size:22px">${pending ? "Waiting for the VPA" : "You're nearly in"}</h1>
+    ${pending ? note("good", `You asked to submit for <b>LC ${esc(pending.lc)}</b>. The VPA will approve it from their side — this page updates by itself when they do.`) :
+      canSee ? `<p class="sub" style="font-size:14px">This page is LeMSIC's points platform. Tell the VPA which committee you're the Local Officer for, and they'll switch your access on.</p>
+      <form class="card" data-submit="requestAccess"><div class="card-b stack">
+        <div class="field"><label for="rq-l">I'm the Local Officer for</label><select class="inp" id="rq-l" data-form="${f}" name="lc">${opt("", "Choose a committee…", "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id + " — " + c.name, fv(f, "lc"))).join("")}</select></div>
+        <div class="field"><label for="rq-n">Anything the VPA should know (optional)</label>${inp(f, "note", "", `id="rq-n" maxlength="200" placeholder="Taking over from last year's officer"`)}</div>
+        <button class="btn pri" type="submit" ${dis()}>Ask for access</button></div></form>` :
+      note("info", "You can open this page but not save to it yet. Ask the VPA to invite you as an <b>Editor</b> from the page's Share menu, then come back.")}
+    <div class="card"><div class="card-b" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="sub" style="flex:1;min-width:220px">Want to see how it works first? The demo runs entirely in your browser with example data.</span><button class="btn" data-act="openDemo">Try the demo</button></div></div>
+  </div>`;
+}
+
+function vSignIn() {
+  const f = "signin";
+  return `<div class="auth">
+    <div class="auth-l">
+      <div class="brand" style="padding:0"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>Volunteering &amp; contribution tracker</span></div></div>
+      <h2>One place for every event, every volunteer, every point.</h2>
+      <p>Local Officers submit the work their members did. The VPA reviews it once, approves it, and the points sheet updates itself.</p>
+    </div>
+    <div class="auth-r">
+      <form class="authbox" data-submit="signIn">
+        <h3>Sign in</h3>
+        <p class="sub">Use your position's login, like <span class="mono">lo.aub</span>. The VPA gives these out.</p>
+        ${S.signInError ? `<div style="margin:14px 0">${note("warn", esc(S.signInError))}</div>` : ""}
+        <div style="display:flex;flex-direction:column;gap:13px;margin-top:16px">
+          <div class="field"><label for="si-u">Username</label>${inp(f, "username", "", 'id="si-u" autocomplete="username" autocapitalize="none" spellcheck="false" required')}</div>
+          <div class="field"><label for="si-p">Password</label><input class="inp" id="si-p" type="password" data-form="${f}" name="password" autocomplete="current-password" required></div>
+          <button class="btn pri" style="justify-content:center;padding:10px" type="submit" ${dis()}>Sign in</button>
+          <span class="hint">Forgotten it? Ask the VPA — they can set a new one.</span>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+function vUnknown() {
+  return `<div style="max-width:520px;margin:12vh auto 0" class="stack">
+    <h1 style="font-size:22px">This login isn't one of LeMSIC's positions</h1>
+    <p class="sub" style="font-size:14px">Positions sign in as <span class="mono">vpa</span> or <span class="mono">lo.</span> followed by the committee, like <span class="mono">lo.aub</span>. Ask the VPA which one is yours.</p>
+    <div><button class="btn" data-act="signOut">Sign out</button></div></div>`;
+}
+function vCommittees() {
+  const cf = "lc_new";
+  const subs = (c) => allItems().filter((x) => x.lc === c.id && x.status !== "draft").length;
+  return head("Committees &amp; logins", "One login per position. The username says who it is: <span class=\"mono\">vpa</span> for you, <span class=\"mono\">lo.</span> plus the committee for each Local Officer.") +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <div class="card"><div class="scroll-x"><table><thead><tr><th>Committee</th><th>LO login</th><th class="num">Members</th><th class="num">Submissions</th><th>State</th><th></th></tr></thead><tbody>
+      ${S.committees.map((c) => `<tr${c.active === false ? ` style="opacity:.55"` : ""}><td><b>LC ${esc(c.id)}</b><div class="sub">${esc(c.name)}</div></td>
+        <td class="mono">lo.${esc(c.id.toLowerCase())}</td><td class="num">${S.members.filter((m) => m.lc === c.id).length}</td><td class="num">${subs(c)}</td>
+        <td><span class="pill ${c.active === false ? "flat" : "ok"}">${c.active === false ? "archived" : "active"}</span></td>
+        <td style="text-align:right"><button class="btn sm" data-act="toggleLc" data-id="${esc(c.id)}" ${dis()}>${c.active === false ? "Restore" : "Archive"}</button></td></tr>`).join("")}
+      </tbody></table></div></div>
+    </div>
+    <div class="col-side">
+      <div class="card"><div class="card-h"><h3>Logins</h3></div><div class="card-b stack">
+        <div class="sub">Logins live in your Firebase project, under <b>Authentication → Users</b>. Each one is the username followed by <span class="mono">@${LOGIN_DOMAIN}</span>, for example <span class="mono">lo.aub@${LOGIN_DOMAIN}</span>.</div>
+        <div class="sub">To change a password — someone forgot it, or a new person takes over a position — open that user in Firebase and reset it there. Nothing changes in this app.</div>
+        ${note("info", "Never put a password in this site or in GitHub. The repository is public.")}
+      </div></div>
+      <form class="card" data-submit="addLc"><div class="card-h"><h3>Add a committee</h3></div><div class="card-b stack">
+        <div class="field"><label for="lc-c">Short code *</label>${inp(cf, "code", "", `id="lc-c" maxlength="16" placeholder="NDU"`)}</div>
+        <div class="field"><label for="lc-n">Full name *</label>${inp(cf, "name", "", `id="lc-n" maxlength="120" placeholder="Notre Dame University"`)}</div>
+        <button class="btn" type="submit" ${dis()}>Add committee</button>
+        <span class="hint">Then create its <span class="mono">lo.</span> login in Firebase.</span></div></form>
+    </div></div>`;
+}
+
+// ---------- shell ----------
+function render() {
+  const app = document.getElementById("app");
+  if (!app) return;
+  const focus = captureFocus();
+  if (!S.booted) { app.innerHTML = `<div class="boot">Opening LeMSIC Points…</div>`; return; }
+  if (S.fatal) { app.innerHTML = `<div class="boot">${esc(S.fatal)}</div>`; return; }
+  if (S.mode === "live" && S.role == null) { app.innerHTML = `<div class="boot">Checking your access…</div>`; return; }
+  if (S.role === "signedout") { app.innerHTML = vSignIn(); restoreFocus(focus); return; }
+  if (S.role === "unknown") { app.innerHTML = vUnknown(); return; }
+
+  let view;
+  const r = S.route.name;
+  if (S.role === "none") view = vNoAccess();
+  else if (isVpa()) {
+    view = r === "review" ? vReview() : r === "reviewSub" ? vReviewSub() : r === "submissions" ? vVpaSubmissions() : r === "sub" ? vSub()
+      : r === "ledger" ? vLedger() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
+      : r === "edit" ? vSub() : vVpaHome();
+  } else {
+    if (VPA_ONLY.has(r)) S.route = { name: "home" };
+    const rr = S.route.name;
+    view = rr === "new" ? vNew() : rr === "edit" ? vEdit() : rr === "sub" ? vSub() : rr === "submissions" ? vLoSubmissions() : rr === "rubric" ? vRubric() : vLoHome();
+  }
+
+  const navKey = isVpa() ? "vpa" : "lo";
+  const counts = isVpa() ? { review: pendingItems().length, access: S.requests.length } : { submissions: myItems().filter((x) => x.status === "returned").length };
+  const curTop = { reviewSub: "review", sub: isVpa() ? "submissions" : "submissions", edit: isLo() ? "new" : "submissions" }[r] || r;
+  const navItems = (S.role === "none" ? [] : NAV[navKey]).map((n) => (n[0] === "access" && S.platform === "firebase" ? [n[0], n[1], "Committees"] : n));
+  const sideNav = navItems.map(([k, ic, label]) => `<button class="nav${curTop === k ? " on" : ""}" data-act="go" data-r="${k}"><span class="ic">${ic}</span>${esc(label)}${counts[k] ? `<span class="count">${counts[k]}</span>` : ""}</button>`).join("");
+  const mobNav = navItems.map(([k, , label]) => `<button class="${curTop === k ? "on" : ""}" data-act="go" data-r="${k}">${esc(label)}${counts[k] ? ` · ${counts[k]}` : ""}</button>`).join("");
+  const term = S.config && S.config.term;
+  const whoLabel = isVpa() ? "VPA · National" : S.role === "none" ? "No committee yet" : "LO · LC " + (myLc() || "");
+  const subtitle = isVpa() ? "National · VPA" : S.role === "none" ? "Waiting for access" : "LC " + (myLc() || "");
+  const nameShown = S.mode === "demo" ? DEMO_PEOPLE[S.uid] : S.platform === "firebase" ? positionLabel(S.uid) : (S.myName || "You");
+
+  const modeChip = `<span class="modechip ${S.mode}">${S.mode === "live" ? "Live" : "Demo"}</span>`;
+  const demoSwitch = S.mode === "demo" ? `<div class="seg" role="group" aria-label="Try the demo as"><button class="${S.role === "lo" ? "on" : ""}" data-act="demoRole" data-v="lo">LO · LC AUB</button><button class="${S.role === "vpa" ? "on" : ""}" data-act="demoRole" data-v="vpa">VPA</button></div>` : "";
+  const ownerSwitch = S.mode === "live" && S.role === "vpa" ? `<div class="seg" role="group" aria-label="View as"><button class="${!S.viewAsLo ? "on" : ""}" data-act="viewAs" data-v="vpa">VPA</button><button class="${S.viewAsLo ? "on" : ""}" data-act="viewAs" data-v="lo">Preview as LO</button></div>` : "";
+
+  let banner = "";
+  if (S.mode === "demo") banner = note("warn", `<b>Demo.</b> This runs only in your browser with example people and events. Nothing you do here reaches anyone else. <button class="linkbtn" data-act="resetDemo">Start the demo over</button>${S.liveAvailable ? ` · <button class="linkbtn" data-act="leaveDemo">Back to the live page</button>` : ""}`);
+  else if (S.viewAsLo) banner = note("warn", `<b>Previewing the LO screens</b> for <select class="inp" style="display:inline-block;width:auto;padding:3px 8px;margin:0 4px" data-act-change="previewLc" aria-label="Committee to preview">${activeCommittees().map((c) => opt(c.id, "LC " + c.id, S.previewLc)).join("")}</select>. Anything you send here is real and lands in your own review queue.`);
+  if (S.revoked) banner += note("warn", "Your access to this page changed while it was open. Reload to see what you can do now.");
+  else if (S.stale) banner += note("info", "Can't reach the data yet — what's on screen may be out of date. It will catch up by itself once the connection returns.");
+
+  app.innerHTML = `<div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>${esc(subtitle)}</span></div></div>
+      ${navItems.length ? `<div class="navgroup"><div class="navlabel">${isVpa() ? "VPA" : "Local Officer"}</div>${sideNav}</div>` : ""}
+      <div class="side-foot"><div class="avatar">${esc(initials(nameShown))}</div><div><b>${esc(nameShown)}</b><small>${esc(whoLabel)}</small></div></div>
+      ${S.platform === "firebase" ? `<button class="nav" data-act="signOut"><span class="ic">⏻</span>Sign out</button>` : ""}
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb"><b>LeMSIC Points</b></div><div class="spacer"></div>${modeChip}${demoSwitch}${ownerSwitch}${term ? `<div class="termsel"><span class="dot"></span>${esc(term)}</div>` : ""}</div>
+      ${mobNav ? `<nav class="mnav" aria-label="Sections">${mobNav}</nav>` : ""}
+      <div class="content" style="max-width:1460px">${banner ? `<div class="stack" style="margin-bottom:16px">${banner}</div>` : ""}${view}</div>
+    </div>
+  </div>${S.toast ? `<div class="toast${S.toast.bad ? " bad" : ""}" role="status">${esc(S.toast.msg)}</div>` : ""}`;
+  restoreFocus(focus);
+}
+function captureFocus() {
+  const el = document.activeElement;
+  if (!el || !el.getAttribute || !el.getAttribute("data-form")) return null;
+  return { form: el.getAttribute("data-form"), name: el.getAttribute("name"), start: el.selectionStart, end: el.selectionEnd };
+}
+function restoreFocus(f) {
+  if (!f) return;
+  const el = document.querySelector(`[data-form="${CSS.escape(f.form)}"][name="${CSS.escape(f.name)}"]`);
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  try { if (f.start != null) el.setSelectionRange(f.start, f.end); } catch (e) { /* not a text field */ }
+}
+
+// ---------- events ----------
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  const form = el.getAttribute && el.getAttribute("data-form");
+  if (!form) return;
+  setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value });
+  if (el.name === "cat" && el.getAttribute("data-defaults")) {
+    const c = S.rubric.find((x) => x.id === el.value);
+    if (c) { setForm(form, { pts: String(c.def) }); const p = document.querySelector(`[data-form="${CSS.escape(form)}"][name="pts"]`); if (p) p.value = c.def; }
+  }
+});
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.getAttribute && el.getAttribute("data-act-change") === "previewLc") { S.previewLc = el.value; changed(); return; }
+  const form = el.getAttribute && el.getAttribute("data-form");
+  if (form && (el.tagName === "SELECT" || el.type === "checkbox")) setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value });
+});
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const a = el.getAttribute("data-act"), d = el.dataset;
+  if (a === "go") { e.preventDefault(); go(d.r, { lo: d.lo, id: d.id, view: d.view }); return; }
+  const fn = ACTIONS[a];
+  if (fn) { e.preventDefault(); fn(d, el); }
+});
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("form[data-submit]");
+  if (!form) return;
+  e.preventDefault();
+  const fn = SUBMITS[form.getAttribute("data-submit")];
+  if (fn) fn(form.dataset, form);
+});
+window.addEventListener("hashchange", () => { const h = location.hash.slice(1); if (TOP.includes(h) && S.route.name !== h) { S.route = { name: h }; render(); } });
+
+// ---------- actions ----------
+const itemPath = (lo, id) => "subs/" + lo + "/items/" + id;
+async function touchMarker(lo, lc) { await S.store.set("subs/" + lo, { lc, updatedAt: Date.now() }); }
+
+const SUBMITS = {
+  async signIn() {
+    const f = S.forms.signin || {};
+    const username = String(f.username || "").trim().toLowerCase();
+    const password = String(f.password || "");
+    if (!username || !password) { S.signInError = "Enter your username and password."; render(); return; }
+    if (S.busy) return;
+    S.busy = true; S.signInError = null; render();
+    try {
+      const email = username.includes("@") ? username : username + "@" + LOGIN_DOMAIN;
+      await S.fb.AU.signInWithEmailAndPassword(S.fb.auth, email, password);
+      clearForm("signin");
+    } catch (e) {
+      const code = e && e.code;
+      S.signInError = code === "auth/too-many-requests" ? "Too many attempts. Wait a few minutes, or ask the VPA to reset your password."
+        : code === "auth/network-request-failed" ? "Couldn't reach the sign-in service. Check your connection."
+        : "That username and password don't match.";
+      setForm("signin", { password: "" });
+    } finally { S.busy = false; render(); }
+  },
+  createDraft() {
+    const f = S.forms.ev_new || {};
+    act(async () => {
+      const title = String(f.title || "").trim(), date = f.date || "", location = String(f.location || "").trim();
+      if (!title || !date || !location) throw new UserError("Fill in the event name, date and location.");
+      if (date > today()) throw new UserError("The event date is in the future.");
+      const lc = myLc();
+      if (!lc) throw new UserError("You don't have a committee yet.");
+      const id = newId("s");
+      const ym = date.slice(2, 4) + date.slice(5, 7);
+      await S.store.set(itemPath(S.uid, id), { ref: `SUB-${ym}-${rand().toUpperCase().slice(0, 5)}`, lc, title, date, location, sc: f.sc || null, type: f.type || null, duration: f.duration || null, description: String(f.description || "").trim() || null, status: "draft", rows: [], by: S.uid, createdAt: Date.now(), updatedAt: Date.now() });
+      await touchMarker(S.uid, lc);
+      clearForm("ev_new");
+      S.route = { name: "edit", lo: S.uid, id };
+    });
+  },
+  saveEvent(d) {
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
+      const next = Object.assign({}, sub, { title: String(fv("ev_" + d.id, "title", sub.title)).trim(), date: fv("ev_" + d.id, "date", sub.date), location: String(fv("ev_" + d.id, "location", sub.location)).trim(), sc: fv("ev_" + d.id, "sc", sub.sc) || null, type: fv("ev_" + d.id, "type", sub.type) || null, duration: fv("ev_" + d.id, "duration", sub.duration) || null, description: String(fv("ev_" + d.id, "description", sub.description || "")).trim() || null, updatedAt: Date.now() });
+      if (!next.title || !next.date || !next.location) throw new UserError("The event needs a name, a date and a location.");
+      delete next.id; delete next.lo;
+      await S.store.set(itemPath(d.lo, d.id), next);
+      clearForm("ev_" + d.id);
+    }, "Details saved.");
+  },
+  addRow(d) {
+    const key = "row_" + d.id, f = S.forms[key] || {};
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
+      if (sub.status !== "draft" && sub.status !== "returned") throw new UserError("This submission is with the VPA and locked.");
+      const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Choose a member.");
+      if (m.lc !== sub.lc) throw new UserError("That member isn't in this committee.");
+      const c = S.rubric.find((x) => x.id === f.cat); if (!c) throw new UserError("Choose a role from the rubric.");
+      const pts = Number(f.pts);
+      if (!Number.isInteger(pts) || pts < 0 || pts > 99) throw new UserError("Points must be a whole number from 0 to 99.");
+      if ((sub.rows || []).some((r) => r.memberId === m.id)) throw new UserError(`${m.name} is already on this event — remove their row first to change it.`);
+      const hours = f.hours === "" || f.hours == null ? null : Number(f.hours);
+      const row = { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, cat: c.id, catLabel: c.label, min: c.min, max: c.max, maxPerEvent: c.maxPerEvent || null, loCanExceed: !!c.loCanExceed, hours: Number.isFinite(hours) ? hours : null, note: String(f.note || "").trim() || null, pts };
+      const next = Object.assign({}, sub, { rows: (sub.rows || []).concat([row]), updatedAt: Date.now() });
+      delete next.id; delete next.lo;
+      await S.store.set(itemPath(d.lo, d.id), next);
+      clearForm(key);
+    });
+  },
+  send(d) {
+    const key = "send_" + d.id;
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
+      const probs = problemsFor(sub, myItems());
+      if (probs.some((p) => p.level === "error")) throw new UserError("Fix the problems listed before sending.");
+      await S.store.update(itemPath(d.lo, d.id), { status: "pending", submittedAt: Date.now(), updatedAt: Date.now(), loNote: String(fv(key, "loNote", sub.loNote || "")).trim() || null, vpaNote: null });
+      await touchMarker(d.lo, sub.lc);
+      clearForm(key);
+      S.route = { name: "sub", lo: d.lo, id: d.id };
+    }, "Sent to the VPA. It's locked now — you'll see the status change here.");
+  },
+  approve(d) {
+    const key = "rev_" + d.id, f = S.forms[key] || {};
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
+      if (sub.status !== "pending") throw new UserError("That submission isn't waiting for review any more.");
+      const rows = sub.rows || [];
+      const decided = rows.map((r, i) => {
+        const rejected = !!f["x" + i];
+        const raw = f["p" + i] == null || f["p" + i] === "" ? Math.min(r.pts, r.max) : Number(f["p" + i]);
+        if (!rejected && (!Number.isInteger(raw) || raw < 0)) throw new UserError(`${r.name}: points must be a whole number, 0 or more.`);
+        if (!rejected && raw > r.max) throw new UserError(`${r.name}: “${r.catLabel}” tops out at ${r.max}.`);
+        const pts = rejected ? 0 : raw;
+        return { memberId: r.memberId, name: r.name, lemsicId: r.lemsicId || null, cat: r.cat, catLabel: r.catLabel, pts, state: rejected ? "rejected" : pts === r.pts ? "kept" : "edited", note: String(f["n" + i] || "").trim() || null };
+      });
+      // Each row's entry has a fixed id and is only ever created, never overwritten:
+      // if an approval is interrupted and retried, the entries already written are
+      // found and left alone, so nobody is paid twice. (In the GitHub build the
+      // database refuses to overwrite a points entry anyway.)
+      for (let i = 0; i < decided.length; i++) {
+        const x = decided[i], path = "ledger/aw_" + d.id + "_" + i;
+        if (x.pts <= 0 || await S.store.get(path)) continue;
+        await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, at: Date.now() + i, by: S.uid });
+      }
+      const total = sum(decided, (x) => x.pts);
+      await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: String(f.vnote || "").trim() || null, at: Date.now(), by: S.uid });
+      await S.store.update(itemPath(d.lo, d.id), { status: "approved", decidedAt: Date.now() });
+      await audit("submission.approved", `${sub.ref} approved for ${total} pts across ${decided.filter((x) => x.pts > 0).length} members`);
+      clearForm(key);
+      S.route = { name: "review" };
+    }, "Approved. The points are on the sheet.");
+  },
+  returnSub(d) {
+    const key = "ret_" + d.id;
+    act(async () => {
+      const reason = String(fv(key, "reason", "")).trim();
+      if (!reason) throw new UserError("Say why you're sending it back — the LO reads this.");
+      const sub = findItem(d.lo, d.id); if (!sub || sub.status !== "pending") throw new UserError("That submission isn't waiting for review.");
+      await S.store.update(itemPath(d.lo, d.id), { status: "returned", vpaNote: reason, decidedAt: Date.now() });
+      await audit("submission.returned", `${sub.ref} returned to the LO`);
+      clearForm(key);
+      S.route = { name: "review" };
+    }, "Returned to the LO with your note.");
+  },
+  correction() {
+    const f = S.forms.corr || {};
+    act(async () => {
+      const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Choose a member.");
+      const pts = Number(f.pts);
+      if (!Number.isInteger(pts) || pts === 0) throw new UserError("Enter a whole number of points other than zero.");
+      const reason = String(f.reason || "").trim(); if (!reason) throw new UserError("A correction needs a reason.");
+      await S.store.set("ledger/" + newId("c"), { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "correction", pts, reason, at: Date.now(), by: S.uid });
+      await audit("ledger.correction", `${pts > 0 ? "+" : ""}${pts} pts for ${m.name}: ${reason}`);
+      clearForm("corr");
+    }, "Correction added.");
+  },
+  addMember() {
+    const f = S.forms.member_new || {};
+    act(async () => {
+      const name = String(f.name || "").trim(), lc = f.lc, lemsicId = String(f.lemsicId || "").trim() || null;
+      if (!name || !lc) throw new UserError("A member needs a name and a committee.");
+      const clash = S.members.find((m) => (lemsicId && m.lemsicId === lemsicId) || (m.norm === norm(name) && m.lc === lc));
+      if (clash) throw new UserError(`${clash.name} (LC ${clash.lc}) is already in the registry.`);
+      await S.store.set("members/" + newId("m"), { name, norm: norm(name), lemsicId, lc, year: String(f.year || "").trim() || null, status: "active", createdAt: Date.now() });
+      await audit("member.added", `Added ${name} to LC ${lc}`);
+      clearForm("member_new");
+    }, "Member added.");
+  },
+  addCat() {
+    const f = S.forms.cat_new || {};
+    act(async () => {
+      const label = String(f.label || "").trim();
+      const min = Number(f.min), def = Number(f.def), max = Number(f.max);
+      if (!label) throw new UserError("A category needs a label.");
+      if (![min, def, max].every(Number.isInteger) || min < 0 || !(min <= def && def <= max)) throw new UserError("Bands must be whole numbers with min ≤ suggested ≤ max.");
+      const id = norm(label).replace(/ /g, "_").slice(0, 40) + "_" + rand().slice(0, 4);
+      await S.store.set("rubric/" + id, { label, description: null, def, min, max, requires: null, maxPerEvent: null, loCanExceed: false, order: S.rubric.length, active: true });
+      await audit("rubric.changed", `Added “${label}” (${min}–${max})`);
+      clearForm("cat_new");
+    }, "Category added.");
+  },
+  addLc() {
+    const f = S.forms.lc_new || {};
+    act(async () => {
+      const code = String(f.code || "").trim(), name = String(f.name || "").trim();
+      if (!code || !name) throw new UserError("A committee needs a short code and a full name.");
+      if (!/^[A-Za-z0-9._-]{1,16}$/.test(code)) throw new UserError("Use letters, digits, dot, dash or underscore in the code.");
+      if (S.committees.some((c) => c.id.toLowerCase() === code.toLowerCase())) throw new UserError(`LC ${code} already exists.`);
+      await S.store.set("committees/" + code, { code, name, active: true });
+      await audit("committee.created", `Added LC ${code} — ${name}`);
+      clearForm("lc_new");
+    }, "Committee added.");
+  },
+  requestAccess() {
+    const f = S.forms.req || {};
+    act(async () => {
+      if (!f.lc) throw new UserError("Choose your committee.");
+      await S.store.set("requests/" + S.uid, { lc: f.lc, note: String(f.note || "").trim() || null, at: Date.now() });
+      clearForm("req");
+    }, "Request sent to the VPA.");
+  },
+};
+
+const ACTIONS = {
+  delRow(d) {
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
+      const next = Object.assign({}, sub, { rows: (sub.rows || []).filter((_, i) => i !== Number(d.i)), updatedAt: Date.now() });
+      delete next.id; delete next.lo;
+      await S.store.set(itemPath(d.lo, d.id), next);
+    });
+  },
+  delDraft(d) {
+    act(async () => { await S.store.del(itemPath(d.lo, d.id)); S.route = { name: "home" }; }, "Draft deleted.");
+  },
+  saveCat(d) {
+    const key = "rb_" + d.id;
+    act(async () => {
+      const c = S.rubric.find((x) => x.id === d.id); if (!c) return;
+      const label = String(fv(key, "label", c.label)).trim();
+      const min = Number(fv(key, "min", c.min)), def = Number(fv(key, "def", c.def)), max = Number(fv(key, "max", c.max));
+      const per = fv(key, "maxPerEvent", c.maxPerEvent || "");
+      const maxPerEvent = per === "" || per == null ? null : Number(per);
+      if (!label) throw new UserError("A category needs a label.");
+      if (![min, def, max].every(Number.isInteger) || min < 0 || !(min <= def && def <= max)) throw new UserError("Bands must be whole numbers with min ≤ suggested ≤ max.");
+      if (maxPerEvent != null && (!Number.isInteger(maxPerEvent) || maxPerEvent < 1)) throw new UserError("Per-event limit must be 1 or more, or empty.");
+      const next = Object.assign({}, c, { label, min, def, max, maxPerEvent, loCanExceed: !!fv(key, "loCanExceed", !!c.loCanExceed) });
+      delete next.id;
+      await S.store.set("rubric/" + d.id, next);
+      await audit("rubric.changed", `“${label}” is now ${min}–${max} (suggested ${def})`);
+      clearForm(key);
+    }, "Rubric updated. Rows already submitted keep their old band.");
+  },
+  toggleCat(d) {
+    act(async () => { const c = S.rubric.find((x) => x.id === d.id); if (!c) return; await S.store.update("rubric/" + d.id, { active: c.active === false }); await audit("rubric.changed", `${c.active === false ? "Restored" : "Retired"} “${c.label}”`); });
+  },
+  toggleMember(d) {
+    act(async () => { const m = S.members.find((x) => x.id === d.id); if (!m) return; await S.store.update("members/" + d.id, { status: m.status === "alumni" ? "active" : "alumni" }); });
+  },
+  toggleLc(d) {
+    act(async () => {
+      const c = S.committees.find((x) => x.id === d.id); if (!c) return;
+      if (c.active !== false && S.roster.some((r) => r.lc === c.id)) throw new UserError("Move or remove this committee's Local Officers first — archiving it would leave them with nowhere to submit.");
+      await S.store.update("committees/" + d.id, { active: c.active === false });
+      await audit(c.active === false ? "committee.restored" : "committee.archived", `LC ${c.id}`);
+    });
+  },
+  approveReq(d) {
+    act(async () => {
+      const lc = fv("req_" + d.id, "lc", (S.requests.find((r) => r.id === d.id) || {}).lc);
+      if (!lc) throw new UserError("Choose a committee.");
+      await S.store.set("roster/" + d.id, { lc, approvedAt: Date.now(), by: S.uid });
+      await S.store.del("requests/" + d.id);
+      await audit("access.granted", `${personName(d.id)} can now submit for LC ${lc}`);
+      clearForm("req_" + d.id);
+    }, "Approved. They can submit straight away.");
+  },
+  declineReq(d) {
+    act(async () => { await S.store.del("requests/" + d.id); await audit("access.declined", `Declined a request from ${personName(d.id)}`); });
+  },
+  moveLo(d) {
+    act(async () => {
+      const r = S.roster.find((x) => x.id === d.id); if (!r) return;
+      const lc = fv("ros_" + d.id, "lc", r.lc);
+      const next = Object.assign({}, r, { lc }); delete next.id;
+      await S.store.set("roster/" + d.id, next);
+      await audit("access.moved", `${personName(d.id)} now submits for LC ${lc}`);
+      clearForm("ros_" + d.id);
+    }, "Committee changed.");
+  },
+  removeLo(d) {
+    act(async () => { await S.store.del("roster/" + d.id); await audit("access.removed", `${personName(d.id)} no longer has a committee`); }, "Removed. Take them off the Share menu too to shut them out completely.");
+  },
+  demoRole(d) {
+    if (S.mode !== "demo") return;
+    if (d.v === "vpa") { S.role = "vpa"; S.uid = "demo-vpa"; }
+    else { S.role = "lo"; S.uid = "demo-lo-aub"; S.lc = "AUB"; }
+    S.myName = DEMO_PEOPLE[S.uid]; S.forms = {};
+    go("home");
+  },
+  viewAs(d) { S.viewAsLo = d.v === "lo"; S.forms = {}; go("home"); },
+  resetDemo() { if (S.store && S.store.reset) { S.store.reset(); S.forms = {}; toast("The demo is back to how it started."); go("home"); } },
+  openDemo() {
+    offs.splice(0).forEach((f) => { try { f(); } catch (e) { /* already closed */ } });
+    Object.keys(itemWatch).forEach((k) => { try { itemWatch[k](); } catch (e) { /* closed */ } delete itemWatch[k]; });
+    started.clear(); S.items = {};
+    S.liveRole = S.role;
+    startDemo(); S.forms = {}; go("home");
+  },
+  leaveDemo() { location.reload(); },
+  loadSetup() {
+    act(async () => {
+      const el = document.getElementById("lemsic-seed");
+      if (!el) throw new UserError("The starting setup isn't included in this page.");
+      const docs = JSON.parse(el.textContent).docs;
+      for (const [path, data] of Object.entries(docs)) {
+        if (!(await S.store.get(path))) await S.store.set(path, data);
+      }
+      await audit("setup.loaded", "Loaded the starting term, committees and rubric");
+    }, "Starting setup loaded.");
+  },
+  signOut() { if (S.fb) S.fb.AU.signOut(S.fb.auth); },
+  async exportXlsx() {
+    act(async () => {
+      if (!window.XLSX) {
+        await new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload = res; s.onerror = () => rej(new UserError("Couldn't load the Excel library. Check the connection and try again.")); document.head.appendChild(s); });
+      }
+      const X = window.XLSX, wb = X.utils.book_new();
+      const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission"]].concat(
+        S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || ""]));
+      const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
+      const lcs = {}; S.ledger.forEach((e) => { const x = lcs[e.lc] || (lcs[e.lc] = [e.lc, new Set(), 0, 0, 0]); x[1].add(e.memberId); if (e.kind === "opening_balance") x[2] += e.pts; else x[3] += e.pts; x[4] += e.pts; });
+      const byLc = [["LC", "Members credited", "Carried forward", "This term", "Total"]].concat(Object.values(lcs).sort((a, b) => b[4] - a[4]).map((x) => [x[0], x[1].size, x[2], x[3], x[4]]));
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(totals), "Totals by member");
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(ledger), "Ledger");
+      X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet(byLc), "By LC");
+      const buf = X.write(wb, { bookType: "xlsx", type: "array" });
+      const filename = `LeMSIC Points ${today()}${S.mode === "demo" ? " (demo)" : ""}.xlsx`;
+      if (!S.downloads) { // a normal website (the GitHub build): hand the browser the file
+        const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+        const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        return;
+      }
+      try {
+        await S.downloads.save({ filename, data: new Uint8Array(buf) });
+      } catch (e) {
+        if (e && e.code === "declined") return;
+        throw new UserError(e && e.code === "extension_not_enabled" ? "Excel downloads aren't available in this view." : "The download didn't go through. Try again.");
+      }
+    });
+  },
+};
+
+window.addEventListener("error", () => { /* keep the page usable; nothing to do here */ });
+render();
+boot();
+})();
+</script>
+</body>
+</html>

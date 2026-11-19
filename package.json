@@ -17,7 +17,8 @@
     "test:e2e": "npm run seed && node --env-file=.env tests/e2e/submissions.e2e.cjs && npm run seed && node --env-file=.env tests/e2e/credentials.e2e.cjs",
     "build:artifact": "python3 mockups/build-artifact.py",
     "test:artifact": "python3 mockups/build-artifact.py && node tests/e2e/artifact/artifact.e2e.cjs",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-lemsic \"node --test tests/rules/firestore.rules.test.mjs\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-lemsic \"node --test tests/rules/firestore.rules.test.mjs\"",
+    "test:site": "python3 mockups/build-artifact.py && firebase emulators:exec --only auth,firestore --project demo-lemsic \"node tests/e2e/site/site.e2e.cjs\""
   },
   "dependencies": {
     "bcryptjs": "3.0.2",
