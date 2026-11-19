@@ -158,7 +158,10 @@ function liveStore(db) {
 }
 
 function localStore() {
-  const KEY = "lemsic-points-demo-v1";
+  // Bump this whenever the demo's example data changes: a browser holding an
+  // older copy then starts fresh instead of showing stale names and committees.
+  const KEY = "lemsic-points-demo-v2";
+  try { localStorage.removeItem("lemsic-points-demo-v1"); } catch (e) { /* storage blocked */ }
   let docs = null;
   try { docs = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { docs = null; }
   if (!docs || typeof docs !== "object") docs = seedDemo();
