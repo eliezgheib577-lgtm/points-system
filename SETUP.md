@@ -42,7 +42,10 @@ Firebase enforces them.
   repository** — it is public.
 
 To change a password later (someone forgot it, or a new person takes over a
-position), open that user here, choose **Reset password**, and set a new one.
+position): the console's **Reset password** only emails a link, and these
+addresses don't receive email. Instead, **delete that user and add it again**
+with the same address and the new password. Nothing is lost — the site goes by
+the position (`lo.aub`), not by the account.
 
 ## 4. Create the database and its rules
 

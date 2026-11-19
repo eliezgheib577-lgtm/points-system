@@ -914,7 +914,7 @@ function vCommittees() {
     <div class="col-side">
       <div class="card"><div class="card-h"><h3>Logins</h3></div><div class="card-b stack">
         <div class="sub">Logins live in your Firebase project, under <b>Authentication → Users</b>. Each one is the username followed by <span class="mono">@${LOGIN_DOMAIN}</span>, for example <span class="mono">lo.aub@${LOGIN_DOMAIN}</span>.</div>
-        <div class="sub">To change a password — someone forgot it, or a new person takes over a position — open that user in Firebase and reset it there. Nothing changes in this app.</div>
+        <div class="sub">To change a password — someone forgot it, or a new person takes over a position — delete that login in Firebase and add it again with the same address and the new password. Nothing is lost: the site goes by the position, not the account.</div>
         ${note("info", "Never put a password in this site or in GitHub. The repository is public.")}
       </div></div>
       <form class="card" data-submit="addLc"><div class="card-h"><h3>Add a committee</h3></div><div class="card-b stack">
