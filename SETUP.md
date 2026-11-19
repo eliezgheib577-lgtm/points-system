@@ -15,7 +15,8 @@ Firebase enforces them.
 
 ## 2. Turn on sign-in
 
-1. In the left menu: **Build → Authentication → Get started**.
+1. In the left menu: **Security → Authentication → Get started**. (Older
+   versions of the console list it under **Build**.)
 2. Under **Sign-in method**, choose **Email/Password**, switch on the first toggle
    (leave "Email link" off), and **Save**.
 
@@ -45,18 +46,22 @@ position), open that user here, choose **Reset password**, and set a new one.
 
 ## 4. Create the database and its rules
 
-1. **Build → Firestore Database → Create database**.
-2. Location: `eur3 (europe-west)` is a good choice for Lebanon. It can't be
-   changed later.
-3. Start in **production mode** → **Create**.
-4. Open the **Rules** tab, delete everything there, paste in the whole of
+1. **Databases & Storage → Firestore → Create database**. (Older consoles:
+   **Build → Firestore Database**.)
+2. If asked for an edition, choose **Standard**. Leave the database ID as
+   **(default)** — the site looks for that one.
+3. Location: `eur3 (europe-west)` is a good choice for Lebanon; any
+   `europe-west` location is fine. It can't be changed later.
+4. Start in **production mode** → **Create**.
+5. Open the **Rules** tab, delete everything there, paste in the whole of
    `firestore.rules` from this repository, and **Publish**.
 
 ## 5. Connect the site to the project
 
-1. Click the gear next to **Project Overview → Project settings**.
-2. Under **Your apps**, choose the web icon `</>`, give it a nickname (say
-   `LeMSIC Points`), leave Firebase Hosting off, and **Register app**.
+1. On **Project Overview**, choose **+ Add app** and pick the web icon `</>`.
+   (Or **Settings → Project settings → Your apps**.)
+2. Give it a nickname (say `LeMSIC Points`), leave Firebase Hosting off, and
+   **Register app**.
 3. Firebase shows a block starting `const firebaseConfig = {`. Copy everything
    between the `{` and the `}`.
 4. In this repository, open `docs/site-settings.js` and replace the
