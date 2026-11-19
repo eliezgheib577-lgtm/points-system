@@ -50,7 +50,23 @@ npm test
 The suite covers the invariants rather than the screens: that the ledger
 refuses updates and deletes, that a submission row is paid exactly once, that
 approving twice is impossible, that a rejected row writes nothing, that the
-rubric's ceiling holds, and that a refused approval writes nothing at all.
+rubric's ceiling holds, that a refused approval writes nothing at all, and how
+one-time passwords and the sign-in limiter behave.
+
+Two browser suites drive the real screens end to end. Start the server first,
+then run them — each one reseeds the database:
+
+```bash
+npm run dev                 # in one terminal
+npm run test:e2e            # in another
+```
+
+`tests/e2e/submissions.e2e.cjs` follows one event from the LO's first click to
+the ledger; `tests/e2e/credentials.e2e.cjs` issues an account and walks it
+through first sign-in, reset, switch-off and a brute-force attempt. They need
+Playwright with Chromium installed. Sign-in limits live in the server's memory,
+so restart the server if you run the suites several times inside fifteen
+minutes.
 
 ## How it fits together
 
@@ -69,9 +85,9 @@ migrations/            plain SQL, applied in filename order
 public/app.css         design system, extracted from mockups/prototype.html
 ```
 
-`public/app.css` is generated from the prototype by
-`python3 mockups/build-artifact.py`'s sibling extraction step — keep the two in
-step, or the prototype stops predicting the real thing.
+`public/app.css` is generated, not hand-edited: `python3 mockups/build-artifact.py`
+rebuilds it from `mockups/prototype.html`, along with the published preview.
+Change the prototype, run the script, and both pick up the same change.
 
 ## Status
 
@@ -84,13 +100,19 @@ Built and working:
 - VPA flow: queue oldest-first, row-by-row review with reasons, approve, return
 - append-only ledger, points sheet by entry / member / committee, audit log
 - read-only member view
+- accounts: the VPA issues LO, VPA and member accounts with a one-time password
+  shown once; first sign-in forces a new one; resets and switch-offs end every
+  session the account had; committees can be added and archived
+- guard rails: you can't switch off your own account or the last one able to
+  approve, and a committee with active officers can't be archived
+- sign-in throttling: ten wrong passwords pauses a username for fifteen
+  minutes, fifty from one address pauses that address
 
 Not built yet:
 
 - Excel sync to OneDrive/SharePoint via Microsoft Graph
 - the one-time import of the existing workbook
 - attachments (proof of activity)
-- account management screens for the VPA
 - rubric editing in the app (seeded, and read-only for now)
 
 ## Deployment notes
@@ -103,3 +125,12 @@ year.
 
 Set `SESSION_SECRET` to something random (`openssl rand -hex 32`) and run behind
 HTTPS: session cookies are marked `secure` when `NODE_ENV=production`.
+
+The sign-in limiter keeps its counts in memory. That is right for one server
+process; run more than one and each keeps its own count, so move it to Postgres
+or Redis first.
+
+The very first VPA account has to come from somewhere, since only a VPA can
+issue accounts. On a fresh production database, create it once by hand with a
+bcrypt hash and `must_change_password = true`, then issue everything else from
+the Accounts screen.

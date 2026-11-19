@@ -4,14 +4,17 @@
   "private": true,
   "type": "module",
   "description": "Volunteering points tracking for LeMSIC: local officers submit, the VPA approves, the workbook follows.",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node --env-file=.env --import tsx --watch src/server.ts",
     "start": "node --env-file=.env --import tsx src/server.ts",
     "migrate": "node --env-file=.env --import tsx scripts/migrate.ts",
     "seed": "node --env-file=.env --import tsx scripts/seed.ts",
     "test": "node --env-file=.env.test --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "npm run seed && node --env-file=.env tests/e2e/submissions.e2e.cjs && npm run seed && node --env-file=.env tests/e2e/credentials.e2e.cjs"
   },
   "dependencies": {
     "bcryptjs": "3.0.2",

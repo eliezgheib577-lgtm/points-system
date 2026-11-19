@@ -76,7 +76,7 @@ sharedRoutes.get("/submissions/:id", requireAuth, async (req, res) => {
       <h1>${submission.title}</h1>
       <p>LC ${submission.lc_code} · ${formatDate(submission.event_date)} · ${submission.location ?? "—"}
          · submitted by ${submission.author_name}
-         ${submission.submitted_at ? html` · ${timeAgo(submission.submitted_at)} ago` : ""}</p>
+         ${submission.submitted_at ? html` · ${timeAgo(submission.submitted_at)}` : ""}</p>
     </div><div class="spacer"></div>${statusPill(submission.status)}</div>
 
     ${submission.status === "returned" && submission.vpa_note

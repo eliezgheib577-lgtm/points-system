@@ -153,7 +153,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .who{display:flex;align-items:center;gap:9px}
 .ava{width:26px;height:26px;border-radius:99px;background:var(--accent-soft);color:var(--accent-2);display:grid;place-items:center;font-size:10.8px;font-weight:650;flex:none}
 .who b{font-weight:600;font-size:13.2px;display:block;white-space:nowrap}
-.who small{color:var(--muted);font-size:11.4px;font-family:var(--mono)}
+.who small{color:var(--muted);font-size:11.4px;font-family:var(--mono);white-space:nowrap}
 
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12.3px;font-weight:600;color:var(--ink-2)}
@@ -281,6 +281,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   .scroll-x{overflow-x:auto}
 }
 .mob-top{display:none;align-items:center;gap:10px}
+/* Wide tables scroll inside their own box at every width. Without this a table
+   wider than its column spills under the neighbouring column, which then takes
+   its clicks. */
+.scroll-x{overflow-x:auto;max-width:100%}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:10}
@@ -316,8 +320,25 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
             <a class="sub" href="#">Forgot password?</a>
           </div>
           <button class="btn pri" style="justify-content:center;padding:10px">Sign in</button>
-          <div class="note info"><span class="ic">🔒</span><span>First login forces a password change. Sessions expire after 12 h of inactivity.</span></div>
+          <div class="note info"><span class="ic">🔒</span><span>First sign-in asks you to choose a new password. Sessions last 14 days.</span></div>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FIRST SIGN-IN ============ -->
+<section class="screen" id="first-password">
+  <div class="auth-r" style="min-height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))">
+    <div class="authbox">
+      <h3>Choose your password</h3>
+      <p class="sub">Your account was created with a one-time password. Pick your own before you carry on.</p>
+      <div style="display:flex;flex-direction:column;gap:13px;margin-top:16px">
+        <div class="field"><label>Current password</label><div class="inp mono">cedar-opal-willow-5172</div></div>
+        <div class="field"><label>New password</label><div class="inp ph">••••••••••••••••</div>
+          <span class="hint">At least 10 characters. A short phrase is easier to remember and harder to guess.</span></div>
+        <button class="btn pri" style="justify-content:center;padding:10px">Save password</button>
+        <div class="note info"><span class="ic">i</span><span>Every screen sends you back here until this is done.</span></div>
       </div>
     </div>
   </div>
@@ -1350,6 +1371,159 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
   </div>
 </section>
 
+<!-- ============ ACCOUNTS ============ -->
+<section class="screen" id="accounts">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National · VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav on"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA · National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb"><b>Accounts &amp; LCs</b></div><div class="spacer"></div><div class="termsel"><span class="dot"></span>Term 2026–2027 · Semester 1</div></div>
+      <div class="content" style="max-width:1460px">
+        <div class="page-head"><div><h1>Accounts &amp; local committees</h1>
+          <p>You issue every account by hand — there is no sign-up. Passwords are one-time: whoever receives one is made to replace it before they can do anything.</p></div></div>
+        <div class="grid g4" style="margin-bottom:16px">
+          <div class="tile"><div class="k">Active accounts</div><div class="v">8</div><div class="d">1 switched off</div></div>
+          <div class="tile hot"><div class="k">Local Officers</div><div class="v">6</div><div class="d">1 committee has none</div></div>
+          <div class="tile hot"><div class="k">Never signed in</div><div class="v">2</div><div class="d">credentials may not have arrived</div></div>
+          <div class="tile"><div class="k">Committees</div><div class="v">7</div><div class="d">7 on the books</div></div>
+        </div>
+        <div class="row" style="align-items:flex-start">
+          <div style="flex:1.75;min-width:0;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>Accounts</h3><span class="pill flat">9</span></div>
+              <div class="scroll-x"><table>
+                <thead><tr><th>Person</th><th>Username</th><th>Role</th><th>Last signed in</th><th></th></tr></thead>
+                <tbody>
+                <tr><td><div class="who"><span class="ava">YD</span><div><b>Yara Dagher</b></div></div></td><td class="mono">vpa</td><td><span class="pill ok">VPA</span><div class="sub" style="white-space:nowrap">National</div></td><td class="sub">today</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">RH</span><div><b>Rami Haddad</b></div></div></td><td class="mono">lo.aub</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC AUB</div></td><td class="sub">2 hours ago</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">ER</span><div><b>Elias Rizk</b></div></div></td><td class="mono">lo.usj</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC USJ</div></td><td class="sub">yesterday</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">DA</span><div><b>Dana Ayoub</b></div></div></td><td class="mono">lo.lau</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC LAU</div></td><td class="sub">3 days ago</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">HZ</span><div><b>Hadi Zein</b></div></div></td><td class="mono">lo.lu</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC LU</div></td><td class="sub">5 days ago</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">SI</span><div><b>Sara Itani</b></div></div></td><td class="mono">lo.bau</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC BAU</div></td><td class="sub">never<div><span class="pill pend">one-time password</span></div></td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">PG</span><div><b>Perla Gemayel</b></div></div></td><td class="mono">lo.balamand</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC Balamand</div></td><td class="sub">never<div><span class="pill pend">one-time password</span></div></td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr><td><div class="who"><span class="ava">LK</span><div><b>Lea Khoury</b></div></div></td><td class="mono">member.lea</td><td><span class="pill flat">Member</span><div class="sub" style="white-space:nowrap">Lea Khoury</div></td><td class="sub">yesterday</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm danger">Switch off</button></div></td></tr>
+                <tr style="opacity:.55"><td><div class="who"><span class="ava">JK</span><div><b>Joe Karam</b><small>switched off</small></div></div></td><td class="mono">lo.usj.2025</td><td><span class="pill mod">LO</span><div class="sub" style="white-space:nowrap">LC USJ</div></td><td class="sub">4 months ago</td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm">New password</button><button class="btn sm">Switch on</button></div></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Local committees</h3><div class="spacer"></div><small>An LO account needs a committee to belong to</small></div>
+              <div class="scroll-x"><table>
+                <thead><tr><th>Code</th><th>Name</th><th class="num">Members</th><th class="num">Officers</th><th>State</th><th></th></tr></thead>
+                <tbody>
+                <tr><td><b>LC AUB</b></td><td class="sub">American University of Beirut</td><td class="num">71</td><td class="num">1</td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                <tr><td><b>LC USJ</b></td><td class="sub">Université Saint-Joseph</td><td class="num">64</td><td class="num">1</td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                <tr><td><b>LC LAU</b></td><td class="sub">Lebanese American University</td><td class="num">47</td><td class="num">1</td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                <tr><td><b>LC BAU</b></td><td class="sub">Beirut Arab University</td><td class="num">42</td><td class="num">1</td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                <tr><td><b>LC LU</b></td><td class="sub">Lebanese University</td><td class="num">58</td><td class="num">1</td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                <tr><td><b>LC Balamand</b></td><td class="sub">University of Balamand</td><td class="num">30</td><td class="num">1</td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                <tr><td><b>LC USEK</b></td><td class="sub">Holy Spirit University of Kaslik</td><td class="num">0</td><td class="num"><span class="pill pend">none</span></td><td><span class="pill ok">active</span></td><td style="text-align:right"><button class="btn sm">Archive</button></td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+          <div style="flex:1;min-width:290px;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>Issue an account</h3></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:13px">
+                <div class="field"><label>Their name *</label><div class="inp">Perla Gemayel</div></div>
+                <div class="field"><label>Username *</label><div class="inp mono">lo.balamand</div>
+                  <span class="hint">Lower case, digits, dot, dash or underscore. They can't change it.</span></div>
+                <div class="field"><label>Role *</label><div class="inp sel">Local Officer — submits for one committee</div></div>
+                <div class="field"><label>Committee <span class="hint">(Local Officers)</span></label><div class="inp sel">LC Balamand — University of Balamand</div></div>
+                <div class="field"><label>Member <span class="hint">(member accounts)</span></label><div class="inp sel ph">—</div></div>
+                <button class="btn pri" style="justify-content:center">Create &amp; show password</button>
+                <span class="hint">The password appears once on the next screen.</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3>Add a committee</h3></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:12px">
+                <div class="field"><label>Short code *</label><div class="inp ph">USEK</div></div>
+                <div class="field"><label>Full name *</label><div class="inp ph">Holy Spirit University of Kaslik</div></div>
+                <button class="btn" style="justify-content:center">Add committee</button>
+              </div>
+            </div>
+            <div class="card"><div class="card-h"><h3>Guard rails</h3></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:9px">
+                <div class="sub">✓ You can't switch off your own account</div>
+                <div class="sub">✓ The last account able to approve points can't be switched off</div>
+                <div class="sub">✓ A committee with active officers can't be archived</div>
+                <div class="sub">✓ A new password or switch-off ends every session that account had</div>
+                <div class="sub">✓ Ten wrong passwords pauses that username for 15 minutes</div>
+              </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CREDENTIAL SLIP ============ -->
+<section class="screen" id="credential-slip">
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>National · VPA</span></div></div>
+      <div class="navgroup">
+        <div class="navlabel">VPA</div>
+        <div class="nav"><span class="ic">◆</span>Overview</div>
+        <div class="nav"><span class="ic">◇</span>Pending review<span class="count">6</span></div>
+        <div class="nav"><span class="ic">▤</span>All submissions</div>
+        <div class="nav"><span class="ic">≡</span>Points sheet</div>
+        <div class="nav"><span class="ic">◈</span>Members</div>
+        <div class="nav"><span class="ic">⇅</span>Excel sync</div>
+        <div class="nav"><span class="ic">◉</span>Rubric &amp; rules</div>
+        <div class="nav on"><span class="ic">⚙</span>Accounts &amp; LCs</div>
+        <div class="nav"><span class="ic">⟲</span>Audit log</div>
+      </div>
+      <div class="side-foot"><div class="avatar">YD</div><div><b>Yara Dagher</b><small>VPA · National</small></div></div>
+    </aside>
+    <div class="main">
+      <div class="topbar"><div class="crumb">Accounts / <b>Credentials</b></div><div class="spacer"></div></div>
+      <div class="content">
+        <div class="page-head"><div><h1>Account created</h1>
+          <p>This password is shown once and is not stored anywhere in readable form. Send it now — if you lose it, issue a reset rather than guessing.</p></div></div>
+        <div class="row" style="align-items:flex-start">
+          <div style="flex:1.3;min-width:0;display:flex;flex-direction:column;gap:14px">
+            <div class="card">
+              <div class="card-h"><h3>Perla Gemayel</h3><div class="spacer"></div><span class="pill flat">LO</span></div>
+              <div class="card-b" style="display:flex;flex-direction:column;gap:14px">
+                <div class="field"><label>Username</label><div class="inp mono" style="font-size:15px">lo.balamand</div></div>
+                <div class="field"><label>One-time password</label>
+                  <div class="inp mono" style="font-size:17px;letter-spacing:.02em;background:var(--accent-soft);border-color:var(--good-line)">cedar-opal-willow-5172</div></div>
+                <button class="btn">Copy both</button>
+              </div>
+            </div>
+            <div class="note info"><span class="ic">i</span><span>They will be asked to choose their own password the first time they sign in. Until they do, this is the only way into the account.</span></div>
+            <div><button class="btn pri">Done</button></div>
+          </div>
+          <div style="flex:1;min-width:260px">
+            <div class="card"><div class="card-h"><h3>Message you can send</h3></div>
+              <div class="card-b">
+                <div class="inp" style="min-height:120px;line-height:1.55;font-size:13px">Hi Perla, here are your LeMSIC Points details. Username: lo.balamand — password: cedar-opal-willow-5172. Sign in and it will ask you to pick your own password straight away. Don't forward this message on.</div>
+                <button class="btn sm" style="margin-top:10px">Copy message</button>
+              </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ 10. MEMBER VIEW ============ -->
 <section class="screen" id="member">
   <div class="shell">
@@ -1423,6 +1597,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 <script>
 var SCREENS=[
  ["login","Sign in","Getting in"],
+ ["first-password","First sign-in","Getting in"],
  ["lo-dash","LO dashboard","Local Officer"],
  ["lo-event","New event","Local Officer"],
  ["lo-volunteers","Volunteers &amp; points","Local Officer"],
@@ -1437,6 +1612,8 @@ var SCREENS=[
  ["connect-onedrive","Connect Microsoft 365","Setup &amp; Excel"],
  ["excel-sync","Excel sync","Setup &amp; Excel"],
  ["rubric","Rubric &amp; rules","Admin"],
+ ["accounts","Accounts &amp; LCs","Admin"],
+ ["credential-slip","Credential slip","Admin"],
  ["member","Member view","Admin"]
 ];
 var ORDER=SCREENS.map(function(r){return r[0];});
@@ -1481,7 +1658,7 @@ sheet.addEventListener("click",function(e){ if(e.target===sheet) sheet.classList
 var NAVMAP={"Dashboard":"lo-dash","New submission":"lo-event","My submissions":"lo-dash","Returned to me":"lo-dash",
  "Points rubric":"rubric","How it works":"login",
  "Overview":"vpa-queue","Pending review":"vpa-queue","All submissions":"vpa-queue","Points sheet":"ledger",
- "Members":"by-member","Excel sync":"excel-sync","Rubric & rules":"rubric","Accounts & LCs":"rubric","Audit log":"ledger",
+ "Members":"by-member","Excel sync":"excel-sync","Rubric & rules":"rubric","Accounts & LCs":"accounts","Audit log":"ledger",
  "My points":"member","My events":"member","Leaderboard":"ledger","My certificate":"member"};
 Array.prototype.forEach.call(document.querySelectorAll(".nav"),function(el){
   var t=el.textContent.replace(/^[^A-Za-z]+/,"").replace(/\d+$/,"").trim();
@@ -1489,7 +1666,7 @@ Array.prototype.forEach.call(document.querySelectorAll(".nav"),function(el){
     el.addEventListener("click",function(){show(NAVMAP[t]);});
     el.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){e.preventDefault();show(NAVMAP[t]);} }); }
 });
-[["#login .btn.pri","lo-dash"],["#lo-dash .btn.pri","lo-event"],["#lo-event .btn.pri","lo-volunteers"],
+[["#login .btn.pri","first-password"],["#first-password .btn.pri","lo-dash"],["#accounts .card .btn.pri","credential-slip"],["#credential-slip .btn.pri","accounts"],["#lo-dash .btn.pri","lo-event"],["#lo-event .btn.pri","lo-volunteers"],
  ["#lo-volunteers .btn.pri","lo-send"],["#lo-send .btn.pri","vpa-queue"],["#vpa-queue a","vpa-review"],
  ["#vpa-review .btn.pri","ledger"],["#import-upload .btn.pri","import-match"],["#import-match .btn.pri","import-commit"],
  ["#import-commit .btn.pri","excel-sync"],["#connect-onedrive .btn.pri","excel-sync"],["#ledger .tab","by-member"]

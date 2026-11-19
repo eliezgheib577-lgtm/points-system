@@ -8,6 +8,7 @@ import { html } from "../lib/html.js";
 import { csrfField, note } from "../views/components.js";
 import { audit } from "../domain/core.js";
 import { randomToken } from "../lib/text.js";
+import { clearAttempts, isLimited, minutesUntilReset, recordFailure } from "../auth/rate-limit.js";
 
 export const authRoutes = Router();
 
@@ -69,16 +70,35 @@ authRoutes.post("/login", async (req, res) => {
     return res.status(400).send(loginPage({ csrf, error: "Fill in both fields." }));
   }
   const { username, password, next } = parsed.data;
+
+  // Throttle before touching the database, so guessing costs the attacker time
+  // whether or not the username exists.
+  const byName = `user:${username.toLowerCase()}`;
+  const byAddress = `ip:${req.ip ?? "unknown"}`;
+  if (isLimited(byName, 10) || isLimited(byAddress, 50)) {
+    await audit({ actorId: null, action: "login.throttled", summary: `Too many attempts for “${username}”`, ip: req.ip ?? null });
+    return res.status(429).send(loginPage({
+      csrf,
+      error: `Too many sign-in attempts. Try again in ${Math.max(minutesUntilReset(byName), 1)} minutes, or ask the VPA to reset your password.`,
+    }));
+  }
+
   const user = await one<{ id: number; password_hash: string; active: boolean }>(
     "select id, password_hash, active from users where lower(username) = lower($1)",
     [username],
   );
   const ok = user?.active === true && await verifyPassword(password, user.password_hash);
   if (!ok || !user) {
+    recordFailure(byName);
+    recordFailure(byAddress);
     await audit({ actorId: null, action: "login.failed", summary: `Failed sign-in for “${username}”`, ip: req.ip ?? null });
     // Same message either way: never reveal which usernames exist.
     return res.status(401).send(loginPage({ csrf, error: "That username and password don't match." }));
   }
+  // Only the username's record is cleared. The per-address count is left to
+  // expire on its own: otherwise anyone holding one valid account could sign in
+  // between guesses at other people's and keep resetting it.
+  clearAttempts(byName);
   await createSession(user.id, req, res);
   await audit({ actorId: user.id, action: "login.ok", summary: "Signed in", ip: req.ip ?? null });
   res.redirect(next && next.startsWith("/") ? next : "/");

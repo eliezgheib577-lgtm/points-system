@@ -1,6 +1,5 @@
-/* LeMSIC Points design system.
-   Extracted from mockups/prototype.html — keep the two in step when
-   either changes, or the prototype stops predicting the real thing. */
+/* LeMSIC Points design system — GENERATED, do not edit by hand.
+   Source: mockups/prototype.html. Rebuild: python3 mockups/build-artifact.py */
 :root{
   /* layout: fixed app shell — dark rail, light canvas, floating screen switcher */
   --bg:#f4f6f4; --surface:#ffffff; --surface-2:#fafbfa;
@@ -251,6 +250,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   .scroll-x{overflow-x:auto}
 }
 .mob-top{display:none;align-items:center;gap:10px}
+/* Wide tables scroll inside their own box at every width. Without this a table
+   wider than its column spills under the neighbouring column, which then takes
+   its clicks. */
+.scroll-x{overflow-x:auto;max-width:100%}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--surface);z-index:10}

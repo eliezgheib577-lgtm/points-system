@@ -6,6 +6,7 @@ import { checkCsrf, loadUser } from "./auth/session.js";
 import { authRoutes } from "./routes/auth.js";
 import { loRoutes } from "./routes/lo.js";
 import { vpaRoutes } from "./routes/vpa.js";
+import { accountRoutes } from "./routes/accounts.js";
 import { sharedRoutes } from "./routes/shared.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,7 @@ app.use(checkCsrf);
 app.use(authRoutes);
 app.use(loRoutes);
 app.use(vpaRoutes);
+app.use(accountRoutes);
 app.use(sharedRoutes);
 
 app.use((req, res) => {

@@ -20,7 +20,7 @@ const VPA_NAV: NavItem[] = [
   { icon: "◈", label: "Members", href: "/members" },
   { icon: "⇅", label: "Excel sync" },
   { icon: "◉", label: "Rubric & rules", href: "/rubric" },
-  { icon: "⚙", label: "Accounts & LCs" },
+  { icon: "⚙", label: "Accounts & LCs", href: "/accounts" },
   { icon: "⟲", label: "Audit log", href: "/audit" },
 ];
 const MEMBER_NAV: NavItem[] = [

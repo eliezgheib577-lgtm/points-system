@@ -41,15 +41,32 @@ export function formatDate(value: Date | string | null | undefined): string {
   return date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function elapsed(value: Date | string): { unit: "now" | "min" | "hour" | "day"; n: number } {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return { unit: "now", n: 0 };
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return { unit: "min", n: minutes };
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return { unit: "hour", n: hours };
+  return { unit: "day", n: Math.floor(hours / 24) };
+}
+
+function amount(unit: "min" | "hour" | "day", n: number): string {
+  if (unit === "min") return `${n} min`;
+  return `${n} ${unit}${n === 1 ? "" : "s"}`;
+}
+
+/** A moment: "just now", "5 min ago", "2 days ago". */
 export function timeAgo(value: Date | string | null | undefined): string {
   if (!value) return "—";
-  const date = typeof value === "string" ? new Date(value) : value;
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
-  const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"}`;
+  const { unit, n } = elapsed(value);
+  return unit === "now" ? "just now" : `${amount(unit, n)} ago`;
+}
+
+/** A duration: "under a minute", "5 min", "2 days" — for "waiting …". */
+export function waitedFor(value: Date | string | null | undefined): string {
+  if (!value) return "—";
+  const { unit, n } = elapsed(value);
+  return unit === "now" ? "under a minute" : amount(unit, n);
 }

@@ -7,7 +7,7 @@ import { page } from "../views/layout.js";
 import { csrfField, emptyState, note, statusPill, tile, who } from "../views/components.js";
 import { currentTerm } from "../domain/core.js";
 import { approveSubmission, checkSubmission, getRows, getSubmission, returnToLo, type RowDecision } from "../domain/submissions.js";
-import { formatDate, timeAgo } from "../lib/text.js";
+import { formatDate, timeAgo, waitedFor } from "../lib/text.js";
 
 export const vpaRoutes = Router();
 const vpa = [requireAuth, requireRole("vpa", "admin")];
@@ -56,7 +56,7 @@ export async function vpaOverview(req: Request, res: Response): Promise<void> {
     <div class="page-head"><div>
       <h1>${pending.length === 0 ? "Nothing waiting on you" : `${pending.length} submission${pending.length === 1 ? "" : "s"} waiting on you`}</h1>
       <p>${oldest
-        ? `The oldest has been waiting ${timeAgo(oldest.submitted_at)}. Reviewing one takes a couple of minutes.`
+        ? `The oldest has been waiting ${waitedFor(oldest.submitted_at)}. Reviewing one takes a couple of minutes.`
         : "Every submission sent so far has been decided."}</p>
     </div><div class="spacer"></div>
     ${pending.length > 0 ? html`<a class="btn pri sm" href="/review" style="text-decoration:none">Start reviewing →</a>` : ""}</div>
@@ -85,7 +85,7 @@ function queueTable(rows: QueueRow[]) {
       <td><b>${row.title}</b><div class="sub">${formatDate(row.event_date)}${row.standing_committee ? ` · ${row.standing_committee}` : ""}</div></td>
       <td>${row.lc_code}</td>
       <td>${row.author_name}</td>
-      <td><span class="pill ${timeAgoDays(row.submitted_at) >= 5 ? "ret" : timeAgoDays(row.submitted_at) >= 2 ? "pend" : "flat"}">${timeAgo(row.submitted_at)}</span></td>
+      <td><span class="pill ${timeAgoDays(row.submitted_at) >= 5 ? "ret" : timeAgoDays(row.submitted_at) >= 2 ? "pend" : "flat"}">${waitedFor(row.submitted_at)}</span></td>
       <td class="num">${row.rows}</td>
       <td class="num mono">${row.proposed}</td>
       <td><a href="/review/${row.id}"><b>Review</b></a></td>
@@ -163,7 +163,7 @@ vpaRoutes.get("/review/:id", ...vpa, async (req, res) => {
     <div class="page-head"><div>
       <h1>${submission.title}</h1>
       <p>LC ${submission.lc_code} · ${formatDate(submission.event_date)} · ${submission.location ?? "—"}
-         · submitted by ${submission.author_name} ${submission.submitted_at ? `${timeAgo(submission.submitted_at)} ago` : ""}
+         · submitted by ${submission.author_name} ${submission.submitted_at ? timeAgo(submission.submitted_at) : ""}
          · <span class="mono">${submission.ref}</span></p>
       <div class="flowbar" style="margin-top:9px">
         <span class="n on">Draft</span>→<span class="n on">Sent</span>→
@@ -359,7 +359,7 @@ vpaRoutes.get("/points", ...vpa, async (req, res) => {
           <td>${e.lc_code}</td>
           <td class="num"><b style="${e.points < 0 ? "color:var(--red)" : ""}">${e.points > 0 ? "+" : ""}${e.points}</b></td>
           <td class="sub">${e.approver ?? "—"}</td>
-          <td class="sub">${timeAgo(e.created_at)} ago</td></tr>`)}</tbody></table></div>`;
+          <td class="sub">${timeAgo(e.created_at)}</td></tr>`)}</tbody></table></div>`;
   }
 
   res.send(page({
@@ -419,7 +419,7 @@ vpaRoutes.get("/audit", ...vpa, async (req, res) => {
     <div class="card"><div class="scroll-x"><table>
       <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead>
       <tbody>${entries.map((e) => html`<tr>
-        <td class="sub">${timeAgo(e.at)} ago</td>
+        <td class="sub">${timeAgo(e.at)}</td>
         <td>${e.actor ?? html`<span class="sub">—</span>`}</td>
         <td><span class="pill flat">${e.action}</span></td>
         <td class="sub">${e.summary ?? "—"}</td></tr>`)}</tbody>
@@ -445,6 +445,6 @@ export async function memberHome(req: Request, res: Response): Promise<void> {
         <thead><tr><th>Activity</th><th class="num">Points</th><th>When</th></tr></thead>
         <tbody>${entries.map((e) => html`<tr>
           <td>${e.reason}</td><td class="num"><b>${e.points > 0 ? "+" : ""}${e.points}</b></td>
-          <td class="sub">${timeAgo(e.created_at)} ago</td></tr>`)}</tbody>
+          <td class="sub">${timeAgo(e.created_at)}</td></tr>`)}</tbody>
       </table></div></div>`}`));
 }
