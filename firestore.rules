@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// LeMSIC Points — who may read and write what.
+// Paste this into Firebase console → Firestore Database → Rules → Publish.
+//
+// Every login is <username>@lemsic-points.app, and the username is the role:
+//   vpa         the VPA: reads and writes everything
+//   lo.<code>   the Local Officer for that committee (lo.aub → AUB, lo.balamand → Balamand)
+// Any other account can sign in but reads and writes nothing.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null && request.auth.token.email is string; }
+    function email()    { return request.auth.token.email.lower(); }
+    function ours()     { return signedIn() && email().matches('^[a-z0-9._-]+@lemsic-points[.]app$'); }
+    function username() { return email().split('@')[0]; }
+    function isVpa()    { return ours() && username() == 'vpa'; }
+    function isLo()     { return ours() && username().matches('^lo[.][a-z0-9_-]+$'); }
+    function loCode()   { return username().split('[.]')[1]; }
+    function anyone()   { return isVpa() || isLo(); }
+
+    // Reference data every officer needs to submit. Only the VPA changes it.
+    match /config/{id}     { allow read: if anyone(); allow write: if isVpa(); }
+    match /committees/{id} { allow read: if anyone(); allow write: if isVpa(); }
+    match /rubric/{id}     { allow read: if anyone(); allow write: if isVpa(); }
+    match /members/{id}    { allow read: if anyone(); allow write: if isVpa(); }
+
+    // subs/<username> marks who has submissions; subs/<username>/items/<id> are theirs.
+    match /subs/{who} {
+      allow read, write: if isVpa() || (isLo() && who == username());
+
+      match /items/{id} {
+        function mine()        { return isLo() && who == username(); }
+        function ownCommittee(){ return request.resource.data.lc.lower() == loCode(); }
+        function newStatus()   { return request.resource.data.status; }
+
+        allow read: if isVpa() || mine();
+        // An LO starts drafts for their own committee only.
+        allow create: if isVpa() || (mine() && ownCommittee() && newStatus() == 'draft');
+        // An LO edits a draft or a returned submission and may send it. Once it is
+        // with the VPA it is locked, and an LO can never mark anything approved.
+        allow update: if isVpa() || (mine() && ownCommittee()
+                         && resource.data.status in ['draft', 'returned']
+                         && newStatus() in ['draft', 'returned', 'pending']
+                         && (newStatus() != 'returned' || resource.data.status == 'returned'));
+        allow delete: if isVpa() || (mine() && resource.data.status == 'draft');
+      }
+    }
+
+    // The points themselves. The VPA alone reads them, and nobody can change or
+    // remove an entry once written: a mistake is fixed with a correction entry.
+    match /ledger/{id} {
+      allow read: if isVpa();
+      allow create: if isVpa() && request.resource.data.pts is int;
+      allow update, delete: if false;
+    }
+    match /decisions/{id} { allow read, create, update: if isVpa(); allow delete: if false; }
+    match /audit/{id}     { allow read, create: if isVpa(); allow update, delete: if false; }
+  }
+}
