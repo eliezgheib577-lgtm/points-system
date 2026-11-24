@@ -226,6 +226,17 @@ function harness() {
   const ownerDenied = await owner.evaluate(() => window.__mockLog.slice());
   check(`the VPA screens never hit a rule either (${ownerDenied.length} denials)`, ownerDenied.length === 0);
 
+  // Testing only: the owner wipes the test copy and starts again.
+  await nav(owner, 'Overview');
+  check('the test copy has a reset, locked until you type RESET', await owner.isVisible('text=Reset this test copy') && await owner.isDisabled('button[data-act="resetTest"]'));
+  await owner.fill('input[name="confirm"][data-form="reset_test"]', 'reset'); await settle(owner, 200);
+  await owner.click('button[data-act="resetTest"]'); await owner.waitForSelector('text=This test copy is empty', { timeout: 30000 }); await settle(owner, 1200);
+  check('reset: everything is gone and the starting setup is offered again', await owner.isVisible('button[data-act="loadSetup"]') && /grand total\s*0\b/i.test(await (async () => { await nav(owner, 'Points sheet'); return text(owner); })()));
+  await nav(owner, 'Members');
+  check('…no members left', (await text(owner)).includes('No members yet'));
+  await nav(owner, 'Access & LCs');
+  check('…but the approved Local Officer still has access', (await owner.locator('.card', { hasText: 'Local Officers' }).first().innerText()).includes('1'));
+
   const out = await open(lctx, 'outsider');
   check('a view-only visitor is told to ask for an Editor invite', (await text(out)).includes('invite you as an Editor'));
   await out.click('button[data-act="openDemo"]'); await settle(out);

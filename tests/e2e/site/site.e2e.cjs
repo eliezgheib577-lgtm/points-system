@@ -412,6 +412,8 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await vpa.click('button[data-act="rubricUndo"]'); await settle(vpa); await vpa.click('button[data-act="rubricUndo"]'); await vpa.waitForSelector('text=Rubric upload undone', { timeout: 15000 }); await settle(vpa, 800);
   const back = await labels();
   check(`undoing the upload puts the old rubric back exactly (${back.length} categories)`, back.length === 9 && back.includes('Participant / attendee') && !back.includes('NatOC Coordinator') && !/RETIRED —/i.test(await vpa.innerText('.content')));
+  await nav(vpa, 'Overview');
+  check('the real site has no reset button', !(await vpa.isVisible('button[data-act="resetTest"]')) && !(await text(vpa)).includes('Reset this test copy'));
   check(`the VPA screens never hit a refusal (${(await errors(vpa)).length})`, (await errors(vpa)).length === 0);
 
   await lo.reload(); await lo.waitForSelector('.shell'); await settle(lo, 1000);

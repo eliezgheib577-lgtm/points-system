@@ -231,7 +231,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, editMember: null, clearProgress: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, editMember: null, clearProgress: null, resetProgress: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -815,7 +815,43 @@ function vVpaHome() {
     (S.requests.length ? `<div style="margin-bottom:14px">${note("info", `<b>${S.requests.length} access request${S.requests.length === 1 ? "" : "s"}</b> from people who want to submit for a committee. ${goLink("Review them →", "access")}`)}</div>` : "") +
     `<div class="grid g4" style="margin-bottom:16px">${tile("Pending", pend.length, pend.length ? "awaiting your call" : "all clear", pend.length > 0)}${tile("Rows to review", sum(pend, (x) => (x.rows || []).length), sum(pend, (x) => sum(x.rows || [], (r) => r.pts)) + " proposed pts")}${tile("Points on the books", totals.total, bal.length + " members credited")}${tile("Carried forward", totals.carried, "from the old workbook")}</div>` +
     (pend.length === 0 ? empty("The queue is empty", "When a Local Officer sends a submission it appears here.") :
-      `<div class="card"><div class="card-h"><h3>Waiting for you</h3><div class="spacer"></div>${goLink("See the full queue →", "review")}</div>${queueTable(pend.slice(0, 5))}</div>`);
+      `<div class="card"><div class="card-h"><h3>Waiting for you</h3><div class="spacer"></div>${goLink("See the full queue →", "review")}</div>${queueTable(pend.slice(0, 5))}</div>`) + vResetTest();
+}
+
+// ---------- the claude.ai test copy only: wipe it and start again ----------
+// Never in the GitHub build: there the rules forbid deleting points history, and nobody should have this button.
+const canResetTest = () => S.mode === "live" && S.platform !== "firebase" && isVpa();
+function vResetTest() {
+  if (!canResetTest()) return "";
+  const rf = "reset_test";
+  LIVE["reset-btn"] = () => `<button class="btn danger" data-act="resetTest" ${String(fv(rf, "confirm", "")).trim().toUpperCase() === "RESET" && !S.busy ? "" : "disabled"}>Delete everything in this test copy</button>`;
+  return `<div class="card" style="margin-top:18px;border-color:var(--red-line)"><div class="card-h"><h3>Reset this test copy</h3><div class="spacer"></div><span class="pill ret">testing only</span></div><div class="card-b stack">
+      <span class="sub">Deletes everything here — submissions, points, members, rubric, LCs, imports, Excel connection and the audit log — so you can start again from <b>Load the starting setup</b>. This can't be undone. The real site on GitHub doesn't have this button.</span>
+      <label class="sub" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-form="${rf}" name="keepAccess" ${fv(rf, "keepAccess", true) ? "checked" : ""}> Keep who has access (the Local Officers you've approved)</label>
+      ${S.resetProgress ? note("info", `Deleting… ${esc(S.resetProgress)}`) : ""}
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div class="field" style="width:220px"><label for="rt-c">Type RESET to confirm</label>${inp(rf, "confirm", "", `id="rt-c" autocomplete="off" data-live="reset-btn"`)}</div><span id="reset-btn">${LIVE["reset-btn"]()}</span></div>
+    </div></div>`;
+}
+async function resetTest() {
+  if (!canResetTest()) throw new UserError("Only the claude.ai test copy can be reset.");
+  if (String(fv("reset_test", "confirm", "")).trim().toUpperCase() !== "RESET") throw new UserError("Type RESET to confirm.");
+  const keepAccess = !!fv("reset_test", "keepAccess", true);
+  const paths = [];
+  Object.entries(S.items).forEach(([lo, list]) => list.forEach((x) => paths.push("subs/" + lo + "/items/" + x.id)));
+  S.loIds.forEach((lo) => paths.push("subs/" + lo));
+  [["ledger", S.ledger], ["decisions", S.decisions], ["audit", S.audit], ["imports", S.imports], ["members", S.members], ["rubric", S.rubric], ["committees", S.committees]]
+    .forEach(([c, list]) => list.forEach((x) => paths.push(c + "/" + x.id)));
+  if (!keepAccess) { S.roster.forEach((x) => paths.push("roster/" + x.id)); S.requests.forEach((x) => paths.push("requests/" + x.id)); }
+  if (S.config) paths.push("config/app");
+  if (S.excel) paths.push("settings/excel");
+  for (let i = 0; i < paths.length; i += 10) {
+    await Promise.all(paths.slice(i, i + 10).map((p) => S.store.del(p).catch(() => null)));
+    S.resetProgress = Math.min(paths.length, i + 10) + " of " + paths.length; changed();
+  }
+  S.resetProgress = null;
+  Object.assign(S, { give: { rows: [] }, mlist: null, rlist: null, imp: null, editMember: null });
+  clearForm("reset_test");
+  S.route = { name: "home" };
 }
 function vReview() {
   const pend = pendingItems();
@@ -2394,6 +2430,7 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  resetTest() { act(resetTest, "This test copy is empty. Load the starting setup to begin again."); },
   delGiveRow(d) { S.give.rows.splice(Number(d.i), 1); changed(); },
   giveApply() { act(applyGive); },
   giveUndo(d) { if (confirmTwice("awd:" + d.id)) act(() => undoGive(d.id)); },
