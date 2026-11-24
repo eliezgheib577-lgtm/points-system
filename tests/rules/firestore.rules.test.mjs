@@ -137,9 +137,21 @@ describe("each LO works only on their own committee's submissions", () => {
     await assertFails(updateDoc(doc(aub(), "subs/lo.aub/items/draft1"), { status: "returned" }));
     await assertSucceeds(updateDoc(doc(aub(), "subs/lo.aub/items/draft1"), { status: "pending" }));
   });
+  it("takes back a submission sent by mistake, before the VPA decides — and changes nothing else in that step", async () => {
+    const db = aub();
+    await assertFails(updateDoc(doc(db, "subs/lo.aub/items/pending1"), { status: "draft", rows: [{ memberId: "m1", pts: 99 }] }));
+    await assertFails(updateDoc(doc(db, "subs/lo.aub/items/pending1"), { status: "returned" }));
+    await assertFails(updateDoc(doc(usj(), "subs/lo.aub/items/pending1"), { status: "draft" }));
+    await assertSucceeds(updateDoc(doc(db, "subs/lo.aub/items/pending1"), { status: "draft", recalledAt: 1, updatedAt: 1 }));
+    await assertSucceeds(updateDoc(doc(db, "subs/lo.aub/items/pending1"), { rows: [{ memberId: "m1", pts: 8 }] }));
+  });
+  it("cannot take back what the VPA already approved", async () => {
+    await env.withSecurityRulesDisabled(async (c) => { await setDoc(doc(c.firestore(), "subs/lo.aub/items/done1"), draft("AUB", { status: "approved" })); });
+    await assertFails(updateDoc(doc(aub(), "subs/lo.aub/items/done1"), { status: "draft", recalledAt: 1, updatedAt: 1 }));
+  });
   it("cannot touch a submission once it is with the VPA", async () => {
     await assertFails(updateDoc(doc(aub(), "subs/lo.aub/items/pending1"), { title: "Sneaky edit" }));
-    await assertFails(updateDoc(doc(aub(), "subs/lo.aub/items/pending1"), { status: "draft" }));
+    await assertFails(updateDoc(doc(aub(), "subs/lo.aub/items/pending1"), { status: "approved" }));
     await assertFails(deleteDoc(doc(aub(), "subs/lo.aub/items/pending1")));
   });
   it("fixes a returned submission and sends it again", async () => {

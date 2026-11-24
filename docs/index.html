@@ -493,7 +493,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, editMember: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -705,6 +705,7 @@ function balances() {
     if (e.kind === "opening_balance") b.carried += e.pts; else b.earned += e.pts;
     b.total += e.pts; b.last = Math.max(b.last, e.at || 0);
   }
+  S.members.forEach((m) => { const b = by[m.id]; if (b) { b.name = m.name; b.lemsicId = m.lemsicId || null; } });
   return Object.values(by).sort((a, b) => b.total - a.total);
 }
 
@@ -881,6 +882,17 @@ function memberLcs() { const map = {}; S.members.forEach((m) => { map[m.id] = m.
 const entryLc = (e, map) => (map && map[e.memberId]) || e.lc;
 // Live regions: an input with data-live="<id>" redraws just that element as you type.
 const LIVE = {};
+/** Anything that removes or reverses asks twice: the first click arms the button for five seconds. */
+function confirmTwice(key) {
+  if (S.undoArmed !== key) { S.undoArmed = key; changed(); setTimeout(() => { if (S.undoArmed === key) { S.undoArmed = null; changed(); } }, 5000); return false; }
+  S.undoArmed = null; return true;
+}
+const twiceBtn = (act, key, label, attrs, cls) => `<button class="btn sm ${S.undoArmed === key ? "danger" : cls || ""}" data-act="${act}" ${attrs || ""} ${dis()}>${S.undoArmed === key ? "Really? Click again" : label}</button>`;
+/** Points or a submission mention this member: they can be edited or marked alumni, never deleted. */
+const memberInUse = (id) => S.ledger.some((e) => e.memberId === id) || allItems().some((x) => (x.rows || []).some((r) => r.memberId === id));
+const reversed = (e) => S.ledger.some((x) => x.reverses === e.id);
+const memberUploads = () => S.imports.filter((x) => x.kind === "members");
+const sheetImports = () => S.imports.filter((x) => x.kind !== "members");
 
 // ---------- navigation ----------
 const TOP = ["home", "new", "submissions", "review", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
@@ -1004,7 +1016,7 @@ function vSub() {
   const sub = findItem(S.route.lo, S.route.id);
   if (!sub) return empty("Loading this submission…", "If it doesn't appear, it may have been removed.");
   const vpa = isVpa();
-  const dec = vpa ? S.decisions.find((d) => d.subId === sub.id) : null;
+  const dec = vpa && sub.status === "approved" ? S.decisions.find((d) => d.subId === sub.id) : null;
   return head(esc(sub.title), `LC ${esc(sub.lc)} · ${fmtDate(sub.date)} · ${esc(sub.location || "—")} · submitted by ${esc(personName(sub.by))}${sub.submittedAt ? " · " + timeAgo(sub.submittedAt) : ""} · <span class="mono">${esc(sub.ref)}</span>`, pill(sub.status)) +
     (sub.status === "returned" && sub.vpaNote ? `<div style="margin-bottom:14px">${note("warn", `<b>Returned —</b> “${esc(sub.vpaNote)}”`)}</div>` : "") +
     (sub.loNote ? `<div style="margin-bottom:14px">${note("info", `<b>Note from the LO —</b> “${esc(sub.loNote)}”`)}</div>` : "") +
@@ -1013,7 +1025,16 @@ function vSub() {
       ${(sub.rows || []).map((r, i) => { const d = dec && dec.rows[i]; return `<tr><td>${rowWho(r, sub)}</td><td>${esc(r.catLabel)}</td><td class="num">${r.hours == null || r.hours === "" ? "—" : esc(r.hours)}</td><td class="sub">${esc(r.note || "—")}</td>
         ${vpa ? `<td class="num mono">${r.pts}</td><td class="num">${d ? `<b>${d.pts}</b>${d.state === "rejected" ? ` <span class="pill ret">rejected</span>` : d.state === "edited" ? ` <span class="pill mod">edited</span>` : ""}` : `<span class="sub">—</span>`}</td>` : ""}</tr>`; }).join("")}
       </tbody></table></div>
-      ${vpa ? `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;border-radius:0 0 var(--r) var(--r)"><span class="sub">Proposed ${sum(sub.rows || [], (r) => r.pts)} pts</span><div class="spacer"></div>${dec ? `<b>Approved ${dec.total} pts</b>` : `<span class="sub">Not decided yet</span>`}</div>` : lockNote}</div>`;
+      ${vpa ? `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;border-radius:0 0 var(--r) var(--r)"><span class="sub">Proposed ${sum(sub.rows || [], (r) => r.pts)} pts</span><div class="spacer"></div>${dec && sub.status === "approved" ? `<b>Approved ${dec.total} pts</b>` : `<span class="sub">Not decided yet</span>`}</div>` : lockNote}</div>` + subUndo(sub, vpa);
+}
+/** The way back from each decision on a submission. */
+function subUndo(sub, vpa) {
+  const key = (k) => k + ":" + sub.id, attrs = `data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}"`;
+  const box = (text, btn) => `<div class="card" style="margin-top:14px"><div class="card-b" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="sub" style="flex:1;min-width:220px">${text}</span>${btn}</div></div>`;
+  if (!vpa && sub.status === "pending") return box("Sent by mistake, or need to change something? Take it back while the VPA hasn't decided yet. It becomes a draft again, and you send it when it's ready.", twiceBtn("recallSub", key("recall"), "Take it back", attrs));
+  if (vpa && sub.status === "approved") return box("Approved by mistake? Undoing it takes these points back off the sheet with matching minus entries (nothing is deleted), and the submission waits for review again.", twiceBtn("undoApproval", key("unapprove"), "Undo this approval", attrs));
+  if (vpa && sub.status === "returned") return box("Sent back by mistake? Take it back into your review queue.", twiceBtn("reopenSub", key("reopen"), "Back to pending review", attrs));
+  return "";
 }
 
 // ---------- views: VPA ----------
@@ -1123,10 +1144,11 @@ function vLedger() {
       ${list.map((x) => `<tr><td><b>LC ${esc(x.lc)}</b><div class="sub">${esc((committee(x.lc) || {}).name || "")}</div></td><td class="num">${x.members.size}</td><td class="num mono">${x.carried}</td><td class="num mono">${x.earned}</td><td class="num"><b>${x.total}</b></td></tr>`).join("")}</tbody></table></div>`;
   } else {
     body = S.ledger.length === 0 ? `<div class="card-b"><span class="sub">The ledger is empty. It fills as you approve submissions.</span></div>` :
-      `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Reason</th><th>LC</th><th class="num">Pts</th><th>When</th></tr></thead><tbody>
+      `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Reason</th><th>LC</th><th class="num">Pts</th><th>When</th><th></th></tr></thead><tbody>
       ${S.ledger.slice(0, 300).map((e) => `<tr${e.pts < 0 ? ` style="background:var(--red-soft)"` : e.kind === "opening_balance" ? ` style="background:var(--blue-soft)"` : ""}><td>${who(e.name, e.lemsicId)}</td>
         <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by LC ${esc(e.eventLc)}</div>` : ""}</td><td>${esc(e.lc)}</td>
-        <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td></tr>`).join("")}</tbody></table></div>`;
+        <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td>
+        <td style="text-align:right">${e.kind === "correction" && !e.reverses ? (reversed(e) ? `<span class="pill flat">undone</span>` : twiceBtn("undoCorrection", "corr:" + e.id, "Undo", `data-id="${esc(e.id)}"`)) : e.kind === "award" && !e.reverses && e.subId ? `<span class="sub">undo from the submission</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   }
   const cf = "corr";
   return head("Live points sheet", "Every row came from an approved submission, an import or a correction. Nothing is typed into it directly, so the history never changes underneath you.",
@@ -1149,19 +1171,61 @@ function vMembers() {
     return (list.length === 0 ? `<div class="card-b"><span class="sub">No member matches “${esc(q)}”.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th>Year</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>
       ${shown.map((m) => `<tr${m.status === "alumni" ? ` style="opacity:.6"` : ""}><td>${who(m.name, m.lemsicId)}</td><td>${esc(m.lc)}</td><td class="sub">${esc(m.year || "—")}</td><td><span class="pill ${m.status === "alumni" ? "flat" : "ok"}">${esc(m.status || "active")}</span></td>
-        <td class="num"><b>${bal[m.id] ? bal[m.id].total : 0}</b></td><td><button class="btn sm" data-act="toggleMember" data-id="${esc(m.id)}" ${dis()}>${m.status === "alumni" ? "Reactivate" : "Mark alumni"}</button></td></tr>`).join("")}</tbody></table></div>`) +
+        <td class="num"><b>${bal[m.id] ? bal[m.id].total : 0}</b></td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" data-act="editMember" data-id="${esc(m.id)}" ${dis()}>Edit</button><button class="btn sm" data-act="toggleMember" data-id="${esc(m.id)}" ${dis()}>${m.status === "alumni" ? "Reactivate" : "Mark alumni"}</button></div></td></tr>`).join("")}</tbody></table></div>`) +
       `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub">${q ? `${list.length} of ${S.members.length} match` : `${S.members.length} members`}${list.length > shown.length ? ` · first ${shown.length} shown — search to find the rest` : ""}</span></div>`;
   };
   LIVE["members-table"] = tableHtml;
   return head("Member registry", `${S.members.length} people on the books. LOs search this list by name or LeMSIC ID when they add volunteers — any LC, never any points.`) +
     `<div class="row split" style="align-items:flex-start"><div class="col-main">${S.members.length === 0 ? empty("No members yet", "Upload the member list on the right, or add people one by one. LOs pick volunteers from this list.") :
       `<div class="card"><div class="card-h"><div class="field" style="flex:1;max-width:420px"><input class="inp" data-form="${qf}" name="q" data-live="members-table" value="${esc(fv(qf, "q", ""))}" autocomplete="off" spellcheck="false" placeholder="Search by name or LeMSIC ID…" aria-label="Search members"></div></div><div id="members-table">${tableHtml()}</div></div>`}</div>
-    <div class="col-side">${vMemberList()}<form class="card" data-submit="addMember"><div class="card-h"><h3>Add a member</h3></div><div class="card-b stack">
+    <div class="col-side">${vEditMember()}${vMemberList()}<form class="card" data-submit="addMember"><div class="card-h"><h3>Add a member</h3></div><div class="card-b stack">
       <div class="field"><label for="mn-n">Full name *</label>${inp(mf, "name", "", `id="mn-n" maxlength="80" placeholder="As they write it"`)}</div>
       <div class="field"><label for="mn-i">LeMSIC ID</label>${inp(mf, "lemsicId", "", `id="mn-i" maxlength="30" placeholder="LEM-0000"`)}</div>
       <div class="grid g2"><div class="field"><label for="mn-l">Committee *</label><select class="inp" id="mn-l" data-form="${mf}" name="lc">${opt("", "Choose…", "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, fv(mf, "lc"))).join("")}</select></div>
         <div class="field"><label for="mn-y">Year</label>${inp(mf, "year", "", `id="mn-y" maxlength="20" placeholder="Med 2"`)}</div></div>
       <button class="btn pri" type="submit" ${dis()}>Add member</button></div></form></div></div>`;
+}
+
+/** Undo a member upload: whoever it added is removed (unless they already have points or are on a
+ *  submission — they stay), and any LeMSIC ID it filled in is cleared again. */
+async function undoMemberUpload(id) {
+  const legacy = id === "legacy";
+  const up = legacy ? null : S.imports.find((x) => x.id === id);
+  if (!legacy && (!up || up.status === "reversed")) throw new UserError("That upload has already been undone.");
+  const added = legacy ? S.members.filter((m) => m.via === "member list" && !m.uploadId).map((m) => m.id) : (up.added || []);
+  const present = added.filter((mid) => S.members.some((m) => m.id === mid));
+  const kept = present.filter(memberInUse), gone = present.filter((mid) => !memberInUse(mid));
+  const jobs = gone.map((mid) => () => S.store.del("members/" + mid));
+  ((up && up.filled) || []).forEach((f) => { const m = S.members.find((x) => x.id === f.id); if (m && idKey(m.lemsicId) === idKey(f.lemsicId)) jobs.push(() => S.store.update("members/" + f.id, { lemsicId: null })); });
+  for (let i = 0; i < jobs.length; i += 5) await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
+  if (!legacy) await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now(), kept: kept.length });
+  await audit("members.upload.undone", `${legacy ? "An earlier member upload" : up.ref + " — " + up.filename} undone: ${gone.length} removed${kept.length ? `, ${kept.length} kept (already credited or on a submission)` : ""}`);
+  toast(`Upload undone: ${gone.length} ${gone.length === 1 ? "member" : "members"} removed${kept.length ? ` · ${kept.length} kept because they already have points or are on a submission` : ""}.`);
+}
+function vUploads() {
+  const ups = memberUploads().slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+  const legacy = S.members.filter((m) => m.via === "member list" && !m.uploadId).length;
+  if (!ups.length && !legacy) return "";
+  const row = (key, ref, file, when, n, status) => `<tr${status === "reversed" ? ` style="opacity:.6"` : ""}><td><b class="mono">${esc(ref)}</b><div class="sub">${esc(file)}${when ? " · " + timeAgo(when) : ""}</div></td><td class="num">${n}</td>
+    <td style="text-align:right">${status === "reversed" ? `<span class="pill flat">undone</span>` : twiceBtn("memberUploadUndo", "upl:" + key, "Undo", `data-id="${esc(key)}"`)}</td></tr>`;
+  return `<div class="card"><div class="card-h"><h3>Uploads so far</h3></div><div class="scroll-x"><table><thead><tr><th>Upload</th><th class="num">Added</th><th></th></tr></thead><tbody>
+    ${ups.map((u) => row(u.id, u.ref, u.filename, u.at, (u.added || []).length, u.status)).join("")}${legacy ? row("legacy", "Earlier upload", "made before uploads could be undone", null, legacy, "applied") : ""}
+    </tbody></table></div><div class="pad" style="border-top:1px solid var(--line)"><span class="hint">Undo removes the people an upload added and clears IDs it filled in. Anyone who already has points or is on a submission is kept.</span></div></div>`;
+}
+
+function vEditMember() {
+  const m = S.editMember && S.members.find((x) => x.id === S.editMember);
+  if (!m) return "";
+  const ef = "member_edit_" + m.id, used = memberInUse(m.id);
+  return `<form class="card" data-submit="saveMember" data-id="${esc(m.id)}" style="border-color:var(--accent)"><div class="card-h"><h3>Edit member</h3><div class="spacer"></div><button type="button" class="btn ghost sm" data-act="editMemberClose">Close</button></div><div class="card-b stack">
+      <div class="field"><label for="me-n">Full name *</label>${inp(ef, "name", m.name, `id="me-n" maxlength="80"`)}</div>
+      <div class="field"><label for="me-i">LeMSIC ID</label>${inp(ef, "lemsicId", m.lemsicId || "", `id="me-i" maxlength="30"`)}</div>
+      <div class="grid g2"><div class="field"><label for="me-l">Committee *</label><select class="inp" id="me-l" data-form="${ef}" name="lc">${S.committees.map((c) => opt(c.id, "LC " + c.id, fv(ef, "lc", m.lc))).join("")}</select></div>
+        <div class="field"><label for="me-y">Year</label>${inp(ef, "year", m.year || "", `id="me-y" maxlength="20"`)}</div></div>
+      <button class="btn pri" type="submit" ${dis()}>Save changes</button>
+      ${used ? `<span class="hint">${esc(first(m.name))} already has points or is on a submission, so they can't be deleted — mark them alumni instead. Changing their LC moves their points to the new LC.</span>`
+        : `<div style="display:flex;align-items:center;gap:10px">${twiceBtn("deleteMember", "delm:" + m.id, "Delete this member", `data-id="${esc(m.id)}"`)}<span class="hint">Only possible while they have no points and aren't on any submission.</span></div>`}
+    </div></form>`;
 }
 
 // ---------- uploading the member list (names, LeMSIC IDs, LCs — no points) ----------
@@ -1170,7 +1234,7 @@ function vMemberList() {
   if (!L) return `<div class="card"><div class="card-h"><h3>Upload the member list</h3></div><div class="card-b stack">
       <span class="sub">An Excel or CSV file with one row per member: <b>name</b>, <b>LeMSIC ID</b> and <b>LC</b> (a year column is read too). Points aren't read here — the old points sheet goes through <b>Import old sheet</b>.</span>
       <label class="btn" style="justify-content:center">Choose a file…<input type="file" accept=".xlsx,.xls,.csv" data-act-file="memberFile" hidden></label>
-      <span class="hint">Upload it again any time: people already here are recognised and skipped, so only new members are added.</span></div></div>`;
+      <span class="hint">Upload it again any time: people already here are recognised and skipped, so only new members are added. A mistake can be undone below.</span></div></div>` + vUploads();
   const plan = memberListPlan(L);
   const headers = L.sheets[L.sheetIx].rows[L.header] || [];
   const colSel = (key, label, optional) => `<div class="field"><label>${label}</label><select class="inp" data-ml="col.${key}">${optional ? opt(-1, "— none —", L.col[key]) : ""}${headers.map((h, i) => opt(i, colLetter(i) + " · " + (String(h).trim() || "(blank)"), L.col[key])).join("")}</select></div>`;
@@ -1249,16 +1313,22 @@ function memberListPlan(L) {
 async function applyMemberList() {
   const L = S.mlist; if (!L) return;
   const plan = memberListPlan(L);
-  const adds = plan.add.concat(L.similarNew ? plan.similar : []);
+  const adds = plan.add.concat(L.similarNew ? plan.similar : []).map((a) => Object.assign({ mid: newId("m") }, a));
   const fills = plan.fill.concat(L.similarNew ? [] : plan.similar.filter((x) => x.id && !x.m.lemsicId).map((x) => ({ m: x.m, lemsicId: x.id })));
-  const jobs = adds.map((a) => () => S.store.set("members/" + newId("m"), { name: a.name, norm: norm(a.name), lemsicId: a.id || null, lc: a.lc, year: a.year || null, status: "active", createdAt: Date.now(), via: "member list" }))
+  // The record is written first, listing everyone this upload will add or change,
+  // so even an upload that stops halfway can be undone.
+  const upId = newId("up"), ref = "UPL-" + today().slice(2, 4) + today().slice(5, 7) + "-" + rand().toUpperCase().slice(0, 5);
+  await S.store.set("imports/" + upId, { kind: "members", ref, filename: L.filename, status: "applying", at: Date.now(), by: S.uid,
+    added: adds.map((a) => a.mid), filled: fills.map((f) => ({ id: f.m.id, lemsicId: f.lemsicId })) });
+  const jobs = adds.map((a) => () => S.store.set("members/" + a.mid, { name: a.name, norm: norm(a.name), lemsicId: a.id || null, lc: a.lc, year: a.year || null, status: "active", createdAt: Date.now(), via: "member list", uploadId: upId }))
     .concat(fills.map((f) => () => S.store.update("members/" + f.m.id, { lemsicId: f.lemsicId })));
   // A few at a time. If it stops halfway, uploading the same file again finishes it: whoever was added is recognised.
   for (let i = 0; i < jobs.length; i += 5) {
     await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
     L.progress = Math.min(jobs.length, i + 5) + " of " + jobs.length; changed();
   }
-  await audit("members.uploaded", `Member list ${L.filename}: ${adds.length} added${fills.length ? `, ${fills.length} given their LeMSIC ID` : ""}`);
+  await S.store.update("imports/" + upId, { status: "applied" });
+  await audit("members.uploaded", `${ref} — member list ${L.filename}: ${adds.length} added${fills.length ? `, ${fills.length} given their LeMSIC ID` : ""}`);
   S.mlist = null;
   toast(`${adds.length} ${adds.length === 1 ? "member" : "members"} added${fills.length ? ` · ${fills.length} IDs filled in` : ""}.`);
 }
@@ -1619,7 +1689,7 @@ function vImport() {
     body = `<div style="max-width:760px" class="stack">${note("good", `<b>Imported.</b> ${I.result.people} members start with ${I.result.total} carried-forward points${I.result.created ? `, and ${I.result.created} were added to the registry` : ""}. It's recorded below as ${esc(I.result.ref)} and can be undone.`)}
       <div style="display:flex;gap:10px"><button class="btn pri" data-act="go" data-r="ledger" data-view="member">See totals by member →</button><button class="btn" data-act="impReset">Import another file</button></div></div>`;
   }
-  const done = S.imports;
+  const done = sheetImports();
   return head("Import the old points sheet", "Bring last year's points in once, as each member's starting balance. Points approved from now on are added on top.") + body +
     `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Imports so far</h3><span class="pill flat">${done.length}</span></div>
       ${done.length === 0 ? `<div class="card-b"><span class="sub">Nothing imported yet.</span></div>` :
@@ -1640,8 +1710,8 @@ async function readImportFile(file) {
     try { wb = X.read(buf, { type: "array" }); } catch (e) { throw new UserError("That file couldn't be read as a spreadsheet. Use .xlsx, .xls or .csv."); }
     const sheets = wb.SheetNames.map((n) => ({ name: n, rows: X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }) })).filter((x) => x.rows.length);
     if (!sheets.length) throw new UserError("That file has no rows in it.");
-    const dup = S.imports.find((x) => x.sha256 === hash && x.status === "applied");
-    const resume = S.imports.find((x) => x.sha256 === hash && x.status === "applying");
+    const dup = sheetImports().find((x) => x.sha256 === hash && x.status === "applied");
+    const resume = sheetImports().find((x) => x.sha256 === hash && x.status === "applying");
     S.imp = { step: dup ? "dup" : "map", dup, resume, filename: file.name, hash, sheets };
     const quality = sheets.map((x) => x.rows.filter((r) => (r || []).some(isNum)).length);
     pickSheet(S.imp, quality.indexOf(Math.max(...quality)));
@@ -2132,10 +2202,12 @@ const SUBMITS = {
       // if an approval is interrupted and retried, the entries already written are
       // found and left alone, so nobody is paid twice. (In the GitHub build the
       // database refuses to overwrite a points entry anyway.)
+      // An approval that was undone and is now made again writes new entries (round 1, 2, …).
+      const round = sub.round || 0;
       for (let i = 0; i < decided.length; i++) {
-        const x = decided[i], path = "ledger/aw_" + d.id + "_" + i;
+        const x = decided[i], path = "ledger/aw_" + d.id + (round ? "_r" + round : "") + "_" + i;
         if (x.pts <= 0 || await S.store.get(path)) continue;
-        await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, at: Date.now() + i, by: S.uid });
+        await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, at: Date.now() + i, by: S.uid });
       }
       const total = sum(decided, (x) => x.pts);
       await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: String(f.vnote || "").trim() || null, at: Date.now(), by: S.uid });
@@ -2182,6 +2254,22 @@ const SUBMITS = {
       await audit("member.added", `Added ${name} to LC ${lc}`);
       clearForm("member_new");
     }, "Member added.");
+  },
+  saveMember(d) {
+    const key = "member_edit_" + d.id;
+    act(async () => {
+      const m = S.members.find((x) => x.id === d.id); if (!m) throw new UserError("That member is gone.");
+      const name = String(fv(key, "name", m.name)).trim(), lc = fv(key, "lc", m.lc), year = String(fv(key, "year", m.year || "")).trim() || null;
+      const lemsicId = String(fv(key, "lemsicId", m.lemsicId || "")).trim() || null;
+      if (!name || !lc) throw new UserError("A member needs a name and a committee.");
+      const clash = lemsicId && S.members.find((x) => x.id !== m.id && idKey(x.lemsicId) === idKey(lemsicId));
+      if (clash) throw new UserError(`LeMSIC ID ${lemsicId} already belongs to ${clash.name} (LC ${clash.lc}).`);
+      await S.store.update("members/" + m.id, { name, norm: norm(name), lemsicId, lc, year });
+      const what = [name !== m.name && `name “${m.name}” → “${name}”`, (lemsicId || "") !== (m.lemsicId || "") && `ID ${m.lemsicId || "—"} → ${lemsicId || "—"}`, lc !== m.lc && `LC ${m.lc} → ${lc}`].filter(Boolean);
+      if (what.length) await audit("member.edited", `${name}: ${what.join(", ")}`);
+      clearForm(key); S.editMember = null;
+      if (lc !== m.lc) syncSoon();
+    }, "Saved.");
   },
   addCat() {
     const f = S.forms.cat_new || {};
@@ -2274,6 +2362,65 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  memberUploadUndo(d) { if (confirmTwice("upl:" + d.id)) act(() => undoMemberUpload(d.id)); },
+  editMember(d) { S.editMember = d.id; clearForm("member_edit_" + d.id); window.scrollTo(0, 0); changed(); },
+  editMemberClose() { S.editMember = null; changed(); },
+  deleteMember(d) {
+    if (!confirmTwice("delm:" + d.id)) return;
+    act(async () => {
+      const m = S.members.find((x) => x.id === d.id); if (!m) return;
+      if (memberInUse(m.id)) throw new UserError(`${m.name} has points or is on a submission — mark them alumni instead.`);
+      await S.store.del("members/" + m.id);
+      await audit("member.deleted", `Deleted ${m.name} (LC ${m.lc})`);
+      S.editMember = null;
+    }, "Member deleted.");
+  },
+  recallSub(d) {
+    if (!confirmTwice("recall:" + d.id)) return;
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
+      if (sub.status !== "pending") throw new UserError("The VPA has already decided on it, so it can't be taken back.");
+      await S.store.update(itemPath(d.lo, d.id), { status: "draft", recalledAt: Date.now(), updatedAt: Date.now() });
+      S.route = { name: "edit", lo: d.lo, id: d.id };
+    }, "Taken back. It's a draft again — change what you need and send it.");
+  },
+  undoApproval(d) {
+    if (!confirmTwice("unapprove:" + d.id)) return;
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub || sub.status !== "approved") throw new UserError("That submission isn't approved.");
+      const round = sub.round || 0;
+      // Nothing is deleted: each award gets a matching minus entry, so the history shows both.
+      const awards = S.ledger.filter((e) => e.subId === d.id && e.kind === "award" && !e.reverses && (e.round || 0) === round);
+      for (const e of awards) {
+        const path = "ledger/rv_" + e.id;
+        if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, eventLc: e.eventLc || null, kind: "award", pts: -e.pts, reason: "Approval undone — " + sub.ref, subId: d.id, subRef: sub.ref, reverses: e.id, round, at: Date.now(), by: S.uid });
+      }
+      await S.store.update("decisions/" + d.id, { undone: true, undoneAt: Date.now() });
+      await S.store.update(itemPath(d.lo, d.id), { status: "pending", round: round + 1, reopenedAt: Date.now() });
+      await audit("submission.unapproved", `${sub.ref}: approval undone, ${sum(awards, (e) => e.pts)} pts taken back`);
+      S.route = { name: "reviewSub", lo: d.lo, id: d.id };
+      syncSoon();
+    }, "Approval undone. The points are off the sheet and it's back in your review queue.");
+  },
+  reopenSub(d) {
+    if (!confirmTwice("reopen:" + d.id)) return;
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub || sub.status !== "returned") throw new UserError("That submission isn't with the LO.");
+      await S.store.update(itemPath(d.lo, d.id), { status: "pending", vpaNote: null, reopenedAt: Date.now() });
+      await audit("submission.reopened", `${sub.ref} taken back from the LO for review`);
+      S.route = { name: "reviewSub", lo: d.lo, id: d.id };
+    }, "Back in your review queue.");
+  },
+  undoCorrection(d) {
+    if (!confirmTwice("corr:" + d.id)) return;
+    act(async () => {
+      const e = S.ledger.find((x) => x.id === d.id); if (!e || e.kind !== "correction") return;
+      if (reversed(e)) throw new UserError("That correction has already been undone.");
+      await S.store.set("ledger/rv_" + e.id, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "correction", pts: -e.pts, reason: "Undo of a correction — " + e.reason, reverses: e.id, at: Date.now(), by: S.uid });
+      await audit("ledger.correction.undone", `${e.pts > 0 ? "−" : "+"}${Math.abs(e.pts)} pts for ${e.name}: undid “${e.reason}”`);
+      syncSoon();
+    }, "Correction undone.");
+  },
   memberListApply() { act(applyMemberList, null); },
   toggleMember(d) {
     act(async () => { const m = S.members.find((x) => x.id === d.id); if (!m) return; await S.store.update("members/" + d.id, { status: m.status === "alumni" ? "active" : "alumni" }); });

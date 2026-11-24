@@ -45,7 +45,11 @@ service cloud.firestore {
         allow update: if isVpa() || (mine() && ownCommittee()
                          && resource.data.status in ['draft', 'returned']
                          && newStatus() in ['draft', 'returned', 'pending']
-                         && (newStatus() != 'returned' || resource.data.status == 'returned'));
+                         && (newStatus() != 'returned' || resource.data.status == 'returned'))
+                      // Taking back something sent by mistake, before the VPA decides: it only
+                      // becomes a draft again — nothing else about it may change in the same step.
+                      || (mine() && resource.data.status == 'pending' && newStatus() == 'draft'
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'recalledAt', 'updatedAt']));
         allow delete: if isVpa() || (mine() && resource.data.status == 'draft');
       }
     }
