@@ -197,6 +197,26 @@ the **Totals by member** sheet says when it was last updated.
 board; don't share it with Local Officers, or they see what the site keeps from
 them.
 
+## Backups
+
+Once a day — the first time the VPA opens the site on a device signed in to
+Microsoft — a copy of everything (members, rubric, LCs, submissions, every
+points entry, uploads and the audit log) is saved as
+`LeMSIC Points backup <date>.json` in a **LeMSIC Points backups** folder next to
+the workbook. Earlier days' files are never replaced, and OneDrive keeps its own
+version history on top.
+
+**Excel & backups** also has **Download a backup now**, and **Restore from a
+backup**: it shows what's missing compared with the file, and brings back only
+what you tick. Nothing that's still there is changed.
+
+The backups hold everything, so share only the workbook file with the board —
+never the folder it's in.
+
+On this site the points history can't be deleted at all: the rules refuse it,
+even for the VPA. Backups cover everything else, and a mistake in the Firebase
+console.
+
 ## How updates reach the workbook
 
 Updates are written from the VPA's browser, so there is no server to run:

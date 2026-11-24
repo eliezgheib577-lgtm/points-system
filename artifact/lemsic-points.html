@@ -488,7 +488,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, editMember: null, clearProgress: null, resetProgress: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, editMember: null, clearProgress: null, resetProgress: null, backup: undefined, restore: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -538,11 +538,12 @@ function subscribe(kind) {
       watchColl("roster", "roster");
       watchColl("requests", "requests", (a, b) => (a.at || 0) - (b.at || 0));
     }
-    offs.push(S.store.watch("ledger", (list, meta) => { S.ledger = list.sort((a, b) => (b.at || 0) - (a.at || 0)); arrived(meta); changed(); scheduleCatchUp(); }, onErr));
+    offs.push(S.store.watch("ledger", (list, meta) => { S.ledger = list.sort((a, b) => (b.at || 0) - (a.at || 0)); arrived(meta); changed(); scheduleCatchUp(); scheduleBackup(); }, onErr));
     watchColl("decisions", "decisions");
     watchColl("audit", "audit", (a, b) => (b.at || 0) - (a.at || 0));
     watchColl("imports", "imports", (a, b) => (b.at || 0) - (a.at || 0));
-    offs.push(S.store.watchDoc("settings/excel", (doc) => { S.excel = doc; changed(); scheduleCatchUp(); }, onErr));
+    offs.push(S.store.watchDoc("settings/excel", (doc) => { S.excel = doc; changed(); scheduleCatchUp(); scheduleBackup(); }, onErr));
+    offs.push(S.store.watchDoc("settings/backup", (doc) => { S.backup = doc; changed(); scheduleBackup(); }, onErr));
     offs.push(S.store.watch("subs", (list, meta) => {
       S.loIds = list.map((x) => x.id);
       S.loIds.forEach(watchItems);
@@ -917,7 +918,7 @@ const usedCats = () => { const u = new Set(); allItems().forEach((x) => (x.rows 
 const TOP = ["home", "new", "submissions", "review", "give", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
 const NAV = {
   lo: [["home", "◆", "Dashboard"], ["new", "＋", "New submission"], ["submissions", "▤", "My submissions"], ["rubric", "◉", "Points rubric"]],
-  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["new", "＋", "New event"], ["give", "✚", "Give points"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
+  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["new", "＋", "New event"], ["give", "✚", "Give points"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel & backups"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
 };
 const VPA_ONLY = new Set(["review", "reviewSub", "give", "ledger", "import", "excel", "members", "access", "audit"]);
 function go(name, params) {
@@ -2091,6 +2092,140 @@ async function workbookBytes() {
   return X.write(wb, { bookType: "xlsx", type: "array" });
 }
 
+/** Hand the viewer a file: the browser's own download on the GitHub site, claude.ai's save prompt in the test copy. */
+async function saveFile(filename, bytes, mime) {
+  if (!S.downloads) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+    const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return;
+  }
+  try { await S.downloads.save({ filename, data: bytes }); }
+  catch (e) {
+    if (e && e.code === "declined") return;
+    throw new UserError(e && e.code === "extension_not_enabled" ? "Downloads of that kind aren't available in this view." : "The download didn't go through. Try again.");
+  }
+}
+
+// ---------- backups: a copy of everything, daily to OneDrive, any time as a download ----------
+const BACKUP_FOLDER = "LeMSIC Points backups";
+/** Every record the VPA can see, by its path. Restoring it puts back exactly these records. */
+function backupDocs() {
+  const docs = {};
+  const put = (path, x) => { const d = Object.assign({}, x); delete d.id; delete d.lo; docs[path] = d; };
+  if (S.config) docs["config/app"] = Object.assign({}, S.config);
+  [["committees", S.committees], ["rubric", S.rubric], ["members", S.members], ["ledger", S.ledger], ["decisions", S.decisions], ["audit", S.audit], ["imports", S.imports]]
+    .forEach(([c, list]) => list.forEach((x) => put(c + "/" + x.id, x)));
+  if (S.platform !== "firebase") { S.roster.forEach((x) => put("roster/" + x.id, x)); S.requests.forEach((x) => put("requests/" + x.id, x)); }
+  Object.entries(S.items).forEach(([lo, list]) => {
+    if (!list.length) return;
+    docs["subs/" + lo] = { lc: list[0].lc, updatedAt: Date.now() };
+    list.forEach((x) => put("subs/" + lo + "/items/" + x.id, x));
+  });
+  if (S.excel) docs["settings/excel"] = Object.assign({}, S.excel);
+  return docs;
+}
+const backupSection = (path) => { const c = path.split("/")[0]; return c === "subs" ? (path.split("/").length > 2 ? "submissions" : null) : c === "config" || c === "settings" ? "settings" : c; };
+const SECTION_NAMES = { ledger: "points entries", members: "members", submissions: "submissions", decisions: "decisions", rubric: "rubric categories", committees: "LCs", imports: "uploads and imports", audit: "audit log entries", settings: "settings", roster: "LO access", requests: "access requests" };
+function backupFile() {
+  const docs = backupDocs(), counts = {};
+  Object.keys(docs).forEach((p) => { const k = backupSection(p); if (k) counts[k] = (counts[k] || 0) + 1; });
+  return { app: "LeMSIC Points", kind: "backup", format: 1, at: new Date().toISOString(), term: (S.config && S.config.term) || null, counts, docs };
+}
+/** Save today's backup next to the workbook. Once a day by itself (never replacing an earlier day's
+ *  file); "Save now" replaces today's. Returns false when there's no Microsoft sign-in to use. */
+async function backupToMicrosoft(interactive) {
+  const xs = S.excel;
+  if (!xs || !xs.itemId) throw new UserError("Connect the Excel workbook first — backups are saved in a folder next to it.");
+  if (!S.loaded) return false;
+  const token = await msToken(interactive); if (!token) return false;
+  let folderId = xs.folderId;
+  if (!folderId) {
+    const item = await graph(token, "GET", `/drives/${xs.driveId}/items/${xs.itemId}`);
+    folderId = item && item.parentReference && item.parentReference.id;
+    if (!folderId) throw new UserError("Couldn't find the folder the workbook is in.");
+    await S.store.update("settings/excel", { folderId });
+  }
+  const day = today(), name = `LeMSIC Points backup ${day}.json`, base = `/drives/${xs.driveId}/items/${folderId}:/${BACKUP_FOLDER}/${name}`;
+  let exists = false;
+  try { await graph(token, "GET", base); exists = true; } catch (e) { if (e.status !== 404) throw e; }
+  let size = null;
+  if (!exists || interactive) {
+    const body = new TextEncoder().encode(JSON.stringify(backupFile()));
+    size = body.length;
+    await graph(token, "PUT", base + ":/content", body, { "Content-Type": "application/json" });
+  }
+  await S.store.set("settings/backup", { lastDay: day, lastName: name, lastAt: Date.now(), size, folder: BACKUP_FOLDER, lastError: null });
+  return true;
+}
+let backupTimer = null, backupTriedDay = null;
+/** The daily backup: the first time each day the VPA has the site open on a device signed in to Microsoft. */
+function scheduleBackup() {
+  if (backupTimer || !isVpa() || !msConfig() || !S.loaded || S.backup === undefined || !S.excel || !S.excel.itemId) return;
+  const day = today();
+  if ((S.backup && S.backup.lastDay === day) || backupTriedDay === day) return;
+  backupTimer = setTimeout(async () => {
+    backupTimer = null;
+    if (backupTriedDay === day || (S.backup && S.backup.lastDay === day)) return;
+    backupTriedDay = day;
+    try { await msal(); } catch (e) { return; }
+    if (!S.msAccount) return;
+    try { await backupToMicrosoft(false); }
+    catch (e) { await S.store.set("settings/backup", Object.assign({}, S.backup || {}, { lastError: (e && e.message) || "it didn't go through", lastErrorAt: Date.now() })).catch(() => null); }
+  }, 5000);
+}
+function vBackups() {
+  const bs = S.backup, xs = S.excel, R = S.restore, connected = msConfig() && xs && xs.itemId;
+  const status = connected
+    ? bs && bs.lastAt ? note(bs.lastError ? "warn" : "good", `<b>Last backup ${esc(timeAgo(bs.lastAt))}:</b> <span class="mono">${esc(bs.lastName)}</span> in the “${esc(bs.folder || BACKUP_FOLDER)}” folder next to the workbook.${bs.lastError ? ` The latest try didn't go through: ${esc(bs.lastError)}` : ""}`)
+      : note(bs && bs.lastError ? "warn" : "info", bs && bs.lastError ? `<b>The daily backup didn't go through:</b> ${esc(bs.lastError)}` : "No backup yet. The first one is saved within a minute of opening this page signed in to Microsoft.")
+    : note("info", msConfig() ? "Connect the workbook above, and a backup is saved next to it every day." : "Download a backup now and then and keep it somewhere safe. On the GitHub site with Microsoft 365 connected, one is saved to OneDrive every day by itself.");
+  let restore = "";
+  if (R) {
+    const sections = Object.keys(R.missingBy);
+    const chosen = sections.filter((k) => R.pick[k] !== false), n = sum(chosen, (k) => R.missingBy[k].length);
+    restore = `<div class="stack" style="border-top:1px solid var(--line);padding-top:14px"><b>Restore from <span class="mono">${esc(R.filename)}</span></b><span class="sub">Backup made ${esc(fmtDate(R.at.slice(0, 10)))}${R.term ? " · " + esc(R.term) : ""}. Only records that are <b>missing</b> now are put back; nothing that's here is changed.</span>
+      ${sections.length === 0 ? note("good", "Nothing is missing — everything in the backup is still here.") :
+        `<div class="stack" style="gap:6px">${sections.map((k) => `<label class="sub" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-rs="${esc(k)}" ${R.pick[k] !== false ? "checked" : ""}> ${R.missingBy[k].length} ${esc(SECTION_NAMES[k] || k)}</label>`).join("")}</div>`}
+      ${R.progress ? note("info", `Restoring… ${esc(R.progress)}`) : ""}
+      <div style="display:flex;gap:8px"><button class="btn pri" data-act="restoreApply" ${n && !S.busy ? "" : "disabled"}>Bring back ${n} ${n === 1 ? "record" : "records"}</button><button class="btn" data-act="restoreCancel" ${dis()}>Cancel</button></div></div>`;
+  }
+  return `<div class="card"><div class="card-h"><h3>Backups</h3></div><div class="card-b stack">
+      <span class="sub">A backup is a copy of everything — members, rubric, LCs, submissions, every points entry, uploads and the audit log. If something is ever deleted by mistake, restoring a backup brings back what's missing.</span>
+      ${status}
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-act="backupDownload" ${S.loaded && !S.busy ? "" : "disabled"}>⇩ Download a backup now</button>
+        ${connected ? `<button class="btn" data-act="backupNow" ${S.loaded && !S.busy ? "" : "disabled"}>Save a backup to OneDrive now</button>` : ""}
+        <label class="btn">Restore from a backup…<input type="file" accept=".json,application/json" data-act-file="backupFile" hidden></label></div>
+      ${restore}
+    </div></div>`;
+}
+async function readBackupFile(file) {
+  act(async () => {
+    if (!file) return;
+    let data;
+    try { data = JSON.parse(await file.text()); } catch (e) { throw new UserError("That file isn't a LeMSIC Points backup."); }
+    if (!data || data.app !== "LeMSIC Points" || data.kind !== "backup" || !data.docs || typeof data.docs !== "object") throw new UserError("That file isn't a LeMSIC Points backup.");
+    const here = backupDocs(), missingBy = {};
+    Object.keys(data.docs).forEach((p) => { if (here[p]) return; const k = backupSection(p) || "submissions"; (missingBy[k] = missingBy[k] || []).push(p); });
+    // A submission's marker (subs/<lo>) goes with its submissions.
+    S.restore = { filename: file.name, at: data.at || "", term: data.term || null, docs: data.docs, missingBy, pick: {} };
+  });
+}
+async function applyRestore() {
+  const R = S.restore; if (!R) return;
+  const paths = Object.keys(R.missingBy).filter((k) => R.pick[k] !== false).flatMap((k) => R.missingBy[k]);
+  // Markers first, so a restored submission is found by the VPA's screens straight away.
+  paths.sort((a, b) => a.split("/").length - b.split("/").length);
+  for (let i = 0; i < paths.length; i += 5) {
+    await Promise.all(paths.slice(i, i + 5).map((p) => S.store.set(p, R.docs[p])));
+    R.progress = Math.min(paths.length, i + 5) + " of " + paths.length; changed();
+  }
+  await audit("backup.restored", `Restored ${paths.length} missing records from ${R.filename}`);
+  S.restore = null;
+  syncSoon();
+  toast(`${paths.length} ${paths.length === 1 ? "record" : "records"} brought back from the backup.`);
+}
+
 // ---------- Excel: keeping the workbook on SharePoint / OneDrive up to date ----------
 // Only the VPA's browser ever writes to it, straight after the VPA changes the
 // ledger, using the VPA's own Microsoft 365 sign-in. No server is involved.
@@ -2231,13 +2366,13 @@ function vExcel() {
   </div></div>`;
   const download = `<button class="btn" data-act="exportXlsx" ${dis()}>⇩ Download the workbook now</button>`;
   if (!cfg) {
-    return head("Excel", "Keep a workbook on LeMSIC's SharePoint or OneDrive up to date by itself, every time you approve.") +
+    return head("Excel &amp; backups", "Keep a workbook on LeMSIC's SharePoint or OneDrive up to date by itself, every time you approve — and keep a copy of everything.") +
       `<div class="row split" style="align-items:flex-start"><div class="col-main"><div class="card"><div class="card-b stack">
         ${note("info", window.claude ? "Live Excel updates run on the GitHub version of this site. Here you can download the same workbook at any time." : "Microsoft 365 isn't connected to this site yet. Whoever manages LeMSIC's 365 sets it up once — SETUP.md, part 2 — and then this screen lets you choose the workbook.")}
-        <div>${download}</div></div></div></div><div class="col-side">${sheetsCard}</div></div>`;
+        <div>${download}</div></div></div>${vBackups()}</div><div class="col-side">${sheetsCard}</div></div>`;
   }
   const acct = S.msAccount;
-  return head("Excel", "The workbook on LeMSIC's SharePoint or OneDrive is updated by itself after every approval, correction or import.") +
+  return head("Excel &amp; backups", "The workbook on LeMSIC's SharePoint or OneDrive is updated by itself after every approval, correction or import, and a backup of everything is saved next to it every day.") +
     `<div class="row split" style="align-items:flex-start"><div class="col-main">
       <div class="card"><div class="card-h"><h3>Microsoft 365</h3><div class="spacer"></div>${acct ? `<span class="pill ok">● signed in</span>` : `<span class="pill flat">not signed in</span>`}</div>
         <div class="card-b stack">
@@ -2260,6 +2395,7 @@ function vExcel() {
             <div class="sub">or</div>
             <div><button class="btn" data-act="xlCreate" ${dis()}>Create “LeMSIC Points.xlsx” in my OneDrive</button></div>`}
         </div></div>
+      ${vBackups()}
     </div><div class="col-side">${sheetsCard}<div class="card"><div class="card-b">${download}</div></div></div></div>`;
 }
 
@@ -2358,6 +2494,9 @@ document.addEventListener("change", (e) => {
   if (el.getAttribute && el.getAttribute("data-act-file") === "importFile") { readImportFile(el.files && el.files[0]); return; }
   if (el.getAttribute && el.getAttribute("data-act-file") === "memberFile") { readMemberFile(el.files && el.files[0]); return; }
   if (el.getAttribute && el.getAttribute("data-act-file") === "rubricFile") { readRubricFile(el.files && el.files[0]); return; }
+  if (el.getAttribute && el.getAttribute("data-act-file") === "backupFile") { readBackupFile(el.files && el.files[0]); el.value = ""; return; }
+  const rsField = el.getAttribute && el.getAttribute("data-rs");
+  if (rsField && S.restore) { S.restore.pick[rsField] = el.checked; changed(); return; }
   const rlField = el.getAttribute && el.getAttribute("data-rl");
   if (rlField && S.rlist) {
     if (rlField === "sheet") pickRubricSheet(S.rlist, Number(el.value));
@@ -2712,6 +2851,10 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  backupDownload() { act(async () => { await saveFile(`LeMSIC Points backup ${today()}${S.mode === "demo" ? " (demo)" : ""}.json`, new TextEncoder().encode(JSON.stringify(backupFile(), null, 1)), "application/json"); }); },
+  backupNow() { act(async () => { if (!(await backupToMicrosoft(true))) throw new UserError("Sign in to Microsoft first."); }, "Backup saved to OneDrive."); },
+  restoreApply() { act(applyRestore); },
+  restoreCancel() { S.restore = null; changed(); },
   resetTest() { act(resetTest, "This test copy is empty. Load the starting setup to begin again."); },
   delGiveRow(d) { S.give.rows.splice(Number(d.i), 1); changed(); },
   giveApply() { act(applyGive); },
@@ -2871,19 +3014,7 @@ const ACTIONS = {
   async exportXlsx() {
     act(async () => {
       const buf = await workbookBytes();
-      const filename = `LeMSIC Points ${today()}${S.mode === "demo" ? " (demo)" : ""}.xlsx`;
-      if (!S.downloads) { // a normal website (the GitHub build): hand the browser the file
-        const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
-        const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-        return;
-      }
-      try {
-        await S.downloads.save({ filename, data: new Uint8Array(buf) });
-      } catch (e) {
-        if (e && e.code === "declined") return;
-        throw new UserError(e && e.code === "extension_not_enabled" ? "Excel downloads aren't available in this view." : "The download didn't go through. Try again.");
-      }
+      await saveFile(`LeMSIC Points ${today()}${S.mode === "demo" ? " (demo)" : ""}.xlsx`, new Uint8Array(buf), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     });
   },
 };

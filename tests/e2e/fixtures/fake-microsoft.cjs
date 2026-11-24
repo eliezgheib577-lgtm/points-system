@@ -30,7 +30,8 @@ function parse(addr) {
 
 function createWorkbook() {
   return {
-    item: { id: 'item-1', name: 'LeMSIC Points.xlsx', parentReference: { driveId: 'drive-1' }, webUrl: LINK },
+    item: { id: 'item-1', name: 'LeMSIC Points.xlsx', parentReference: { driveId: 'drive-1', id: 'folder-1' }, webUrl: LINK },
+    files: {}, // what's been saved in the workbook's folder, by path below it
     sheets: [{ id: '{sheet-notes}', name: 'VPA notes', cells: [['My own notes'], ['Keep this']] }],
     sessions: new Set(), calls: [], lockNext: false,
   };
@@ -56,6 +57,20 @@ async function install(page, wb) {
     if (req.method() === 'PUT' && path === '/me/drive/root:/LeMSIC Points/LeMSIC Points.xlsx:/content') {
       wb.uploaded = req.postDataBuffer() ? req.postDataBuffer().length : 0;
       return json(201, wb.item);
+    }
+    // The workbook's own record (to find its folder), and files by path in that folder (the daily backups).
+    if (req.method() === 'GET' && path === `/drives/${wb.item.parentReference.driveId}/items/${wb.item.id}`) return json(200, wb.item);
+    const inFolder = `/drives/${wb.item.parentReference.driveId}/items/${wb.item.parentReference.id}:/`;
+    if (path.startsWith(inFolder)) {
+      const rel = path.slice(inFolder.length);
+      if (req.method() === 'GET' && !rel.endsWith(':/content')) return wb.files[rel] ? json(200, { id: 'f-' + rel, name: rel.split('/').pop() }) : json(404, { error: { code: 'itemNotFound', message: 'The resource could not be found.' } });
+      if (req.method() === 'PUT' && rel.endsWith(':/content')) {
+        const name = rel.slice(0, -':/content'.length);
+        if (!/^LeMSIC Points backups\/LeMSIC Points backup \d{4}-\d{2}-\d{2}\.json$/.test(name)) return bad('unexpected upload ' + name);
+        wb.files[name] = req.postDataBuffer().toString('utf8');
+        return json(201, { id: 'f-' + name, name: name.split('/').pop() });
+      }
+      return bad('unknown folder call');
     }
     const base = `/drives/${wb.item.parentReference.driveId}/items/${wb.item.id}/workbook`;
     if (!path.startsWith(base)) return bad('unknown path');
