@@ -422,6 +422,10 @@ function personName(id) {
 // ---------- derived data ----------
 const isVpa = () => S.role === "vpa" && !S.viewAsLo;
 const isLo = () => S.role === "lo" || (S.role === "vpa" && S.viewAsLo);
+// Events the VPA coordinates belong to no LC: they're "National". Points still count for each member's own LC.
+const NATIONAL = "National";
+const lcLabel = (lc) => (lc === NATIONAL ? "National (VPA)" : "LC " + lc);
+const isOwnEvent = (lo) => isVpa() && lo === S.uid;
 const myLc = () => {
   if (S.role === "vpa") return S.previewLc;
   if (S.loCode) { const c = S.committees.find((x) => x.id.toLowerCase() === S.loCode); return c ? c.id : S.loCode.toUpperCase(); }
@@ -461,7 +465,7 @@ function problemsFor(sub, others) {
     if (!r.loCanExceed && (r.pts < r.min || r.pts > r.max))
       add("warning", `${r.name}: “${r.catLabel}” ${r.min === r.max ? `is worth ${r.min} pts` : `allows ${r.min}–${r.max} pts`}, ${r.pts} entered. Explain it in the note or the VPA will likely adjust it.`);
   });
-  rows.forEach((r) => { const c = S.rubric.find((x) => x.id === r.cat); if (c && c.vpaOnly) add("warning", `${r.name}: “${r.catLabel}” is given by the VPA, not through a submission.`); });
+  rows.forEach((r) => { const c = S.rubric.find((x) => x.id === r.cat); if (c && c.vpaOnly && sub.lc !== NATIONAL) add("warning", `${r.name}: “${r.catLabel}” is given by the VPA, not through a submission.`); });
   const per = {};
   rows.forEach((r) => { per[r.cat] = per[r.cat] || { n: 0, r }; per[r.cat].n += 1; });
   Object.values(per).forEach(({ n, r }) => {
@@ -656,7 +660,7 @@ const usedCats = () => { const u = new Set(); allItems().forEach((x) => (x.rows 
 const TOP = ["home", "new", "submissions", "review", "give", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
 const NAV = {
   lo: [["home", "◆", "Dashboard"], ["new", "＋", "New submission"], ["submissions", "▤", "My submissions"], ["rubric", "◉", "Points rubric"]],
-  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["give", "✚", "Give points"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
+  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["new", "＋", "New event"], ["give", "✚", "Give points"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
 };
 const VPA_ONLY = new Set(["review", "reviewSub", "give", "ledger", "import", "excel", "members", "access", "audit"]);
 function go(name, params) {
@@ -700,7 +704,7 @@ function eventFields(form, sub) {
   return `<div class="field"><label for="${form}-title">Event name *</label>${inp(form, "title", sub && sub.title, `id="${form}-title" maxlength="160" placeholder="World Diabetes Day Screening Campaign"`)}</div>
     <div class="grid g3"><div class="field"><label for="${form}-date">Date *</label>${inp(form, "date", sub && sub.date, `id="${form}-date" type="date" max="${today()}"`)}</div>
       <div class="field"><label for="${form}-duration">Duration</label><select class="inp" id="${form}-duration" data-form="${form}" name="duration">${opt("", "—", "")}${DURATION.map((d) => opt(d, d, fv(form, "duration", sub && sub.duration))).join("")}</select></div>
-      <div class="field"><label>Local committee</label><div class="inp" style="background:var(--surface-2);color:var(--muted)">LC ${esc(lc ? lc.id : myLc())} 🔒</div></div></div>
+      <div class="field"><label>Local committee</label><div class="inp" style="background:var(--surface-2);color:var(--muted)">${isVpa() ? "National · VPA" : "LC " + esc(lc ? lc.id : myLc())} 🔒</div></div></div>
     <div class="grid g2"><div class="field"><label for="${form}-location">Location *</label>${inp(form, "location", sub && sub.location, `id="${form}-location" maxlength="160" placeholder="Hamra Public Square, Beirut"`)}</div>
       <div class="field"><label for="${form}-sc">Standing committee</label><select class="inp" id="${form}-sc" data-form="${form}" name="sc">${opt("", "Choose…", "")}${STANDING.map((s) => opt(s, s, fv(form, "sc", sub && sub.sc))).join("")}</select></div></div>
     <div class="field"><label for="${form}-type">Activity type</label><select class="inp" id="${form}-type" data-form="${form}" name="type">${opt("", "—", "")}${ACTIVITY.map((t) => opt(t, t, fv(form, "type", sub && sub.type))).join("")}</select></div>
@@ -711,8 +715,8 @@ function steps(n) {
   return `<div class="steps">${s(1, "Event details")}<div class="step-line"></div>${s(2, "Volunteers &amp; points")}<div class="step-line"></div>${s(3, "Review &amp; send")}</div>`;
 }
 function vNew() {
-  if (activeRubric().length === 0) return head("New submission", "") + note("warn", "The VPA hasn't set up the points rubric yet, so there's nothing to submit against. Check back soon.");
-  return steps(1) + head("Event details", "Describe the activity once. It becomes the record attached to every point you propose.") +
+  if (activeRubric().length === 0) return head("New submission", "") + note("warn", isVpa() ? "Set up the rubric first (Rubric & rules)." : "The VPA hasn't set up the points rubric yet, so there's nothing to submit against. Check back soon.");
+  return steps(1) + head(isVpa() ? "An event you coordinated" : "Event details", isVpa() ? "Record it like an LO would. It's listed as National, and since you're the VPA it goes straight onto the points sheet once you approve it — no review queue." : "Describe the activity once. It becomes the record attached to every point you propose.") +
     `<form class="card" data-submit="createDraft" style="max-width:760px"><div class="card-b stack">${eventFields("ev_new", null)}</div>
       <div class="pad" style="border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end">${goBtn("Cancel", "home")}<button class="btn pri" type="submit" ${dis()}>Next: volunteers →</button></div></form>`;
 }
@@ -734,7 +738,7 @@ function vEdit() {
         <div class="card-b stack">
           <div class="field"><label for="${rf}-m">Member — search by name or LeMSIC ID</label>${memberPicker(rf, { id: rf + "-m", homeLc: sub.lc, exclude: new Set(rows.map((r) => r.memberId)), next: "cat", emptyHint: "Check the spelling, or try their LeMSIC ID. Someone missing from the list? Ask the VPA to add them." })}</div>
           <div class="inline-form">
-          <div class="field" style="flex:1.4"><label for="${rf}-c">Role / effort</label><select class="inp" id="${rf}-c" data-form="${rf}" name="cat" data-defaults="1">${opt("", "From the rubric…", "")}${rubricOptions(fv(rf, "cat"))}</select></div>
+          <div class="field" style="flex:1.4"><label for="${rf}-c">Role / effort</label><select class="inp" id="${rf}-c" data-form="${rf}" name="cat" data-defaults="1">${opt("", "From the rubric…", "")}${rubricOptions(fv(rf, "cat"), isVpa())}</select></div>
           <div class="field" style="flex:0 0 84px;min-width:84px"><label for="${rf}-h">Hours</label>${inp(rf, "hours", "", `id="${rf}-h" type="number" step="0.5" min="0" max="99"`)}</div>
           <div class="field" style="flex:0 0 90px;min-width:90px"><label for="${rf}-p">Points</label>${inp(rf, "pts", "", `id="${rf}-p" type="number" min="0" max="99"`)}</div>
           <div class="field" style="flex:2;min-width:200px"><label for="${rf}-n">What they did</label>${inp(rf, "note", "", `id="${rf}-n" maxlength="200" placeholder="Screening station 2, ~70 participants"`)}</div>
@@ -752,7 +756,11 @@ function vEdit() {
         </tbody></table></div>`}
         <div class="pad" style="border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub">${rows.length} ${rows.length === 1 ? "volunteer" : "volunteers"}</span><div class="spacer"></div><span><span class="sub">Total proposed</span> <b style="font-size:17px">${total}</b> <span class="sub">pts</span></span></div>
       </div>
-      <form class="card" data-submit="send" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
+      ${isOwnEvent(sub.lo) ? `<div class="card"><div class="card-h"><h3>Add it to the points sheet</h3></div><div class="card-b stack">
+          ${probs.length === 0 ? note("good", "Everything checks out.") : probs.map((p) => note(p.level === "error" ? "warn" : "info", (p.level === "error" ? "<b>Must fix —</b> " : "") + esc(p.msg))).join("")}
+          <button class="btn pri" data-act="approveOwn" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}" style="justify-content:center" ${blocking.length || !rows.length || S.busy ? "disabled" : ""}>✓ Approve · add ${total} pts to the points sheet</button>
+          <span class="hint">You're the VPA, so your own events don't wait in a queue. You can undo it afterwards from the event.</span>
+        </div></div>` : `<form class="card" data-submit="send" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
         <div class="card-h"><h3>Send to the VPA</h3></div>
         <div class="card-b stack">
           ${probs.length === 0 ? note("good", "Everything checks out.") : probs.map((p) => note(p.level === "error" ? "warn" : "info", (p.level === "error" ? "<b>Must fix —</b> " : "") + esc(p.msg))).join("")}
@@ -760,7 +768,7 @@ function vEdit() {
           <button class="btn pri" type="submit" style="justify-content:center" ${blocking.length || S.busy ? "disabled" : ""}>Send to VPA →</button>
           <span class="hint">${blocking.length ? `Fix ${blocking.length} problem${blocking.length === 1 ? "" : "s"} first.` : "Once sent it locks. The VPA can change it; you can't."}</span>
         </div>
-      </form>
+      </form>`}
     </div>
     <div class="col-side">
       <form class="card" data-submit="saveEvent" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
@@ -916,7 +924,7 @@ function vVpaSubmissions() {
       `<div class="card"><div class="scroll-x"><table><thead><tr><th>Reference</th><th>Event</th><th>LC</th><th>Date</th><th class="num">Rows</th><th class="num">Approved</th><th>Status</th><th></th></tr></thead><tbody>
       ${list.map((x) => { const d = S.decisions.find((y) => y.subId === x.id); return `<tr><td class="mono">${esc(x.ref)}</td><td><b>${esc(x.title)}</b></td><td>${esc(x.lc)}</td><td>${fmtDate(x.date)}</td><td class="num">${(x.rows || []).length}</td>
         <td class="num">${x.status === "approved" && d ? `<b>${d.total}</b>` : `<span class="sub">—</span>`}</td><td>${pill(x.status)}</td>
-        <td>${goLink("Open", x.status === "pending" ? "reviewSub" : "sub", `data-lo="${esc(x.lo)}" data-id="${esc(x.id)}"`)}</td></tr>`; }).join("")}
+        <td>${goLink("Open", x.status === "pending" ? "reviewSub" : isOwnEvent(x.lo) && (x.status === "draft" || x.status === "returned") ? "edit" : "sub", `data-lo="${esc(x.lo)}" data-id="${esc(x.id)}"`)}</td></tr>`; }).join("")}
       </tbody></table></div></div>`);
 }
 function vLedger() {
@@ -940,7 +948,7 @@ function vLedger() {
     body = S.ledger.length === 0 ? `<div class="card-b"><span class="sub">The ledger is empty. It fills as you approve submissions.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Reason</th><th>LC</th><th class="num">Pts</th><th>When</th><th></th></tr></thead><tbody>
       ${S.ledger.slice(0, 300).map((e) => `<tr${e.pts < 0 ? ` style="background:var(--red-soft)"` : e.kind === "opening_balance" ? ` style="background:var(--blue-soft)"` : ""}><td>${who(e.name, e.lemsicId)}</td>
-        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by LC ${esc(e.eventLc)}</div>` : ""}</td><td>${esc(e.lc)}</td>
+        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by ${esc(lcLabel(e.eventLc))}</div>` : ""}</td><td>${esc(e.lc)}</td>
         <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td>
         <td style="text-align:right">${e.kind === "correction" && !e.reverses ? (reversed(e) ? `<span class="pill flat">undone</span>` : twiceBtn("undoCorrection", "corr:" + e.id, "Undo", `data-id="${esc(e.id)}"`)) : e.kind === "award" && !e.reverses && e.subId ? `<span class="sub">undo from the submission</span>` : e.awardId && !e.reverses ? `<span class="sub">undo under Give points</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   }
@@ -1809,7 +1817,7 @@ async function undoImport(id) {
 /** The app writes exactly these sheets. Any other sheet in the workbook is left alone. */
 function workbookSheets() {
   const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission", "Event run by"]].concat(
-    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? (e.source === "vpa" ? "VPA" : "LC " + (e.eventLc || e.lc)) : ""]));
+    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? (e.source === "vpa" ? "VPA" : lcLabel(e.eventLc || e.lc)) : ""]));
   const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
   // Two columns to the right of the table: when this copy was written.
   const stamp = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -2015,7 +2023,7 @@ function render() {
   else if (isVpa()) {
     view = r === "review" ? vReview() : r === "reviewSub" ? vReviewSub() : r === "submissions" ? vVpaSubmissions() : r === "sub" ? vSub()
       : r === "give" ? vGive() : r === "ledger" ? vLedger() : r === "import" ? vImport() : r === "excel" ? vExcel() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
-      : r === "edit" ? vSub() : vVpaHome();
+      : r === "new" ? vNew() : r === "edit" ? (isOwnEvent(S.route.lo) ? vEdit() : vSub()) : vVpaHome();
   } else {
     if (VPA_ONLY.has(r)) S.route = { name: "home" };
     const rr = S.route.name;
@@ -2024,7 +2032,7 @@ function render() {
 
   const navKey = isVpa() ? "vpa" : "lo";
   const counts = isVpa() ? { review: pendingItems().length, access: S.requests.length } : { submissions: myItems().filter((x) => x.status === "returned").length };
-  const curTop = { reviewSub: "review", sub: isVpa() ? "submissions" : "submissions", edit: isLo() ? "new" : "submissions" }[r] || r;
+  const curTop = { reviewSub: "review", sub: "submissions", edit: isLo() || isOwnEvent(S.route.lo) ? "new" : "submissions" }[r] || r;
   const navItems = (S.role === "none" ? [] : NAV[navKey]).map((n) => (n[0] === "access" && S.platform === "firebase" ? [n[0], n[1], "Committees"] : n));
   const sideNav = navItems.map(([k, ic, label]) => `<button class="nav${curTop === k ? " on" : ""}" data-act="go" data-r="${k}"><span class="ic">${ic}</span>${esc(label)}${counts[k] ? `<span class="count">${counts[k]}</span>` : ""}</button>`).join("");
   const mobNav = navItems.map(([k, , label]) => `<button class="${curTop === k ? "on" : ""}" data-act="go" data-r="${k}">${esc(label)}${counts[k] ? ` · ${counts[k]}` : ""}</button>`).join("");
@@ -2162,6 +2170,25 @@ window.addEventListener("hashchange", () => { const h = location.hash.slice(1); 
 const itemPath = (lo, id) => "subs/" + lo + "/items/" + id;
 async function touchMarker(lo, lc) { await S.store.set("subs/" + lo, { lc, updatedAt: Date.now() }); }
 
+/** Write an approval: one award per row with points, the decision, and the submission marked approved.
+ *  Each award has a fixed id and is only ever created, never overwritten: an approval interrupted and
+ *  retried finds the entries already written and leaves them, so nobody is paid twice (the GitHub
+ *  build's rules refuse to overwrite a points entry anyway). An approval that was undone and is made
+ *  again writes new entries (round 1, 2, …). */
+async function writeApproval(d, sub, decided, vnote) {
+  const round = sub.round || 0;
+  for (let i = 0; i < decided.length; i++) {
+    const x = decided[i], path = "ledger/aw_" + d.id + (round ? "_r" + round : "") + "_" + i;
+    if (x.pts <= 0 || await S.store.get(path)) continue;
+    await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, at: Date.now() + i, by: S.uid });
+  }
+  const total = sum(decided, (x) => x.pts);
+  await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: vnote || null, at: Date.now(), by: S.uid });
+  await S.store.update(itemPath(d.lo, d.id), { status: "approved", decidedAt: Date.now() });
+  await audit("submission.approved", `${sub.ref}${sub.lc === NATIONAL ? " (the VPA's own event)" : ""} approved for ${total} pts across ${decided.filter((x) => x.pts > 0).length} members`);
+  syncSoon();
+}
+
 const SUBMITS = {
   async signIn() {
     const f = S.forms.signin || {};
@@ -2188,7 +2215,7 @@ const SUBMITS = {
       const title = String(f.title || "").trim(), date = f.date || "", location = String(f.location || "").trim();
       if (!title || !date || !location) throw new UserError("Fill in the event name, date and location.");
       if (date > today()) throw new UserError("The event date is in the future.");
-      const lc = myLc();
+      const lc = isVpa() ? NATIONAL : myLc();
       if (!lc) throw new UserError("You don't have a committee yet.");
       const id = newId("s");
       const ym = date.slice(2, 4) + date.slice(5, 7);
@@ -2215,7 +2242,7 @@ const SUBMITS = {
       if (sub.status !== "draft" && sub.status !== "returned") throw new UserError("This submission is with the VPA and locked.");
       const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Search for the member and click their name.");
       const c = S.rubric.find((x) => x.id === f.cat); if (!c) throw new UserError("Choose a role from the rubric.");
-      if (c.vpaOnly) throw new UserError(`“${c.label}” is given by the VPA, not through a submission.`);
+      if (c.vpaOnly && !isVpa()) throw new UserError(`“${c.label}” is given by the VPA, not through a submission.`);
       const pts = Number(f.pts);
       if (!Number.isInteger(pts) || pts < 0 || pts > 99) throw new UserError("Points must be a whole number from 0 to 99.");
       if ((sub.rows || []).some((r) => r.memberId === m.id)) throw new UserError(`${m.name} is already on this event — remove their row first to change it.`);
@@ -2253,24 +2280,9 @@ const SUBMITS = {
         const pts = rejected ? 0 : raw;
         return { memberId: r.memberId, name: r.name, lemsicId: r.lemsicId || null, lc: lcs[r.memberId] || r.lc || sub.lc, cat: r.cat, catLabel: r.catLabel, pts, state: rejected ? "rejected" : pts === r.pts ? "kept" : "edited", note: String(f["n" + i] || "").trim() || null };
       });
-      // Each row's entry has a fixed id and is only ever created, never overwritten:
-      // if an approval is interrupted and retried, the entries already written are
-      // found and left alone, so nobody is paid twice. (In the GitHub build the
-      // database refuses to overwrite a points entry anyway.)
-      // An approval that was undone and is now made again writes new entries (round 1, 2, …).
-      const round = sub.round || 0;
-      for (let i = 0; i < decided.length; i++) {
-        const x = decided[i], path = "ledger/aw_" + d.id + (round ? "_r" + round : "") + "_" + i;
-        if (x.pts <= 0 || await S.store.get(path)) continue;
-        await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, at: Date.now() + i, by: S.uid });
-      }
-      const total = sum(decided, (x) => x.pts);
-      await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: String(f.vnote || "").trim() || null, at: Date.now(), by: S.uid });
-      await S.store.update(itemPath(d.lo, d.id), { status: "approved", decidedAt: Date.now() });
-      await audit("submission.approved", `${sub.ref} approved for ${total} pts across ${decided.filter((x) => x.pts > 0).length} members`);
+      await writeApproval(d, sub, decided, String(f.vnote || "").trim() || null);
       clearForm(key);
       S.route = { name: "review" };
-      syncSoon();
     }, "Approved. The points are on the sheet.");
   },
   returnSub(d) {
@@ -2383,6 +2395,19 @@ const SUBMITS = {
 };
 
 const ACTIONS = {
+  approveOwn(d) {
+    act(async () => {
+      const sub = findItem(d.lo, d.id); if (!sub || !isOwnEvent(d.lo)) throw new UserError("That event is gone.");
+      if (sub.status !== "draft" && sub.status !== "returned") throw new UserError("That event is already on the points sheet.");
+      if (problemsFor(sub, allItems()).some((p) => p.level === "error")) throw new UserError("Fix the problems listed first.");
+      const lcs = memberLcs();
+      const decided = (sub.rows || []).map((r) => ({ memberId: r.memberId, name: r.name, lemsicId: r.lemsicId || null, lc: lcs[r.memberId] || r.lc || null, cat: r.cat, catLabel: r.catLabel, pts: r.pts, state: "kept", note: null }));
+      await S.store.update(itemPath(d.lo, d.id), { status: "pending", submittedAt: Date.now(), updatedAt: Date.now() });
+      await writeApproval(d, Object.assign({}, sub, { status: "pending" }), decided, null);
+      S.route = { name: "sub", lo: d.lo, id: d.id };
+    }, "Approved. The points are on the sheet.");
+  },
+
   delRow(d) {
     act(async () => {
       const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
@@ -2480,11 +2505,12 @@ const ACTIONS = {
         if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, eventLc: e.eventLc || null, kind: "award", pts: -e.pts, reason: "Approval undone — " + sub.ref, subId: d.id, subRef: sub.ref, reverses: e.id, round, at: Date.now(), by: S.uid });
       }
       await S.store.update("decisions/" + d.id, { undone: true, undoneAt: Date.now() });
-      await S.store.update(itemPath(d.lo, d.id), { status: "pending", round: round + 1, reopenedAt: Date.now() });
+      const own = isOwnEvent(d.lo);
+      await S.store.update(itemPath(d.lo, d.id), { status: own ? "draft" : "pending", round: round + 1, reopenedAt: Date.now() });
       await audit("submission.unapproved", `${sub.ref}: approval undone, ${sum(awards, (e) => e.pts)} pts taken back`);
-      S.route = { name: "reviewSub", lo: d.lo, id: d.id };
+      S.route = { name: own ? "edit" : "reviewSub", lo: d.lo, id: d.id };
       syncSoon();
-    }, "Approval undone. The points are off the sheet and it's back in your review queue.");
+    }, isOwnEvent(d.lo) ? "Approval undone. The points are off the sheet and the event is a draft again." : "Approval undone. The points are off the sheet and it's back in your review queue.");
   },
   reopenSub(d) {
     if (!confirmTwice("reopen:" + d.id)) return;

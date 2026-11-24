@@ -412,6 +412,31 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await vpa.click('button[data-act="rubricUndo"]'); await settle(vpa); await vpa.click('button[data-act="rubricUndo"]'); await vpa.waitForSelector('text=Rubric upload undone', { timeout: 15000 }); await settle(vpa, 800);
   const back = await labels();
   check(`undoing the upload puts the old rubric back exactly (${back.length} categories)`, back.length === 9 && back.includes('Participant / attendee') && !back.includes('NatOC Coordinator') && !/RETIRED —/i.test(await vpa.innerText('.content')));
+  console.log('\n— the VPA records an event they coordinated —');
+  const sheetTotal = async () => { await nav(vpa, 'Points sheet'); return Number(((await text(vpa)).match(/grand total\s*(-?\d+)/i) || [])[1]); };
+  const startTotal = await sheetTotal(), leaStart = leaTotal();
+  await nav(vpa, 'New event');
+  check('the VPA\'s event is listed as National', (await text(vpa)).includes('National · VPA'));
+  await vpa.fill('input[name="title"]', 'National Leadership Weekend'); await vpa.fill('input[name="date"]', '2026-11-10'); await vpa.fill('input[name="location"]', 'Byblos');
+  await vpa.click('form[data-submit="createDraft"] button[type=submit]'); await vpa.waitForSelector('form[data-submit="addRow"]'); await settle(vpa, 600);
+  for (const [typed, m, c, pts] of [['lea', 'Lea Khoury', 'OC coordinator', 12], ['LEM-3107', 'Omar Fakih', 'Volunteer — half day', 3]]) {
+    await chooseMember(vpa, ROW, typed, m);
+    await pick(vpa, `${ROW} select[name="cat"]`, c);
+    await vpa.fill(`${ROW} input[name="pts"]`, String(pts));
+    await vpa.click(`${ROW} button[type=submit]`); await settle(vpa, 700);
+  }
+  check('no “Send to the VPA” — the VPA approves their own event', !(await vpa.isVisible('form[data-submit="send"]')) && (await vpa.innerText('button[data-act="approveOwn"]')).includes('add 15 pts'));
+  await vpa.click('button[data-act="approveOwn"]'); await vpa.waitForSelector('text=Approved. The points are on the sheet', { timeout: 15000 }); await settle(vpa, 3000);
+  check(`approved straight onto the sheet, no review queue (${startTotal} → ${await sheetTotal()})`, (await sheetTotal()) === startTotal + 15);
+  await nav(vpa, 'Pending review');
+  check('…it never sat in the review queue', !(await text(vpa)).includes('National Leadership Weekend'));
+  const natRow = xl('Ledger').find((row) => row[1] === 'Omar Fakih' && /National Leadership Weekend/.test(row[6] || '')) || [];
+  check(`Excel: Omar's points count for USJ, from an event run by “${natRow[8]}”`, natRow[3] === 'USJ' && natRow[8] === 'National (VPA)' && leaTotal() === leaStart + 12);
+  await nav(vpa, 'All submissions');
+  await vpa.locator('tr', { hasText: 'National Leadership Weekend' }).locator('button:has-text("Open")').click(); await settle(vpa);
+  await vpa.click('button[data-act="undoApproval"]'); await settle(vpa); await vpa.click('button[data-act="undoApproval"]'); await vpa.waitForSelector('text=the event is a draft again', { timeout: 15000 }); await settle(vpa, 2500);
+  check('undoing it takes the points back and makes it an editable draft again', await vpa.isVisible('form[data-submit="addRow"]') && (await sheetTotal()) === startTotal && leaTotal() === leaStart);
+
   await nav(vpa, 'Overview');
   check('the real site has no reset button', !(await vpa.isVisible('button[data-act="resetTest"]')) && !(await text(vpa)).includes('Reset this test copy'));
   check(`the VPA screens never hit a refusal (${(await errors(vpa)).length})`, (await errors(vpa)).length === 0);
