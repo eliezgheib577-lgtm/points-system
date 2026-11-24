@@ -101,6 +101,8 @@ The rules from step 4 are what protect the data.
 3. **Upload the real rubric** under **Rubric & rules → Upload a rubric**: an
    Excel file with a row per type — its section (Activity, CB…), the type and
    its points. It replaces the placeholder, and the upload can be undone.
+   A **Position** section is the VPA's to give: LOs don't see those types, and
+   the VPA gives them under **Give points**.
 4. **Upload the member list** under **Members**: an Excel or CSV file with each
    member's name, LeMSIC ID and LC. LOs find volunteers by typing a name or ID,
    from any LC. People already there are recognised, so uploading an updated

@@ -488,7 +488,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, editMember: null, clearProgress: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, editMember: null, clearProgress: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -511,7 +511,7 @@ function stopWatching() {
   offs.splice(0).forEach((f) => { try { f(); } catch (e) { /* already closed */ } });
   Object.keys(itemWatch).forEach((k) => { try { itemWatch[k](); } catch (e) { /* closed */ } delete itemWatch[k]; });
   started.clear();
-  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], imports: [], imp: null, mlist: null, rlist: null, members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
+  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], imports: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
 }
 function arrived(meta) { if (!meta || !meta.fromCache) { S.loaded = true; S.stale = false; } }
 function watchColl(path, key, sortFn) {
@@ -718,6 +718,7 @@ function problemsFor(sub, others) {
     if (!r.loCanExceed && (r.pts < r.min || r.pts > r.max))
       add("warning", `${r.name}: “${r.catLabel}” ${r.min === r.max ? `is worth ${r.min} pts` : `allows ${r.min}–${r.max} pts`}, ${r.pts} entered. Explain it in the note or the VPA will likely adjust it.`);
   });
+  rows.forEach((r) => { const c = S.rubric.find((x) => x.id === r.cat); if (c && c.vpaOnly) add("warning", `${r.name}: “${r.catLabel}” is given by the VPA, not through a submission.`); });
   const per = {};
   rows.forEach((r) => { per[r.cat] = per[r.cat] || { n: 0, r }; per[r.cat].n += 1; });
   Object.values(per).forEach(({ n, r }) => {
@@ -898,16 +899,23 @@ function rubricGroups(cats) {
   cats.forEach((c) => { const g = c.group || ""; let x = out.find((y) => y.g === g); if (!x) out.push(x = { g, list: [] }); x.list.push(c); });
   return out;
 }
-const rubricOptions = (cur) => rubricGroups(activeRubric()).map(({ g, list }) => { const o = list.map((c) => opt(c.id, `${c.label} (${band(c)})`, cur)).join(""); return g ? `<optgroup label="${esc(g)}">${o}</optgroup>` : o; }).join("");
+/** The role list. LOs never see the types the VPA gives (positions); the VPA sees those first. */
+function rubricOptions(cur, forVpa) {
+  const cats = activeRubric().filter((c) => forVpa || !c.vpaOnly);
+  const ordered = forVpa ? cats.filter((c) => c.vpaOnly).concat(cats.filter((c) => !c.vpaOnly)) : cats;
+  return rubricGroups(ordered).map(({ g, list }) => { const o = list.map((c) => opt(c.id, `${c.label} (${band(c)})`, cur)).join(""); return g ? `<optgroup label="${esc(g)}">${o}</optgroup>` : o; }).join("");
+}
+/** On upload, a "Position" section is the VPA's to give. */
+const vpaOnlyByDefault = (group) => /position/i.test(group || "");
 const usedCats = () => { const u = new Set(); allItems().forEach((x) => (x.rows || []).forEach((r) => u.add(r.cat))); return u; }; // old points sheets; uploads and clears carry a kind
 
 // ---------- navigation ----------
-const TOP = ["home", "new", "submissions", "review", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
+const TOP = ["home", "new", "submissions", "review", "give", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
 const NAV = {
   lo: [["home", "◆", "Dashboard"], ["new", "＋", "New submission"], ["submissions", "▤", "My submissions"], ["rubric", "◉", "Points rubric"]],
-  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
+  vpa: [["home", "◆", "Overview"], ["review", "◇", "Pending review"], ["submissions", "▤", "All submissions"], ["give", "✚", "Give points"], ["ledger", "≡", "Points sheet"], ["import", "⇪", "Import old sheet"], ["excel", "⇅", "Excel"], ["members", "◈", "Members"], ["rubric", "◉", "Rubric & rules"], ["access", "⚙", "Access & LCs"], ["audit", "⟲", "Audit log"]],
 };
-const VPA_ONLY = new Set(["review", "reviewSub", "ledger", "import", "excel", "members", "access", "audit"]);
+const VPA_ONLY = new Set(["review", "reviewSub", "give", "ledger", "import", "excel", "members", "access", "audit"]);
 function go(name, params) {
   S.route = Object.assign({ name }, params || {});
   if (TOP.includes(name)) { try { if (location.hash.slice(1) !== name) history.replaceState(null, "", "#" + name); } catch (e) { /* framed */ } }
@@ -1082,7 +1090,7 @@ function vReviewSub() {
   const capWarn = [];
   const month = (sub.date || "").slice(0, 7);
   rows.forEach((r) => {
-    const already = sum(S.ledger.filter((e) => e.memberId === r.memberId && e.kind === "award" && new Date(e.at).toISOString().slice(0, 7) === month), (e) => e.pts);
+    const already = sum(S.ledger.filter((e) => e.memberId === r.memberId && e.kind === "award" && e.source !== "vpa" && new Date(e.at).toISOString().slice(0, 7) === month), (e) => e.pts);
     if (already + r.pts > 30) capWarn.push(`${r.name} would reach ${already + r.pts} pts this month — the soft cap is 30.`);
   });
   return head(esc(sub.title), `LC ${esc(sub.lc)} · ${fmtDate(sub.date)} · ${esc(sub.location || "—")} · submitted by ${esc(personName(sub.by))} ${timeAgo(sub.submittedAt)} · <span class="mono">${esc(sub.ref)}</span>`, sub.sc ? `<span class="pill tag">${esc(sub.sc)}</span>` : "") +
@@ -1155,7 +1163,7 @@ function vLedger() {
       ${S.ledger.slice(0, 300).map((e) => `<tr${e.pts < 0 ? ` style="background:var(--red-soft)"` : e.kind === "opening_balance" ? ` style="background:var(--blue-soft)"` : ""}><td>${who(e.name, e.lemsicId)}</td>
         <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by LC ${esc(e.eventLc)}</div>` : ""}</td><td>${esc(e.lc)}</td>
         <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td>
-        <td style="text-align:right">${e.kind === "correction" && !e.reverses ? (reversed(e) ? `<span class="pill flat">undone</span>` : twiceBtn("undoCorrection", "corr:" + e.id, "Undo", `data-id="${esc(e.id)}"`)) : e.kind === "award" && !e.reverses && e.subId ? `<span class="sub">undo from the submission</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+        <td style="text-align:right">${e.kind === "correction" && !e.reverses ? (reversed(e) ? `<span class="pill flat">undone</span>` : twiceBtn("undoCorrection", "corr:" + e.id, "Undo", `data-id="${esc(e.id)}"`)) : e.kind === "award" && !e.reverses && e.subId ? `<span class="sub">undo from the submission</span>` : e.awardId && !e.reverses ? `<span class="sub">undo under Give points</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   }
   const cf = "corr";
   return head("Live points sheet", "Every row came from an approved submission, an import or a correction. Nothing is typed into it directly, so the history never changes underneath you.",
@@ -1395,9 +1403,10 @@ function vRubric() {
   const cats = vpa ? S.rubric : activeRubric();
   // The VPA also sees retired categories, together at the bottom.
   const retiredCats = vpa ? S.rubric.filter((c) => c.active === false) : [];
-  const groups = rubricGroups(vpa ? S.rubric.filter((c) => c.active !== false) : cats).concat(retiredCats.length ? [{ g: "Retired — LOs don't see these", list: retiredCats }] : []), cols = vpa ? 7 : 4;
+  const groups = rubricGroups(vpa ? S.rubric.filter((c) => c.active !== false) : cats).concat(retiredCats.length ? [{ g: "Retired — LOs don't see these", list: retiredCats, retired: true }] : []), cols = vpa ? 8 : 4;
+  const sectionSwitch = ({ g, list, retired }) => { if (!vpa || retired || !g) return ""; const all = list.every((c) => c.vpaOnly); return ` <button class="linkbtn" style="float:right;text-transform:none;letter-spacing:0;font-size:12px" data-act="sectionVpaOnly" data-g="${esc(g)}" data-v="${all ? "" : "1"}" ${dis()}>${all ? "Given by the VPA · let LOs use these" : "Make these VPA-only"}</button>`; };
   const row = (c) => {
-    if (!vpa) return `<tr><td><b>${esc(c.label)}</b>${c.description ? `<div class="sub">${esc(c.description)}</div>` : ""}${c.maxPerEvent ? `<div class="sub">max ${c.maxPerEvent} per event</div>` : ""}</td><td class="num mono">${c.def}</td><td class="num mono">${c.min === c.max ? "fixed" : `${c.min}–${c.max}`}</td><td class="sub">${esc(c.requires || "—")}</td></tr>`;
+    if (!vpa) return `<tr><td><b>${esc(c.label)}</b>${c.vpaOnly ? ` <span class="pill flat">given by the VPA</span>` : ""}${c.description ? `<div class="sub">${esc(c.description)}</div>` : ""}${c.maxPerEvent ? `<div class="sub">max ${c.maxPerEvent} per event</div>` : ""}</td><td class="num mono">${c.def}</td><td class="num mono">${c.min === c.max ? "fixed" : `${c.min}–${c.max}`}</td><td class="sub">${esc(c.requires || "—")}</td></tr>`;
     const f = "rb_" + c.id;
     return `<tr${c.active === false ? ` style="opacity:.55"` : ""}><td><input class="cellinp" data-form="${f}" name="label" value="${esc(fv(f, "label", c.label))}" aria-label="Label"><div class="sub">${esc(c.description || "")}</div></td>
       <td><input class="pts" type="number" data-form="${f}" name="min" value="${esc(fv(f, "min", c.min))}" aria-label="Min"></td>
@@ -1405,13 +1414,14 @@ function vRubric() {
       <td><input class="pts" type="number" data-form="${f}" name="max" value="${esc(fv(f, "max", c.max))}" aria-label="Max"></td>
       <td><input class="pts" type="number" min="0" data-form="${f}" name="maxPerEvent" value="${esc(fv(f, "maxPerEvent", c.maxPerEvent || ""))}" placeholder="—" aria-label="Max per event"></td>
       <td style="text-align:center"><input type="checkbox" data-form="${f}" name="loCanExceed" ${fv(f, "loCanExceed", !!c.loCanExceed) ? "checked" : ""} aria-label="LO can exceed"></td>
+      <td style="text-align:center"><input type="checkbox" data-form="${f}" name="vpaOnly" ${fv(f, "vpaOnly", !!c.vpaOnly) ? "checked" : ""} aria-label="Only the VPA gives this"></td>
       <td><div style="display:flex;gap:6px"><button class="btn sm" data-act="saveCat" data-id="${esc(c.id)}" ${dis()}>Save</button><button class="btn sm" data-act="toggleCat" data-id="${esc(c.id)}" ${dis()}>${c.active === false ? "Restore" : "Retire"}</button></div></td></tr>`;
   };
-  const rows = groups.map(({ g, list }) => (g ? `<tr><td colspan="${cols}" style="background:var(--surface-2);font-weight:650;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)">${esc(g)} <span class="sub" style="text-transform:none;letter-spacing:0;font-weight:400">· ${list.length}</span></td></tr>` : "") + list.map(row).join("")).join("");
+  const rows = groups.map((grp) => (grp.g ? `<tr><td colspan="${cols}" style="background:var(--surface-2);font-weight:650;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)">${esc(grp.g)} <span class="sub" style="text-transform:none;letter-spacing:0;font-weight:400">· ${grp.list.length}</span>${sectionSwitch(grp)}</td></tr>` : "") + grp.list.map(row).join("")).join("");
   const nf = "cat_new";
   return head(vpa ? "Rubric &amp; rules" : "Points rubric", vpa ? "The rubric is data, not code. Change a band here and every LO sees it at once. Rows already submitted keep the band they were entered under, so past decisions never shift." : "The bands the VPA judges points against. Points outside a band are flagged for the VPA, not blocked.") +
     (cats.length === 0 ? empty("No rubric yet", vpa ? "Add the first category below." : "The VPA hasn't set it up yet.") :
-      `<div class="card" style="margin-bottom:14px"><div class="scroll-x"><table><thead>${vpa ? `<tr><th>Category</th><th class="num">Min</th><th class="num">Suggested</th><th class="num">Max</th><th class="num">Per event</th><th>LO may exceed</th><th></th></tr>` : `<tr><th>Category</th><th class="num">Suggested</th><th class="num">Band</th><th>Requires</th></tr>`}</thead><tbody>${rows}</tbody></table></div></div>`) +
+      `<div class="card" style="margin-bottom:14px"><div class="scroll-x"><table><thead>${vpa ? `<tr><th>Category</th><th class="num">Min</th><th class="num">Suggested</th><th class="num">Max</th><th class="num">Per event</th><th>LO may exceed</th><th>VPA gives only</th><th></th></tr>` : `<tr><th>Category</th><th class="num">Suggested</th><th class="num">Band</th><th>Requires</th></tr>`}</thead><tbody>${rows}</tbody></table></div></div>`) +
     (vpa ? `<form class="card" data-submit="addCat" style="max-width:820px"><div class="card-h"><h3>Add a category</h3></div><div class="card-b inline-form">
       <div class="field" style="flex:2"><label for="nc-l">Label *</label>${inp(nf, "label", "", `id="nc-l" maxlength="60" placeholder="Fundraising lead"`)}</div>
       <div class="field" style="flex:0 0 80px;min-width:80px"><label for="nc-min">Min</label>${inp(nf, "min", "", `id="nc-min" type="number" min="0"`)}</div>
@@ -1420,7 +1430,72 @@ function vRubric() {
       <button class="btn pri" type="submit" ${dis()}>Add</button></div></form>` + vRubricUpload() : "");
 }
 
-// ---------- uploading a rubric (sections, types, points) ----------
+// ---------- the VPA gives points directly: positions, and anything that isn't an LO's event ----------
+function vGive() {
+  const G = S.give, rf = "give_row", mf = "give_meta";
+  const total = sum(G.rows, (r) => r.pts);
+  const done = S.imports.filter((x) => x.kind === "award").sort((a, b) => (b.at || 0) - (a.at || 0));
+  const term = (S.config && S.config.term) || "this term";
+  return head("Give points", "Points you give directly — positions, and anything else that isn't an LO's event. They go straight onto the points sheet; nobody reviews them, and each batch can be undone.") +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">
+      <form class="card" data-submit="addGiveRow"><div class="card-h"><h3>Add a person</h3></div><div class="card-b stack">
+        <div class="field"><label for="give-m">Member — search by name or LeMSIC ID</label>${memberPicker(rf, { id: "give-m", alumni: true, next: "cat" })}</div>
+        <div class="inline-form">
+          <div class="field" style="flex:1.6"><label for="give-c">Type</label><select class="inp" id="give-c" data-form="${rf}" name="cat" data-defaults="1">${opt("", "From the rubric…", "")}${rubricOptions(fv(rf, "cat"), true)}</select></div>
+          <div class="field" style="flex:0 0 90px;min-width:90px"><label for="give-p">Points</label>${inp(rf, "pts", "", `id="give-p" type="number" min="1" max="999"`)}</div>
+          <div class="field" style="flex:2;min-width:180px"><label for="give-n">Note</label>${inp(rf, "note", "", `id="give-n" maxlength="200" placeholder="Optional"`)}</div>
+          <button class="btn pri" type="submit" ${dis()}>＋ Add</button>
+        </div></div></form>
+      <div class="card"><div class="card-h"><h3>To give</h3><span class="pill flat">${G.rows.length}</span></div>
+        ${G.rows.length === 0 ? `<div class="card-b"><span class="sub">Nobody yet. Add people above; they wait here until you give the points.</span></div>` :
+        `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Type</th><th>Note</th><th class="num">Points</th><th></th></tr></thead><tbody>
+        ${G.rows.map((r, i) => `<tr><td>${who(r.name, [r.lemsicId, "LC " + r.lc].filter(Boolean).join(" · "))}</td><td>${esc(r.catLabel)}${r.group ? `<div class="sub">${esc(r.group)}</div>` : ""}</td><td class="sub">${esc(r.note || "—")}</td><td class="num"><b>${r.pts}</b></td>
+          <td><button class="btn ghost sm" data-act="delGiveRow" data-i="${i}" title="Remove this row" ${dis()}>✕</button></td></tr>`).join("")}</tbody></table></div>`}
+        <div class="card-b stack" style="border-top:1px solid var(--line)">
+          <div class="field"><label for="give-t">What for — shown on the points sheet</label>${inp(mf, "title", "", `id="give-t" maxlength="120" placeholder="Positions — ${esc(term)}"`)}</div>
+          <div><button class="btn pri" data-act="giveApply" ${G.rows.length && !S.busy ? "" : "disabled"}>Give ${G.rows.length} ${G.rows.length === 1 ? "award" : "awards"} · ${total} pts</button></div>
+        </div></div>
+    </div><div class="col-side"><div class="card"><div class="card-h"><h3>Given so far</h3><span class="pill flat">${done.length}</span></div>
+      ${done.length === 0 ? `<div class="card-b"><span class="sub">Nothing given yet.</span></div>` :
+      `<div class="scroll-x"><table><thead><tr><th>Batch</th><th class="num">Pts</th><th></th></tr></thead><tbody>
+      ${done.map((x) => `<tr${x.status === "reversed" ? ` style="opacity:.6"` : ""}><td><b class="mono">${esc(x.ref)}</b><div class="sub">${esc(x.title || "Points from the VPA")} · ${x.count || 0} ${x.count === 1 ? "person" : "people"} · ${timeAgo(x.at)}</div></td><td class="num"><b>${x.total || 0}</b></td>
+        <td style="text-align:right">${x.status === "reversed" ? `<span class="pill flat">undone</span>` : twiceBtn("giveUndo", "awd:" + x.id, "Undo", `data-id="${esc(x.id)}"`)}</td></tr>`).join("")}</tbody></table></div>`}
+      <div class="pad" style="border-top:1px solid var(--line)"><span class="hint">Undo takes a batch back off the sheet with matching minus entries; nothing is deleted.</span></div></div></div></div>`;
+}
+async function applyGive() {
+  const G = S.give; if (!G.rows.length) throw new UserError("Add someone first.");
+  const title = String(fv("give_meta", "title", "")).trim() || null;
+  const id = newId("awd"), ref = "AWD-" + today().slice(2, 4) + today().slice(5, 7) + "-" + rand().toUpperCase().slice(0, 5);
+  const total = sum(G.rows, (r) => r.pts);
+  await S.store.set("imports/" + id, { kind: "award", ref, title, status: "applying", rows: G.rows.map((r) => Object.assign({}, r)), total, count: G.rows.length, at: Date.now(), by: S.uid });
+  // Fixed ids, only ever created: a retry after a dropped connection never gives anything twice.
+  for (let i = 0; i < G.rows.length; i++) {
+    const r = G.rows[i], path = "ledger/va_" + id + "_" + i;
+    if (await S.store.get(path)) continue;
+    const m = S.members.find((x) => x.id === r.memberId) || r;
+    await S.store.set(path, { memberId: r.memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "award", source: "vpa", pts: r.pts, reason: (title ? title + " — " : "") + r.catLabel + (r.note ? " (" + r.note + ")" : ""), cat: r.cat, awardId: id, at: Date.now() + i, by: S.uid });
+  }
+  await S.store.update("imports/" + id, { status: "applied" });
+  await audit("points.given", `${ref}${title ? " — " + title : ""}: ${total} pts to ${G.rows.length} ${G.rows.length === 1 ? "person" : "people"}`);
+  S.give = { rows: [] }; clearForm("give_meta");
+  syncSoon();
+  toast(`${total} pts given to ${G.rows.length} ${G.rows.length === 1 ? "person" : "people"}. They're on the points sheet.`);
+}
+async function undoGive(id) {
+  const rec = S.imports.find((x) => x.id === id);
+  if (!rec || rec.kind !== "award" || rec.status === "reversed") throw new UserError("That batch has already been undone.");
+  const entries = S.ledger.filter((e) => e.awardId === id && !e.reverses);
+  for (const e of entries) {
+    const path = "ledger/rv_" + e.id;
+    if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "award", source: "vpa", pts: -e.pts, reason: "Undo of " + rec.ref + " — " + e.reason, cat: e.cat || null, awardId: id, reverses: e.id, at: Date.now(), by: S.uid });
+  }
+  await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now() });
+  await audit("points.given.undone", `${rec.ref} undone: ${sum(entries, (e) => e.pts)} pts taken back`);
+  syncSoon();
+  toast(`${rec.ref} undone. Those points are off the sheet.`);
+}
+
+// ---------- uploading a rubric (sections, types and points) ----------
 function vRubricUpload() {
   const R = S.rlist;
   const ups = S.imports.filter((x) => x.kind === "rubric").sort((a, b) => (b.at || 0) - (a.at || 0));
@@ -1440,6 +1515,7 @@ function vRubricUpload() {
     ${R.sheets.length > 1 ? `<div class="field" style="max-width:320px"><label>Sheet</label><select class="inp" data-rl="sheet">${R.sheets.map((x, i) => opt(i, x.name, R.sheetIx)).join("")}</select></div>` : ""}
     <div class="grid g4">${colSel("group", "Section column", true)}${colSel("label", "Type column")}${colSel("pts", "Points column")}${colSel("max", "Max column", true)}</div>
     ${note(plan.items.length ? "good" : "warn", `<b>${plan.items.length} categories</b> in ${plan.groups} ${plan.groups === 1 ? "section" : "sections"}: ${plan.items.filter((x) => x.state === "new").length} new · ${plan.items.filter((x) => x.state === "changed").length} with new points · ${plan.items.filter((x) => x.state === "same").length} unchanged${plan.skipped.length ? ` · ${plan.skipped.length} rows skipped` : ""}.`)}
+    ${(() => { const v = plan.items.filter((x) => (x.was && typeof x.was.vpaOnly === "boolean" ? x.was.vpaOnly : vpaOnlyByDefault(x.group))); return v.length ? note("info", `<b>${v.length} position ${v.length === 1 ? "type is" : "types are"} given by the VPA</b> (${esc([...new Set(v.map((x) => x.group))].join(", "))}): LOs won't see them in their list. You give them under <b>Give points</b>, and can change this per type afterwards.`) : ""; })()}
     ${plan.leftover.length ? `<div>${note("info", R.keepOthers ? `<b>${plan.leftover.length} current categories aren't in the file</b> and stay as they are.` : `<b>${plan.leftover.length} current categories aren't in the file:</b> ${leftover.filter((x) => !x.used).length} will be removed${leftover.some((x) => x.used) ? `, ${leftover.filter((x) => x.used).length} retired (already used — past submissions keep them)` : ""}.`)}
       <label class="sub" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" data-rl="keepOthers" ${R.keepOthers ? "checked" : ""}> Keep them — only add and update what's in the file</label></div>` : ""}
     ${plan.skipped.length ? `<div>${note("warn", `<b>${plan.skipped.length} ${plan.skipped.length === 1 ? "row is" : "rows are"} skipped:</b>`)}<ul class="sub" style="margin:4px 0 0 18px;padding:0">${plan.skipped.slice(0, 8).map((x) => `<li>Row ${x.row}${x.label ? " — " + esc(x.label) : ""}: ${esc(x.why)}</li>`).join("")}</ul></div>` : ""}
@@ -1519,7 +1595,7 @@ async function applyRubric() {
   plan.items.filter((x) => !x.was).forEach((x) => { let cid = norm((x.group || "") + " " + x.label).replace(/ /g, "_").slice(0, 50) || "cat"; while (taken.has(cid)) cid += "_" + rand().slice(0, 3); taken.add(cid); x.newId = cid; created.push(cid); });
   await S.store.set("imports/" + id, { kind: "rubric", ref, filename: R.filename, status: "applying", count: plan.items.length, at: Date.now(), by: S.uid, before: S.rubric.map((c) => Object.assign({}, c)), created });
   for (const x of plan.items) {
-    const fields = { group: x.group, label: x.label, def: x.def, min: x.min, max: x.max, order: x.order, active: true };
+    const fields = { group: x.group, label: x.label, def: x.def, min: x.min, max: x.max, order: x.order, active: true, vpaOnly: x.was && typeof x.was.vpaOnly === "boolean" ? x.was.vpaOnly : vpaOnlyByDefault(x.group) };
     if (R.col.per >= 0) fields.maxPerEvent = x.maxPerEvent;
     if (R.col.desc >= 0) fields.description = x.description;
     if (x.was) await S.store.update("rubric/" + x.was.id, fields);
@@ -1954,7 +2030,7 @@ async function undoImport(id) {
 /** The app writes exactly these sheets. Any other sheet in the workbook is left alone. */
 function workbookSheets() {
   const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission", "Event run by"]].concat(
-    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? "LC " + (e.eventLc || e.lc) : ""]));
+    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? (e.source === "vpa" ? "VPA" : "LC " + (e.eventLc || e.lc)) : ""]));
   const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
   // Two columns to the right of the table: when this copy was written.
   const stamp = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -2159,7 +2235,7 @@ function render() {
   if (S.role === "none") view = vNoAccess();
   else if (isVpa()) {
     view = r === "review" ? vReview() : r === "reviewSub" ? vReviewSub() : r === "submissions" ? vVpaSubmissions() : r === "sub" ? vSub()
-      : r === "ledger" ? vLedger() : r === "import" ? vImport() : r === "excel" ? vExcel() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
+      : r === "give" ? vGive() : r === "ledger" ? vLedger() : r === "import" ? vImport() : r === "excel" ? vExcel() : r === "members" ? vMembers() : r === "rubric" ? vRubric() : r === "access" ? (S.platform === "firebase" ? vCommittees() : vAccess()) : r === "audit" ? vAudit()
       : r === "edit" ? vSub() : vVpaHome();
   } else {
     if (VPA_ONLY.has(r)) S.route = { name: "home" };
@@ -2360,6 +2436,7 @@ const SUBMITS = {
       if (sub.status !== "draft" && sub.status !== "returned") throw new UserError("This submission is with the VPA and locked.");
       const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Search for the member and click their name.");
       const c = S.rubric.find((x) => x.id === f.cat); if (!c) throw new UserError("Choose a role from the rubric.");
+      if (c.vpaOnly) throw new UserError(`“${c.label}” is given by the VPA, not through a submission.`);
       const pts = Number(f.pts);
       if (!Number.isInteger(pts) || pts < 0 || pts > 99) throw new UserError("Points must be a whole number from 0 to 99.");
       if ((sub.rows || []).some((r) => r.memberId === m.id)) throw new UserError(`${m.name} is already on this event — remove their row first to change it.`);
@@ -2454,6 +2531,19 @@ const SUBMITS = {
       clearForm("member_new");
     }, "Member added.");
   },
+  addGiveRow() {
+    const rf = "give_row", f = S.forms[rf] || {};
+    const m = S.members.find((x) => x.id === f.member); if (!m) { toast("Search for the member and click their name.", true); return; }
+    const c = S.rubric.find((x) => x.id === f.cat); if (!c) { toast("Choose the type from the rubric.", true); return; }
+    const pts = Number(f.pts);
+    if (!Number.isInteger(pts) || pts < 1 || pts > 999) { toast("Points must be a whole number from 1 to 999.", true); return; }
+    if (S.give.rows.some((r) => r.memberId === m.id && r.cat === c.id)) { toast(`${m.name} already has “${c.label}” in this list.`, true); return; }
+    S.give.rows.push({ memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, cat: c.id, catLabel: c.label, group: c.group || null, pts, note: String(f.note || "").trim() || null });
+    // The type and its points stay, so giving the same position to several people is quick.
+    setForm(rf, { member: "", q: "", note: "" });
+    render();
+    const box = document.querySelector('[data-picker="give_row"]'); if (box) box.focus();
+  },
   saveMember(d) {
     const key = "member_edit_" + d.id;
     act(async () => {
@@ -2536,7 +2626,7 @@ const ACTIONS = {
       if (!label) throw new UserError("A category needs a label.");
       if (![min, def, max].every(Number.isInteger) || min < 0 || !(min <= def && def <= max)) throw new UserError("Bands must be whole numbers with min ≤ suggested ≤ max.");
       if (maxPerEvent != null && (!Number.isInteger(maxPerEvent) || maxPerEvent < 1)) throw new UserError("Per-event limit must be 1 or more, or empty.");
-      const next = Object.assign({}, c, { label, min, def, max, maxPerEvent, loCanExceed: !!fv(key, "loCanExceed", !!c.loCanExceed) });
+      const next = Object.assign({}, c, { label, min, def, max, maxPerEvent, loCanExceed: !!fv(key, "loCanExceed", !!c.loCanExceed), vpaOnly: !!fv(key, "vpaOnly", !!c.vpaOnly) });
       delete next.id;
       await S.store.set("rubric/" + d.id, next);
       await audit("rubric.changed", `“${label}” is now ${min}–${max} (suggested ${def})`);
@@ -2561,6 +2651,16 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  delGiveRow(d) { S.give.rows.splice(Number(d.i), 1); changed(); },
+  giveApply() { act(applyGive); },
+  giveUndo(d) { if (confirmTwice("awd:" + d.id)) act(() => undoGive(d.id)); },
+  sectionVpaOnly(d) {
+    act(async () => {
+      const list = S.rubric.filter((c) => (c.group || "") === d.g && c.active !== false), v = d.v === "1";
+      for (const c of list) await S.store.update("rubric/" + c.id, { vpaOnly: v });
+      await audit("rubric.changed", `${d.g}: ${v ? "given by the VPA only" : "LOs can use these again"}`);
+    }, d.v === "1" ? `${d.g}: only the VPA gives these now.` : `${d.g}: LOs can use these again.`);
+  },
   rubricApply() { act(applyRubric); },
   rubricCancel() { S.rlist = null; changed(); },
   rubricUndo(d) { if (confirmTwice("rub:" + d.id)) act(() => undoRubric(d.id)); },
