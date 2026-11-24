@@ -488,7 +488,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, editMember: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, editMember: null, clearProgress: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -885,9 +885,11 @@ function confirmTwice(key) {
 const twiceBtn = (act, key, label, attrs, cls) => `<button class="btn sm ${S.undoArmed === key ? "danger" : cls || ""}" data-act="${act}" ${attrs || ""} ${dis()}>${S.undoArmed === key ? "Really? Click again" : label}</button>`;
 /** Points or a submission mention this member: they can be edited or marked alumni, never deleted. */
 const memberInUse = (id) => S.ledger.some((e) => e.memberId === id) || allItems().some((x) => (x.rows || []).some((r) => r.memberId === id));
+/** Everyone with points or on a submission, worked out once for a whole list. */
+function usedIds() { const u = new Set(); S.ledger.forEach((e) => u.add(e.memberId)); allItems().forEach((x) => (x.rows || []).forEach((r) => u.add(r.memberId))); return u; }
 const reversed = (e) => S.ledger.some((x) => x.reverses === e.id);
 const memberUploads = () => S.imports.filter((x) => x.kind === "members");
-const sheetImports = () => S.imports.filter((x) => x.kind !== "members");
+const sheetImports = () => S.imports.filter((x) => !x.kind); // old points sheets; uploads and clears carry a kind
 
 // ---------- navigation ----------
 const TOP = ["home", "new", "submissions", "review", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
@@ -1178,7 +1180,7 @@ function vMembers() {
       <div class="field"><label for="mn-i">LeMSIC ID</label>${inp(mf, "lemsicId", "", `id="mn-i" maxlength="30" placeholder="LEM-0000"`)}</div>
       <div class="grid g2"><div class="field"><label for="mn-l">Committee *</label><select class="inp" id="mn-l" data-form="${mf}" name="lc">${opt("", "Choose…", "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, fv(mf, "lc"))).join("")}</select></div>
         <div class="field"><label for="mn-y">Year</label>${inp(mf, "year", "", `id="mn-y" maxlength="20" placeholder="Med 2"`)}</div></div>
-      <button class="btn pri" type="submit" ${dis()}>Add member</button></div></form></div></div>`;
+      <button class="btn pri" type="submit" ${dis()}>Add member</button></div></form>${vClearMembers()}</div></div>`;
 }
 
 /** Undo a member upload: whoever it added is removed (unless they already have points or are on a
@@ -1188,8 +1190,8 @@ async function undoMemberUpload(id) {
   const up = legacy ? null : S.imports.find((x) => x.id === id);
   if (!legacy && (!up || up.status === "reversed")) throw new UserError("That upload has already been undone.");
   const added = legacy ? S.members.filter((m) => m.via === "member list" && !m.uploadId).map((m) => m.id) : (up.added || []);
-  const present = added.filter((mid) => S.members.some((m) => m.id === mid));
-  const kept = present.filter(memberInUse), gone = present.filter((mid) => !memberInUse(mid));
+  const present = added.filter((mid) => S.members.some((m) => m.id === mid)), used = usedIds();
+  const kept = present.filter((mid) => used.has(mid)), gone = present.filter((mid) => !used.has(mid));
   const jobs = gone.map((mid) => () => S.store.del("members/" + mid));
   ((up && up.filled) || []).forEach((f) => { const m = S.members.find((x) => x.id === f.id); if (m && idKey(m.lemsicId) === idKey(f.lemsicId)) jobs.push(() => S.store.update("members/" + f.id, { lemsicId: null })); });
   for (let i = 0; i < jobs.length; i += 5) await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
@@ -1208,6 +1210,57 @@ function vUploads() {
     </tbody></table></div><div class="pad" style="border-top:1px solid var(--line)"><span class="hint">Undo removes the people an upload added and clears IDs it filled in. Anyone who already has points or is on a submission is kept.</span></div></div>`;
 }
 
+/** Remove everyone (or one LC) at once. Whoever has points or is on a submission stays: the history needs them. */
+async function clearMembers(lc) {
+  const used = usedIds();
+  const gone = S.members.filter((m) => (!lc || m.lc === lc) && !used.has(m.id));
+  if (!gone.length) throw new UserError("Nobody to remove — everyone left has points or is on a submission.");
+  const id = newId("clr"), ref = "CLR-" + today().slice(2, 4) + today().slice(5, 7) + "-" + rand().toUpperCase().slice(0, 5);
+  // A copy of everyone removed is kept first (VPA-only, in parts of 200), so the clear can be undone.
+  const parts = []; for (let i = 0; i < gone.length; i += 200) parts.push(gone.slice(i, i + 200));
+  for (let p = 0; p < parts.length; p++) await S.store.set(`imports/${id}_p${p}`, { kind: "clear-part", clearId: id, members: parts[p].map((m) => Object.assign({}, m)) });
+  await S.store.set("imports/" + id, { kind: "clear", ref, lc: lc || null, count: gone.length, parts: parts.length, status: "applying", at: Date.now(), by: S.uid });
+  for (let i = 0; i < gone.length; i += 5) {
+    await Promise.all(gone.slice(i, i + 5).map((m) => S.store.del("members/" + m.id)));
+    S.clearProgress = Math.min(gone.length, i + 5) + " of " + gone.length; changed();
+  }
+  S.clearProgress = null;
+  await S.store.update("imports/" + id, { status: "applied" });
+  await audit("members.cleared", `${ref}: removed ${gone.length} members${lc ? " of LC " + lc : ""}`);
+  const kept = S.members.filter((m) => (!lc || m.lc === lc) && used.has(m.id)).length;
+  toast(`${gone.length} ${gone.length === 1 ? "member" : "members"} removed${kept ? ` · ${kept} kept because they have points or are on a submission` : ""}. You can undo this.`);
+}
+/** Put back the members a clear removed — the same records, so nothing that pointed at them breaks. */
+async function undoClear(id) {
+  const rec = S.imports.find((x) => x.id === id);
+  if (!rec || rec.kind !== "clear" || rec.status === "restored") throw new UserError("That clear has already been undone.");
+  const saved = S.imports.filter((x) => x.kind === "clear-part" && x.clearId === id).flatMap((x) => x.members || []);
+  const ids = new Set(S.members.map((m) => idKey(m.lemsicId)).filter(Boolean)), names = new Set(S.members.map((m) => (m.norm || norm(m.name)) + "|" + m.lc));
+  // Anyone added again since (say, by a new upload) isn't brought back a second time.
+  const back = saved.filter((m) => !S.members.some((x) => x.id === m.id) && !(m.lemsicId && ids.has(idKey(m.lemsicId))) && !names.has((m.norm || norm(m.name)) + "|" + m.lc));
+  for (let i = 0; i < back.length; i += 5) await Promise.all(back.slice(i, i + 5).map((m) => { const data = Object.assign({}, m); delete data.id; return S.store.set("members/" + m.id, data); }));
+  await S.store.update("imports/" + id, { status: "restored", restoredAt: Date.now() });
+  await audit("members.clear.undone", `${rec.ref} undone: ${back.length} members back`);
+  toast(`${back.length} ${back.length === 1 ? "member" : "members"} back${saved.length > back.length ? ` · ${saved.length - back.length} were already in the list again` : ""}.`);
+}
+function vClearMembers() {
+  const clears = S.imports.filter((x) => x.kind === "clear").sort((a, b) => (b.at || 0) - (a.at || 0));
+  if (!S.members.length && !clears.length) return "";
+  const cf = "clear_members", lc = fv(cf, "lc", ""), used = usedIds();
+  const scope = S.members.filter((m) => !lc || m.lc === lc);
+  const removable = scope.filter((m) => !used.has(m.id)).length, kept = scope.length - removable;
+  const lcs = [...new Set(S.members.map((m) => m.lc))].sort();
+  return `<div class="card"><div class="card-h"><h3>Clear members</h3></div><div class="card-b stack">
+      <div class="field"><label for="cm-l">Who</label><select class="inp" id="cm-l" data-form="${cf}" name="lc" data-rerender="1">${opt("", `Everyone (${S.members.length})`, lc)}${lcs.map((c) => opt(c, `LC ${c} only (${S.members.filter((m) => m.lc === c).length})`, lc)).join("")}</select></div>
+      <span class="sub">${removable} will be removed${kept ? `; <b>${kept} stay</b> because they have points or are on a submission (mark them alumni instead)` : ""}.</span>
+      ${S.clearProgress ? note("info", `Removing… ${esc(S.clearProgress)}`) : ""}
+      <div>${removable ? twiceBtn("clearMembers", "clear:" + (lc || "all"), `Remove ${removable} ${removable === 1 ? "member" : "members"}`, `data-lc="${esc(lc)}"`, "danger") : `<button class="btn sm" disabled>Nobody to remove</button>`}</div>
+      <span class="hint">A clear can be undone below — the same people come back.</span>
+    </div>
+    ${clears.length ? `<div class="scroll-x" style="border-top:1px solid var(--line)"><table><thead><tr><th>Clear</th><th class="num">Removed</th><th></th></tr></thead><tbody>
+      ${clears.map((c) => `<tr${c.status === "restored" ? ` style="opacity:.6"` : ""}><td><b class="mono">${esc(c.ref)}</b><div class="sub">${c.lc ? "LC " + esc(c.lc) : "Everyone"} · ${timeAgo(c.at)}</div></td><td class="num">${c.count || 0}</td>
+        <td style="text-align:right">${c.status === "restored" ? `<span class="pill flat">undone</span>` : twiceBtn("undoClear", "unclear:" + c.id, "Undo", `data-id="${esc(c.id)}"`)}</td></tr>`).join("")}</tbody></table></div>` : ""}</div>`;
+}
 function vEditMember() {
   const m = S.editMember && S.members.find((x) => x.id === S.editMember);
   if (!m) return "";
@@ -2061,7 +2114,7 @@ document.addEventListener("change", (e) => {
   }
   if (el.getAttribute && el.getAttribute("data-act-change") === "previewLc") { S.previewLc = el.value; changed(); return; }
   const form = el.getAttribute && el.getAttribute("data-form");
-  if (form && (el.tagName === "SELECT" || el.type === "checkbox")) setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value });
+  if (form && (el.tagName === "SELECT" || el.type === "checkbox")) { setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value }); if (el.hasAttribute("data-rerender")) changed(); }
 });
 // In a member search box: ↓/↑ move through the matches, Enter picks one (and never submits the form), Esc clears.
 document.addEventListener("keydown", (e) => {
@@ -2357,6 +2410,8 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  clearMembers(d) { if (confirmTwice("clear:" + (d.lc || "all"))) act(() => clearMembers(d.lc || null)); },
+  undoClear(d) { if (confirmTwice("unclear:" + d.id)) act(() => undoClear(d.id)); },
   memberUploadUndo(d) { if (confirmTwice("upl:" + d.id)) act(() => undoMemberUpload(d.id)); },
   editMember(d) { S.editMember = d.id; clearForm("member_edit_" + d.id); window.scrollTo(0, 0); changed(); },
   editMemberClose() { S.editMember = null; changed(); },

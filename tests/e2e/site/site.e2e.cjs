@@ -340,6 +340,26 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await vpa.locator('#members-table tr', { hasText: 'Lea Khoury' }).locator('button[data-act="editMember"]').click(); await settle(vpa);
   check('someone with points can\'t be deleted — only edited or marked alumni', !(await vpa.isVisible('button[data-act="deleteMember"]')) && (await vpa.innerText('form[data-submit="saveMember"]')).includes("can't be deleted"));
   await vpa.click('button[data-act="editMemberClose"]'); await settle(vpa);
+
+  // Clearing members: re-upload the list, then clear everyone who can go, then undo it.
+  await vpa.setInputFiles('input[data-act-file="memberFile"]', MEMBER_LIST); await vpa.waitForSelector('button[data-act="memberListApply"]', { timeout: 15000 }); await settle(vpa);
+  await vpa.click('button[data-act="memberListApply"]'); await vpa.waitForSelector('text=3 members added', { timeout: 20000 }); await settle(vpa, 800);
+  const total = await vpa.locator('#members-table tbody tr').count();
+  await vpa.selectOption('select#cm-l', 'LAU'); await settle(vpa);
+  check('clearing one LC counts only that LC (Jad Mansour, LAU)', (await vpa.innerText('button[data-act="clearMembers"]')).includes('Remove 1 member'));
+  await vpa.selectOption('select#cm-l', ''); await settle(vpa);
+  const clearCard = await vpa.locator('.card', { hasText: 'Clear members' }).innerText();
+  check(`clearing everyone removes the 3 with no points and keeps the ${total - 3} who have points or are on a submission`, clearCard.includes('Remove 3 members') && clearCard.includes(`${total - 3} stay`));
+  await vpa.click('button[data-act="clearMembers"]'); await settle(vpa);
+  check('clearing asks for a second click', (await vpa.innerText('button[data-act="clearMembers"]')).includes('Really'));
+  await vpa.click('button[data-act="clearMembers"]'); await vpa.waitForSelector('text=3 members removed', { timeout: 20000 }); await settle(vpa, 800);
+  const cleared = await vpa.innerText('#members-table');
+  check('cleared: the 3 are gone, everyone with points stays', (await vpa.locator('#members-table tbody tr').count()) === total - 3 && !cleared.includes('Jad Mansour') && cleared.includes('Lea Khoury') && cleared.includes('Omar Fakih'));
+  await vpa.click('button[data-act="undoClear"]'); await settle(vpa); await vpa.click('button[data-act="undoClear"]'); await vpa.waitForSelector('text=3 members back', { timeout: 20000 }); await settle(vpa, 800);
+  check('undoing the clear brings the same 3 back', (await vpa.locator('#members-table tbody tr').count()) === total && (await vpa.innerText('#members-table')).includes('Jad Mansour'));
+  await nav(vpa, 'Import old sheet');
+  check('clears and uploads never show up as old-sheet imports', !(await vpa.innerText('body')).includes('CLR-') && !(await vpa.innerText('body')).includes('UPL-'));
+  await nav(vpa, 'Members');
   check(`the VPA screens never hit a refusal (${(await errors(vpa)).length})`, (await errors(vpa)).length === 0);
 
   await lo.reload(); await lo.waitForSelector('.shell'); await settle(lo, 1000);
