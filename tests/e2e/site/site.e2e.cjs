@@ -16,6 +16,7 @@ const SHEETJS = process.env.SHEETJS_PATH || path.join(ROOT, 'node_modules', 'xls
 const MS = require('../fixtures/fake-microsoft.cjs');
 const WORKBOOK = MS.createWorkbook();
 const OLD_SHEET = require('../fixtures/old-sheet.cjs')(path.join(require('os').tmpdir(), 'lemsic-old-points-site-' + process.pid + '.xlsx'));
+const MEMBER_LIST = require('../fixtures/member-list.cjs')(path.join(require('os').tmpdir(), 'lemsic-members-site-' + process.pid + '.xlsx'));
 const PROJECT = 'demo-lemsic', KEY = 'fake-api-key', PW = 'test-password-2026';
 const AUTH = 'http://127.0.0.1:9099', FS = 'http://127.0.0.1:8080';
 const fail = []; const check = (l, c) => { console.log((c ? '  ok   ' : '  FAIL ') + l); if (!c) fail.push(l); };
@@ -68,6 +69,15 @@ async function pick(p, sel, prefix) {
   if (!v) throw new Error(`no option "${prefix}" in ${sel}`);
   await p.selectOption(sel, v);
 }
+/** Type into a member search box, then click the match whose name is `name` (or press Enter for the top one). */
+async function chooseMember(p, form, typed, name, how = 'click') {
+  const box = `${form} input[data-picker]`;
+  if (await p.isVisible(`${form} button[data-act="unpickMember"]`)) { await p.click(`${form} button[data-act="unpickMember"]`); }
+  await p.fill(box, typed);
+  await p.waitForSelector(`${form} .pickopt:has-text("${name}")`, { timeout: 5000 });
+  if (how === 'enter') await p.press(box, 'Enter'); else await p.click(`${form} .pickopt:has-text("${name}")`);
+  await p.waitForSelector(`${form} .picked:has-text("${name}")`, { timeout: 5000 });
+}
 const nav = async (p, label) => { await p.click(`.side button.nav:has-text("${label}")`); await settle(p); };
 const text = (p) => p.innerText('body');
 const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
@@ -93,12 +103,20 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check('setup loaded: seven committees with their LO logins', (await vpa.locator('.col-main tbody tr').count()) === 7 && lcs.includes('lo.uob'));
   await vpa.screenshot({ path: `${SHOTS}/31-site-committees.png`, fullPage: true });
   await nav(vpa, 'Members');
-  for (const [n, id] of [['Lea Khoury', 'LEM-2341'], ['Karim Nassar', 'LEM-2502'], ['Maya Saad', 'LEM-2488']]) {
+  for (const [n, id, lc] of [['Lea Khoury', 'LEM-2341', 'AUB'], ['Karim Nassar', 'LEM-2502', 'AUB'], ['Maya Saad', 'LEM-2488', 'AUB'], ['Omar Fakih', 'LEM-3107', 'USJ']]) {
     await vpa.fill('input[name="name"]', n); await vpa.fill('input[name="lemsicId"]', id);
-    await vpa.selectOption('form[data-submit="addMember"] select[name="lc"]', 'AUB');
+    await vpa.selectOption('form[data-submit="addMember"] select[name="lc"]', lc);
     await vpa.click('form[data-submit="addMember"] button[type=submit]'); await settle(vpa, 700);
   }
-  check('three members added', (await vpa.locator('.col-main tbody tr').count()) === 3);
+  check('four members added, one of them in LC USJ', (await vpa.locator('.col-main tbody tr').count()) === 4);
+  await vpa.fill('input[name="name"]', 'Someone Else'); await vpa.fill('input[name="lemsicId"]', 'lem 2341');
+  await vpa.selectOption('form[data-submit="addMember"] select[name="lc"]', 'LAU');
+  await vpa.click('form[data-submit="addMember"] button[type=submit]'); await settle(vpa, 700);
+  check('a LeMSIC ID can only belong to one person, however it is typed', (await text(vpa)).includes('LEM-2341 already belongs to Lea Khoury') || (await text(vpa)).includes('lem 2341 already belongs to Lea Khoury'));
+  await vpa.fill('input[name="name"]', ''); await vpa.fill('input[name="lemsicId"]', '');
+  await vpa.fill('input[data-live="members-table"]', 'nassar');
+  check('the member list can be searched', (await vpa.locator('#members-table tbody tr').count()) === 1 && (await vpa.innerText('#members-table')).includes('Karim Nassar'));
+  await vpa.fill('input[data-live="members-table"]', '');
 
   console.log('\n— a Local Officer —');
   const lo = await open(b, base);
@@ -110,12 +128,27 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await lo.fill('input[name="location"]', 'Bliss Street, Beirut');
   await lo.click('form[data-submit="createDraft"] button[type=submit]');
   await lo.waitForSelector('form[data-submit="addRow"]', { timeout: 10000 }); await settle(lo);
-  for (const [m, c, pts] of [['Lea Khoury', 'OC coordinator', 12], ['Maya Saad', 'Volunteer — half day', 6]]) {
-    await pick(lo, 'form[data-submit="addRow"] select[name="member"]', m);
-    await pick(lo, 'form[data-submit="addRow"] select[name="cat"]', c);
-    await lo.fill('form[data-submit="addRow"] input[name="pts"]', String(pts));
-    await lo.click('form[data-submit="addRow"] button[type=submit]'); await settle(lo, 700);
+  const ROW = 'form[data-submit="addRow"]';
+  await lo.fill(`${ROW} input[data-picker]`, 'khuory');
+  await lo.waitForSelector(`${ROW} .pickopt`);
+  check('the search finds a name typed with a typo (“khuory” → Lea Khoury)', (await lo.innerText(`${ROW} .pickopt.on`)).includes('Lea Khoury'));
+  await lo.fill(`${ROW} input[data-picker]`, 'lem-3107');
+  await lo.waitForSelector(`${ROW} .pickopt:has-text("Omar Fakih")`);
+  check('…and a member of another LC by their LeMSIC ID, marked with their LC', (await lo.innerText(`${ROW} .pickopt.on`)).includes('LC USJ'));
+  await lo.fill(`${ROW} input[data-picker]`, 'zzzz');
+  check('…and says so when nobody matches', (await lo.innerText(`${ROW} .picklist`)).includes('No member matches'));
+  check('…without ever showing points', !/\bpts\b|points/i.test(await lo.innerText(`${ROW} .picklist`)));
+  for (const [typed, m, c, pts, how] of [['khuory', 'Lea Khoury', 'OC coordinator', 12, 'click'], ['2488', 'Maya Saad', 'Volunteer — half day', 6, 'enter'], ['LEM-3107', 'Omar Fakih', 'Volunteer — half day', 3, 'click']]) {
+    await chooseMember(lo, ROW, typed, m, how);
+    await pick(lo, `${ROW} select[name="cat"]`, c);
+    await lo.fill(`${ROW} input[name="pts"]`, String(pts));
+    await lo.click(`${ROW} button[type=submit]`); await settle(lo, 700);
   }
+  check('three volunteers added, Enter picking the top match', (await lo.locator('tr', { hasText: 'Maya Saad' }).count()) === 1 && (await lo.locator('.col-main table tbody tr').count()) === 3);
+  check('the volunteer from LC USJ is labelled with their LC', (await lo.locator('tr', { hasText: 'Omar Fakih' }).innerText()).includes('LC USJ'));
+  await lo.fill(`${ROW} input[data-picker]`, 'lea');
+  check('someone already on the event can\'t be added twice', await lo.isDisabled(`${ROW} .pickopt:has-text("Lea Khoury")`));
+  await lo.fill(`${ROW} input[data-picker]`, '');
   await lo.screenshot({ path: `${SHOTS}/32-site-lo-edit.png`, fullPage: true });
   await lo.fill('textarea[name="loNote"]', 'Maya covered two shifts.');
   await lo.click('form[data-submit="send"] button[type=submit]'); await settle(lo, 1000);
@@ -140,11 +173,16 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check('the submission is in the queue, from “LO · AUB”', (await text(vpa)).includes('Blood Pressure Screening') && (await text(vpa)).includes('LO · AUB'));
   await vpa.locator('tr', { hasText: 'Blood Pressure Screening' }).locator('button:has-text("Review")').click(); await settle(vpa);
   check('the out-of-band row opens capped at 4', (await vpa.locator('tr', { hasText: 'Maya Saad' }).locator('input.pts').inputValue()) === '4');
+  check('the VPA is told one volunteer is from another LC', (await text(vpa)).includes('1 volunteer is from another LC (LC USJ)'));
   await vpa.screenshot({ path: `${SHOTS}/33-site-review.png`, fullPage: true });
   await vpa.click('form[data-submit="approve"] button[type=submit]'); await settle(vpa, 1500);
   await nav(vpa, 'Points sheet');
   const sheet = await text(vpa);
-  check('approved: 12 + 4 = 16 on the books', sheet.includes('+12') && sheet.includes('+4') && /grand total\s*16\b/i.test(sheet));
+  check('approved: 12 + 4 + 3 = 19 on the books', sheet.includes('+12') && sheet.includes('+4') && sheet.includes('+3') && /grand total\s*19\b/i.test(sheet));
+  await vpa.click('button[data-act="go"][data-view="lc"]'); await settle(vpa);
+  const usjRow = await vpa.locator('tr', { hasText: 'LC USJ' }).innerText().catch(() => '');
+  check(`Omar's 3 points count for his own LC, USJ, not the LC that ran the event (${usjRow.replace(/\s+/g, ' ').trim()})`, /\b3\s*$/.test(usjRow.trim()));
+  await vpa.click('button[data-act="go"][data-view="ledger"]'); await settle(vpa);
   await vpa.screenshot({ path: `${SHOTS}/34-site-ledger.png`, fullPage: true });
   if (SHEETJS) {
     const [dl] = await Promise.all([vpa.waitForEvent('download', { timeout: 15000 }), vpa.click('button[data-act="exportXlsx"]')]);
@@ -159,12 +197,12 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check('8 starting balances worth 450 points, as in the claude.ai build', (await vpa.innerText('button[data-act="impApply"]')).includes('8 starting balances (450 pts)'));
   await vpa.click('button[data-act="impApply"]'); await vpa.waitForSelector('text=Imported.', { timeout: 30000 }); await settle(vpa, 800);
   await nav(vpa, 'Points sheet');
-  check('the database took it: carried forward 450, grand total 466', /carried forward\s*450\b/i.test(await text(vpa)) && /grand total\s*466\b/i.test(await text(vpa)));
+  check('the database took it: carried forward 450, grand total 469', /carried forward\s*450\b/i.test(await text(vpa)) && /grand total\s*469\b/i.test(await text(vpa)));
   await nav(vpa, 'Import old sheet');
   await vpa.click('button[data-act="impReset"]'); await settle(vpa);
   await vpa.click('button[data-act="impUndo"]'); await settle(vpa); await vpa.click('button[data-act="impUndo"]'); await settle(vpa, 2000);
   await nav(vpa, 'Points sheet');
-  check('undo works without deleting anything: grand total back to 16', /grand total\s*16\b/i.test(await text(vpa)) && (await text(vpa)).includes('Undo of IMP-'));
+  check('undo works without deleting anything: grand total back to 19', /grand total\s*19\b/i.test(await text(vpa)) && (await text(vpa)).includes('Undo of IMP-'));
   console.log('\n— keeping the Excel workbook up to date —');
   const xl = (name) => (WORKBOOK.sheets.find((x) => x.name === name) || { cells: [] }).cells;
   await nav(vpa, 'Excel');
@@ -184,15 +222,18 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check(`the shared file says when it was last updated (“${(xl('Totals by member')[1] || [])[7]}”)`, xl('Totals by member')[0][7] === 'Last updated' && /LeMSIC Points$/.test((xl('Totals by member')[1] || [])[7] || ''));
   const leaTotal = () => { const r = xl('Totals by member').find((row) => row[0] === 'Lea Khoury'); return r ? r[5] : null; };
   check(`Lea's total in Excel matches the app (${leaTotal()})`, leaTotal() === 12);
+  const omarXl = xl('Ledger').find((row) => row[1] === 'Omar Fakih') || [];
+  check(`Excel's ledger shows Omar under LC USJ, from an event run by LC AUB (${omarXl[3]}, ${omarXl[8]})`, omarXl[3] === 'USJ' && omarXl[8] === 'LC AUB');
+  check('Excel\'s By LC sheet credits USJ with Omar\'s 3', (xl('By LC').find((row) => row[0] === 'USJ') || [])[4] === 3);
   await vpa.screenshot({ path: `${SHOTS}/35-site-excel.png`, fullPage: true });
   await nav(vpa, 'Points sheet');
-  await vpa.selectOption('form[data-submit="correction"] select[name="member"]', { label: 'Lea Khoury · AUB' });
+  await chooseMember(vpa, 'form[data-submit="correction"]', 'Lea', 'Lea Khoury');
   await vpa.fill('form[data-submit="correction"] input[name="pts"]', '5'); await vpa.fill('form[data-submit="correction"] input[name="reason"]', 'Late credit for the poster');
   await vpa.click('form[data-submit="correction"] button[type=submit]'); await settle(vpa, 2500);
   check(`a correction reaches Excel by itself (Lea now ${leaTotal()})`, leaTotal() === 17);
   WORKBOOK.lockNext = true;
   await vpa.fill('form[data-submit="correction"] input[name="pts"]', '-2'); await vpa.fill('form[data-submit="correction"] input[name="reason"]', 'Double-counted shift');
-  await vpa.selectOption('form[data-submit="correction"] select[name="member"]', { label: 'Lea Khoury · AUB' });
+  await chooseMember(vpa, 'form[data-submit="correction"]', 'LEM-2341', 'Lea Khoury', 'enter');
   await vpa.click('form[data-submit="correction"] button[type=submit]'); await settle(vpa, 2500);
   await nav(vpa, 'Excel');
   check('a locked workbook is reported, not silently missed', (await text(vpa)).includes('locked by someone editing it'));
@@ -204,7 +245,7 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await signIn(phoneVpa, 'vpa', PW);
   await nav(phoneVpa, 'Points sheet');
   const phoneCorrection = async (pts, why) => {
-    await phoneVpa.selectOption('form[data-submit="correction"] select[name="member"]', { label: 'Lea Khoury · AUB' });
+    await chooseMember(phoneVpa, 'form[data-submit="correction"]', 'lea k', 'Lea Khoury');
     await phoneVpa.fill('form[data-submit="correction"] input[name="pts"]', String(pts)); await phoneVpa.fill('form[data-submit="correction"] input[name="reason"]', why);
     await phoneVpa.click('form[data-submit="correction"] button[type=submit]');
   };
@@ -219,13 +260,29 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   check(`opening the site on the signed-in device catches it up by itself (Lea ${leaTotal()})`, leaTotal() === 19);
   check('…and the badge goes back to “Excel ✓”', (await vpa.innerText('.topbar')).includes('Excel ✓'));
   await phoneVpa.context().close();
+
+  console.log('\n— uploading the member list —');
+  await nav(vpa, 'Members');
+  await vpa.setInputFiles('input[data-act-file="memberFile"]', MEMBER_LIST); await vpa.waitForSelector('button[data-act="memberListApply"]', { timeout: 15000 }); await settle(vpa);
+  const preview = await vpa.innerText('.col-side');
+  check('the columns are found under the title row (Full Name, LeMSIC ID, LC)', (await vpa.$eval('select[data-ml="col.name"]', (e) => e.selectedOptions[0].textContent)).includes('Full Name') && (await vpa.$eval('select[data-ml="col.lc"]', (e) => e.selectedOptions[0].textContent)).includes('LC'));
+  check('preview: 3 new, 1 ID filled in, 3 already here, 2 skipped', /3 new members/.test(preview) && /1 already here get/.test(preview) && /3 already in the registry/.test(preview) && /2 skipped/.test(preview));
+  check('…a spelling variant is recognised as the same person (Karim Nasar → Karim Nassar)', preview.includes('Karim Nasar → Karim Nassar'));
+  check('…and the skipped rows say why', preview.includes('listed twice in this file') && preview.includes('“Harvard” isn\'t one of the LCs'));
+  await vpa.click('button[data-act="memberListApply"]'); await vpa.waitForSelector('text=3 members added', { timeout: 20000 }); await settle(vpa, 800);
+  const members = await vpa.innerText('#members-table');
+  check('the new members are in the registry, “University of Balamand” as LC UOB', members.includes('Jad Mansour') && members.includes('Rita Salameh') && /Tala Hamdan[\s\S]*?UOB/.test(members));
+  check('…and Nour got her LeMSIC ID', /Nour Abou Jaoude\s*LEM-4005/.test(members));
+  await vpa.setInputFiles('input[data-act-file="memberFile"]', MEMBER_LIST); await vpa.waitForSelector('button[data-act="memberListApply"]', { timeout: 15000 }); await settle(vpa);
+  check('uploading the same list again adds nobody', /0 new members/.test(await vpa.innerText('.col-side')) && await vpa.isDisabled('button[data-act="memberListApply"]'));
+  await vpa.click('button[data-act="memberListCancel"]'); await settle(vpa);
   check(`the VPA screens never hit a refusal (${(await errors(vpa)).length})`, (await errors(vpa)).length === 0);
 
   await lo.reload(); await lo.waitForSelector('.shell'); await settle(lo, 1000);
   await nav(lo, 'Dashboard'); await settle(lo, 600);
   const loAfter = await text(lo);
   check('the avatar reads as the position (no stray “·”)', (await lo.innerText('.side-foot .avatar')).trim() === 'LA');
-  check('the LO sees “Approved” and no figures', loAfter.includes('Approved') && !loAfter.includes('+12') && !/\b16\b/.test(loAfter));
+  check('the LO sees “Approved” and no figures', loAfter.includes('Approved') && !loAfter.includes('+12') && !/\b19\b/.test(loAfter));
 
   console.log('\n— everyone else —');
   const odd = await open(b, base);

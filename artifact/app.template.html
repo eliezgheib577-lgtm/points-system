@@ -35,6 +35,19 @@ select.inp,input.inp,textarea.inp{width:100%}
 .inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .inline-form .field{min-width:150px;flex:1}
 input.pts{width:72px}
+/* finding a member: a search box, then a short list of the closest matches */
+.picker{display:flex;flex-direction:column;gap:6px}
+.picklist{display:flex;flex-direction:column;gap:3px}
+.picklist:empty{display:none}
+.pickopt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 10px;cursor:pointer}
+.pickopt:hover,.pickopt.on{border-color:var(--accent);background:var(--accent-soft)}
+.pickopt[disabled]{opacity:.55;cursor:default;background:var(--surface-2);border-color:var(--line)}
+.pickname{flex:1;min-width:0}
+.pickname b{display:block;font-weight:600;font-size:13.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pickname small{color:var(--muted);font-size:11.4px;font-family:var(--mono)}
+.pickempty{font-size:12.4px;color:var(--muted);padding:2px}
+.picked{display:flex;align-items:center;gap:10px;border:1px solid var(--good-line);background:var(--accent-soft);border-radius:var(--r-sm);padding:6px 6px 6px 10px}
+.picked .who small{font-family:var(--mono)}
 </style>
 
 <div id="app"><div class="boot">Opening LeMSIC Points…</div></div>
@@ -218,7 +231,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -241,7 +254,7 @@ function stopWatching() {
   offs.splice(0).forEach((f) => { try { f(); } catch (e) { /* already closed */ } });
   Object.keys(itemWatch).forEach((k) => { try { itemWatch[k](); } catch (e) { /* closed */ } delete itemWatch[k]; });
   started.clear();
-  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], imports: [], imp: null, members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
+  Object.assign(S, { items: {}, ledger: [], decisions: [], audit: [], imports: [], imp: null, mlist: null, members: [], committees: [], rubric: [], roster: [], requests: [], loIds: [], config: null, loaded: false, stale: false });
 }
 function arrived(meta) { if (!meta || !meta.fromCache) { S.loaded = true; S.stale = false; } }
 function watchColl(path, key, sortFn) {
@@ -424,9 +437,9 @@ const activeCommittees = () => S.committees.filter((c) => c.active !== false);
 const activeRubric = () => S.rubric.filter((c) => c.active !== false);
 const pendingItems = () => allItems().filter((x) => x.status === "pending").sort((a, b) => (a.submittedAt || 0) - (b.submittedAt || 0));
 function balances() {
-  const by = {};
+  const by = {}, lcs = memberLcs();
   for (const e of S.ledger) {
-    const b = by[e.memberId] || (by[e.memberId] = { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId, lc: e.lc, carried: 0, earned: 0, total: 0, last: 0 });
+    const b = by[e.memberId] || (by[e.memberId] = { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId, lc: entryLc(e, lcs), carried: 0, earned: 0, total: 0, last: 0 });
     if (e.kind === "opening_balance") b.carried += e.pts; else b.earned += e.pts;
     b.total += e.pts; b.last = Math.max(b.last, e.at || 0);
   }
@@ -515,6 +528,98 @@ const goLink = (label, route, extra) => `<button class="linkbtn" data-act="go" d
 const dis = () => (S.busy ? "disabled" : "");
 const lockNote = `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><div class="note info" style="border:0;background:transparent;padding:0"><span class="ic">🔒</span><span>Point totals, member balances and the points sheet are held by the VPA — your own points included. You'll see whether a submission was approved, never the figures it ended up with.</span></div></div>`;
 
+// ---------- finding a member: type part of a name or a LeMSIC ID ----------
+const idKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+/** How well a member matches what was typed, 0–100; 0 means not at all. */
+function memberScore(m, q) {
+  const nq = norm(q); if (!nq) return 0;
+  let best = 0;
+  const qid = idKey(q), mid = idKey(m.lemsicId);
+  if (mid && qid) {
+    if (mid === qid) best = 100;
+    else if (mid.startsWith(qid)) best = 90;
+    else if (/\d/.test(qid) && qid.length >= 2 && mid.includes(qid)) best = 80; // "0042" finds LEM-0042
+  }
+  const nm = m.norm || norm(m.name);
+  if (!nm) return best;
+  if (nm === nq) return Math.max(best, 98);
+  if (nm.startsWith(nq)) return Math.max(best, 94);
+  const qt = nq.split(" "), mt = nm.split(" ");
+  // Every typed word starts a word of the name, in any order: "lea k", "khoury lea".
+  if (qt.every((t) => mt.some((w) => w.startsWith(t)))) return Math.max(best, mt[0].startsWith(qt[0]) ? 88 : 85);
+  if (nq.length >= 3 && nm.includes(nq)) return Math.max(best, 70);
+  // A typo: "nasar" still finds Nassar, "khuory" still finds Khoury.
+  let hit = 0;
+  for (const t of qt) {
+    if (mt.some((w) => w.startsWith(t))) hit += 1;
+    else if (t.length >= 3 && mt.some((w) => editClose(t, w) || (w.length > t.length && editClose(t, w.slice(0, t.length))) || sameLettersSwapped(t, w.slice(0, t.length)))) hit += 0.8;
+  }
+  const sc = hit / qt.length;
+  return sc >= 0.75 ? Math.max(best, Math.round(35 + 30 * sc)) : best;
+}
+/** "khuo" / "khou": two neighbouring letters swapped. */
+function sameLettersSwapped(a, b) {
+  if (a.length !== b.length || a === b) return false;
+  const d = []; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d.push(i);
+  return d.length === 2 && d[1] === d[0] + 1 && a[d[0]] === b[d[1]] && a[d[1]] === b[d[0]];
+}
+/** Members matching what was typed, best first. Any LC; o.homeLc only breaks ties. */
+function findMembers(q, o) {
+  o = o || {};
+  const out = [];
+  for (const m of S.members) {
+    if (!o.alumni && m.status === "alumni") continue;
+    const score = memberScore(m, q);
+    if (score > 0) out.push({ m, score });
+  }
+  return out.sort((a, b) => b.score - a.score || (b.m.lc === o.homeLc) - (a.m.lc === o.homeLc) || String(a.m.name).localeCompare(String(b.m.name))).map((x) => x.m);
+}
+const PICK_MAX = 8;
+const PICKERS = {}; // form → the picker's options, refreshed on every render
+const pickIx = {};  // form → which result the arrow keys are on
+const memberLine = (m) => [m.lemsicId, "LC " + m.lc].filter(Boolean).join(" · ");
+/** Choosing a member: type part of a name or a LeMSIC ID, then click one of the closest matches. */
+function memberPicker(form, o) {
+  PICKERS[form] = o;
+  const chosen = S.members.find((m) => m.id === fv(form, "member"));
+  if (chosen) return `<div class="picked">${who(chosen.name, memberLine(chosen))}<div class="spacer"></div><button type="button" class="btn ghost sm" data-act="unpickMember" data-pf="${esc(form)}" ${dis()}>Change</button></div>`;
+  const q = String(fv(form, "q", ""));
+  return `<div class="picker"><input class="inp" id="${esc(o.id)}" data-form="${esc(form)}" name="q" data-picker="${esc(form)}" value="${esc(q)}" autocomplete="off" spellcheck="false" placeholder="Type a name or LeMSIC ID…" role="combobox" aria-autocomplete="list" aria-controls="${esc(form)}-list" aria-expanded="${q.trim() ? "true" : "false"}">
+    <div class="picklist" id="${esc(form)}-list" role="listbox">${pickList(form)}</div></div>`;
+}
+function pickList(form) {
+  const o = PICKERS[form] || {};
+  const q = String(fv(form, "q", "")).trim();
+  if (!q) return "";
+  const found = findMembers(q, o);
+  if (!found.length) return `<div class="pickempty">No member matches “${esc(q)}”. ${esc(o.emptyHint || "")}</div>`;
+  const shown = found.slice(0, PICK_MAX);
+  const ix = Math.min(pickIx[form] || 0, shown.length - 1);
+  return shown.map((m, i) => {
+    const taken = o.exclude && o.exclude.has(m.id);
+    const other = o.homeLc && m.lc !== o.homeLc;
+    return `<button type="button" class="pickopt${i === ix ? " on" : ""}" role="option" aria-selected="${i === ix}" data-act="pickMember" data-pf="${esc(form)}" data-id="${esc(m.id)}" ${taken ? "disabled" : ""}>
+      <span class="ava">${esc(initials(m.name))}</span><span class="pickname"><b>${esc(m.name)}</b><small>${esc(m.lemsicId || "no LeMSIC ID")}</small></span>
+      ${taken ? `<span class="sub">already added</span>` : ""}${m.status === "alumni" ? `<span class="pill flat">alumni</span>` : ""}<span class="pill ${other ? "tag" : "flat"}" title="${other ? "From another LC" : ""}">LC ${esc(m.lc)}</span></button>`;
+  }).join("") + (found.length > PICK_MAX ? `<div class="pickempty">${found.length - PICK_MAX} more match — keep typing to narrow it down.</div>` : "");
+}
+function refreshPick(form) {
+  const list = document.getElementById(form + "-list");
+  if (list) list.innerHTML = pickList(form);
+  const box = document.querySelector(`[data-picker="${CSS.escape(form)}"]`);
+  if (box) box.setAttribute("aria-expanded", String(fv(form, "q", "")).trim() ? "true" : "false");
+}
+/** A volunteer row's name line: their LeMSIC ID, and their LC when it isn't the event's. */
+function rowWho(r, sub) {
+  const lc = r.lc || (S.members.find((m) => m.id === r.memberId) || {}).lc;
+  return who(r.name, [r.lemsicId, lc && lc !== sub.lc ? "LC " + lc : ""].filter(Boolean).join(" · "));
+}
+/** Points belong to the member, so they count for the member's own LC — whichever LC ran the event. */
+function memberLcs() { const map = {}; S.members.forEach((m) => { map[m.id] = m.lc; }); return map; }
+const entryLc = (e, map) => (map && map[e.memberId]) || e.lc;
+// Live regions: an input with data-live="<id>" redraws just that element as you type.
+const LIVE = {};
+
 // ---------- navigation ----------
 const TOP = ["home", "new", "submissions", "review", "ledger", "import", "excel", "members", "rubric", "access", "audit"];
 const NAV = {
@@ -586,7 +691,6 @@ function vEdit() {
   const rows = sub.rows || [];
   const probs = problemsFor(sub, myItems());
   const blocking = probs.filter((p) => p.level === "error");
-  const members = S.members.filter((m) => m.lc === sub.lc && m.status !== "alumni" && !rows.some((r) => r.memberId === m.id));
   const rf = "row_" + sub.id, ef = "ev_" + sub.id, sf = "send_" + sub.id;
   const total = sum(rows, (r) => r.pts);
   return steps(rows.length ? 3 : 2) +
@@ -594,21 +698,23 @@ function vEdit() {
     (sub.status === "returned" && sub.vpaNote ? `<div style="margin-bottom:14px">${note("warn", `<b>The VPA sent this back —</b> “${esc(sub.vpaNote)}”`)}</div>` : "") +
     `<div class="row split" style="align-items:flex-start"><div class="col-main">
       <form class="card" data-submit="addRow" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
-        <div class="card-h"><h3>Add a volunteer</h3><div class="spacer"></div><small>From LC ${esc(sub.lc)}'s members — the list shows no points</small></div>
-        <div class="card-b inline-form">
-          <div class="field" style="flex:1.6"><label for="${rf}-m">Member</label><select class="inp" id="${rf}-m" data-form="${rf}" name="member">${opt("", members.length ? "Choose a member…" : "No more members in this committee", "")}${members.map((m) => opt(m.id, m.name + (m.lemsicId ? " · " + m.lemsicId : ""), fv(rf, "member"))).join("")}</select></div>
+        <div class="card-h"><h3>Add a volunteer</h3><div class="spacer"></div><small>Any LeMSIC member, from any LC — no points shown</small></div>
+        <div class="card-b stack">
+          <div class="field"><label for="${rf}-m">Member — search by name or LeMSIC ID</label>${memberPicker(rf, { id: rf + "-m", homeLc: sub.lc, exclude: new Set(rows.map((r) => r.memberId)), next: "cat", emptyHint: "Check the spelling, or try their LeMSIC ID. Someone missing from the list? Ask the VPA to add them." })}</div>
+          <div class="inline-form">
           <div class="field" style="flex:1.4"><label for="${rf}-c">Role / effort</label><select class="inp" id="${rf}-c" data-form="${rf}" name="cat" data-defaults="1">${opt("", "From the rubric…", "")}${activeRubric().map((c) => opt(c.id, `${c.label} (${c.min}–${c.max})`, fv(rf, "cat"))).join("")}</select></div>
           <div class="field" style="flex:0 0 84px;min-width:84px"><label for="${rf}-h">Hours</label>${inp(rf, "hours", "", `id="${rf}-h" type="number" step="0.5" min="0" max="99"`)}</div>
           <div class="field" style="flex:0 0 90px;min-width:90px"><label for="${rf}-p">Points</label>${inp(rf, "pts", "", `id="${rf}-p" type="number" min="0" max="99"`)}</div>
           <div class="field" style="flex:2;min-width:200px"><label for="${rf}-n">What they did</label>${inp(rf, "note", "", `id="${rf}-n" maxlength="200" placeholder="Screening station 2, ~70 participants"`)}</div>
           <button class="btn pri" type="submit" ${dis()}>＋ Add row</button>
+          </div>
         </div>
       </form>
       <div class="card"><div class="card-h"><h3>Volunteers on this event</h3><span class="pill flat">${rows.length}</span></div>
         ${rows.length === 0 ? `<div class="card-b"><span class="sub">No one added yet — every volunteer needs a row.</span></div>` :
         `<div class="scroll-x"><table><thead><tr><th>Volunteer</th><th>Role / effort</th><th class="num">Hrs</th><th>What they did</th><th class="num">Points</th><th></th></tr></thead><tbody>
         ${rows.map((r, i) => { const out = !r.loCanExceed && (r.pts < r.min || r.pts > r.max); return `<tr${out ? ` style="background:var(--flag-row)"` : ""}>
-          <td>${who(r.name, r.lemsicId)}</td><td>${esc(r.catLabel)}${out ? `<div class="sub" style="color:var(--amber)">! band ${r.min}–${r.max}</div>` : ""}</td>
+          <td>${rowWho(r, sub)}</td><td>${esc(r.catLabel)}${out ? `<div class="sub" style="color:var(--amber)">! band ${r.min}–${r.max}</div>` : ""}</td>
           <td class="num">${r.hours == null || r.hours === "" ? "—" : esc(r.hours)}</td><td class="sub">${esc(r.note || "—")}</td><td class="num"><b>${r.pts}</b></td>
           <td><button class="btn ghost sm" data-act="delRow" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}" data-i="${i}" title="Remove this row" ${dis()}>✕</button></td></tr>`; }).join("")}
         </tbody></table></div>`}
@@ -642,7 +748,7 @@ function vSub() {
     (sub.loNote ? `<div style="margin-bottom:14px">${note("info", `<b>Note from the LO —</b> “${esc(sub.loNote)}”`)}</div>` : "") +
     `<div class="card"><div class="card-h"><h3>Volunteers</h3><span class="pill flat">${(sub.rows || []).length}</span>${vpa && sub.status === "pending" ? `<div class="spacer"></div>${goBtn("Review →", "reviewSub", `data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}"`, "pri sm")}` : ""}</div>
       <div class="scroll-x"><table><thead><tr><th>Volunteer</th><th>Role / effort</th><th class="num">Hrs</th><th>What they did</th>${vpa ? `<th class="num">Proposed</th><th class="num">Approved</th>` : ""}</tr></thead><tbody>
-      ${(sub.rows || []).map((r, i) => { const d = dec && dec.rows[i]; return `<tr><td>${who(r.name, r.lemsicId)}</td><td>${esc(r.catLabel)}</td><td class="num">${r.hours == null || r.hours === "" ? "—" : esc(r.hours)}</td><td class="sub">${esc(r.note || "—")}</td>
+      ${(sub.rows || []).map((r, i) => { const d = dec && dec.rows[i]; return `<tr><td>${rowWho(r, sub)}</td><td>${esc(r.catLabel)}</td><td class="num">${r.hours == null || r.hours === "" ? "—" : esc(r.hours)}</td><td class="sub">${esc(r.note || "—")}</td>
         ${vpa ? `<td class="num mono">${r.pts}</td><td class="num">${d ? `<b>${d.pts}</b>${d.state === "rejected" ? ` <span class="pill ret">rejected</span>` : d.state === "edited" ? ` <span class="pill mod">edited</span>` : ""}` : `<span class="sub">—</span>`}</td>` : ""}</tr>`; }).join("")}
       </tbody></table></div>
       ${vpa ? `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);display:flex;border-radius:0 0 var(--r) var(--r)"><span class="sub">Proposed ${sum(sub.rows || [], (r) => r.pts)} pts</span><div class="spacer"></div>${dec ? `<b>Approved ${dec.total} pts</b>` : `<span class="sub">Not decided yet</span>`}</div>` : lockNote}</div>`;
@@ -691,12 +797,13 @@ function vReviewSub() {
   });
   return head(esc(sub.title), `LC ${esc(sub.lc)} · ${fmtDate(sub.date)} · ${esc(sub.location || "—")} · submitted by ${esc(personName(sub.by))} ${timeAgo(sub.submittedAt)} · <span class="mono">${esc(sub.ref)}</span>`, sub.sc ? `<span class="pill tag">${esc(sub.sc)}</span>` : "") +
     (sub.loNote ? `<div style="margin-bottom:14px">${note("info", `<b>Note from ${esc(first(personName(sub.by)))} —</b> “${esc(sub.loNote)}”`)}</div>` : "") +
+    (() => { const lcs = memberLcs(); const away = rows.filter((r) => (lcs[r.memberId] || r.lc) && (lcs[r.memberId] || r.lc) !== sub.lc); return away.length ? `<div style="margin-bottom:14px">${note("info", `<b>${away.length} ${away.length === 1 ? "volunteer is" : "volunteers are"} from another LC</b> (${esc([...new Set(away.map((r) => "LC " + (lcs[r.memberId] || r.lc)))].join(", "))}). Their points count for their own LC.`)}</div>` : ""; })() +
     `<div class="row split" style="align-items:flex-start"><div class="col-main">
       <form class="stack" data-submit="approve" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
         <div class="card"><div class="card-h"><h3>Rows</h3><span class="pill flat">${rows.length}</span><div class="spacer"></div><small>Change a figure and say why — it's kept in the audit log</small></div>
           <div class="scroll-x"><table><thead><tr><th style="min-width:160px">Volunteer</th><th style="min-width:200px">Role / effort</th><th class="num">Proposed</th><th class="num" style="width:96px">Approved</th><th style="min-width:180px">Your note</th><th>Reject</th></tr></thead><tbody>
           ${rows.map((r, i) => { const out = !r.loCanExceed && (r.pts < r.min || r.pts > r.max); return `<tr${out ? ` style="background:var(--flag-row)"` : ""}>
-            <td>${who(r.name, r.lemsicId)}</td>
+            <td>${rowWho(r, sub)}</td>
             <td>${esc(r.catLabel)}<div class="sub">${r.hours ? esc(r.hours) + " h · " : ""}${esc(r.note || "")}</div>${out ? `<div class="sub" style="color:var(--amber)">! band ${r.min}–${r.max}</div>` : ""}</td>
             <td class="num mono">${r.pts}</td>
             <td class="num"><input class="pts" type="number" min="0" max="${r.max}" data-form="${f}" name="p${i}" value="${esc(fv(f, "p" + i, Math.min(r.pts, r.max)))}" aria-label="Approved points for ${esc(r.name)}">${r.pts > r.max ? `<div class="sub" style="color:var(--amber)">capped at ${r.max}</div>` : ""}</td>
@@ -746,8 +853,8 @@ function vLedger() {
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th class="num">Carried forward</th><th class="num">This term</th><th class="num">Total</th></tr></thead><tbody>
       ${bal.map((b) => `<tr><td>${who(b.name, b.lemsicId)}</td><td>${esc(b.lc)}</td><td class="num mono">${b.carried}</td><td class="num mono" style="color:var(--accent-2)">${b.earned >= 0 ? "+" : ""}${b.earned}</td><td class="num"><b>${b.total}</b></td></tr>`).join("")}</tbody></table></div>`;
   } else if (view === "lc") {
-    const lcs = {};
-    S.ledger.forEach((e) => { const x = lcs[e.lc] || (lcs[e.lc] = { lc: e.lc, members: new Set(), carried: 0, earned: 0, total: 0 }); x.members.add(e.memberId); if (e.kind === "opening_balance") x.carried += e.pts; else x.earned += e.pts; x.total += e.pts; });
+    const lcs = {}, own = memberLcs();
+    S.ledger.forEach((e) => { const lc = entryLc(e, own); const x = lcs[lc] || (lcs[lc] = { lc, members: new Set(), carried: 0, earned: 0, total: 0 }); x.members.add(e.memberId); if (e.kind === "opening_balance") x.carried += e.pts; else x.earned += e.pts; x.total += e.pts; });
     const list = Object.values(lcs).sort((a, b) => b.total - a.total);
     body = list.length === 0 ? `<div class="card-b"><span class="sub">No points yet.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Local committee</th><th class="num">Members credited</th><th class="num">Carried</th><th class="num">This term</th><th class="num">Total</th></tr></thead><tbody>
@@ -756,7 +863,7 @@ function vLedger() {
     body = S.ledger.length === 0 ? `<div class="card-b"><span class="sub">The ledger is empty. It fills as you approve submissions.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Reason</th><th>LC</th><th class="num">Pts</th><th>When</th></tr></thead><tbody>
       ${S.ledger.slice(0, 300).map((e) => `<tr${e.pts < 0 ? ` style="background:var(--red-soft)"` : e.kind === "opening_balance" ? ` style="background:var(--blue-soft)"` : ""}><td>${who(e.name, e.lemsicId)}</td>
-        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : ""}</td><td>${esc(e.lc)}</td>
+        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by LC ${esc(e.eventLc)}</div>` : ""}</td><td>${esc(e.lc)}</td>
         <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td></tr>`).join("")}</tbody></table></div>`;
   }
   const cf = "corr";
@@ -765,25 +872,129 @@ function vLedger() {
     `<div class="grid g4" style="margin-bottom:16px">${tile("Grand total", total, "all members")}${tile("Carried forward", carried, "from the old workbook")}${tile("Earned in app", total - carried, S.decisions.length + " approved events")}${tile("Members credited", bal.length, "with any points")}</div>
     <div class="row split" style="align-items:flex-start"><div class="col-main"><div class="card">${tabs}${body}</div></div>
     <div class="col-side"><form class="card" data-submit="correction"><div class="card-h"><h3>Add a correction</h3></div><div class="card-b stack">
-      <div class="field"><label for="corr-m">Member</label><select class="inp" id="corr-m" data-form="${cf}" name="member">${opt("", "Choose…", "")}${S.members.map((m) => opt(m.id, m.name + " · " + m.lc, fv(cf, "member"))).join("")}</select></div>
+      <div class="field"><label for="corr-m">Member</label>${memberPicker(cf, { id: "corr-m", alumni: true, next: "pts" })}</div>
       <div class="field"><label for="corr-p">Points (use a minus to take away)</label>${inp(cf, "pts", "", `id="corr-p" type="number" min="-999" max="999"`)}</div>
       <div class="field"><label for="corr-r">Reason *</label>${inp(cf, "reason", "", `id="corr-r" maxlength="200" placeholder="Duplicate credit for 14 Nov — reverses one award"`)}</div>
       <button class="btn" type="submit" ${dis()}>Add to the ledger</button><span class="hint">A correction is a new entry. Nothing already on the sheet is changed.</span></div></form></div></div>`;
 }
 function vMembers() {
   const bal = {}; balances().forEach((b) => { bal[b.memberId] = b; });
-  const mf = "member_new";
-  return head("Member registry", `${S.members.length} people on the books. One profile per person is what keeps totals honest.`) +
-    `<div class="row split" style="align-items:flex-start"><div class="col-main">${S.members.length === 0 ? empty("No members yet", "Add the people who volunteer — LOs pick from this list when they submit.") :
-      `<div class="card"><div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th>Year</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>
-      ${S.members.map((m) => `<tr${m.status === "alumni" ? ` style="opacity:.6"` : ""}><td>${who(m.name, m.lemsicId)}</td><td>${esc(m.lc)}</td><td class="sub">${esc(m.year || "—")}</td><td><span class="pill ${m.status === "alumni" ? "flat" : "ok"}">${esc(m.status || "active")}</span></td>
-        <td class="num"><b>${bal[m.id] ? bal[m.id].total : 0}</b></td><td><button class="btn sm" data-act="toggleMember" data-id="${esc(m.id)}" ${dis()}>${m.status === "alumni" ? "Reactivate" : "Mark alumni"}</button></td></tr>`).join("")}</tbody></table></div></div>`}</div>
-    <div class="col-side"><form class="card" data-submit="addMember"><div class="card-h"><h3>Add a member</h3></div><div class="card-b stack">
+  const mf = "member_new", qf = "mem_filter";
+  const tableHtml = () => {
+    const q = String(fv(qf, "q", "")).trim();
+    const list = q ? findMembers(q, { alumni: true }) : S.members.slice().sort((a, b) => String(a.lc).localeCompare(String(b.lc)) || String(a.name).localeCompare(String(b.name)));
+    const shown = list.slice(0, 300);
+    return (list.length === 0 ? `<div class="card-b"><span class="sub">No member matches “${esc(q)}”.</span></div>` :
+      `<div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th>Year</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>
+      ${shown.map((m) => `<tr${m.status === "alumni" ? ` style="opacity:.6"` : ""}><td>${who(m.name, m.lemsicId)}</td><td>${esc(m.lc)}</td><td class="sub">${esc(m.year || "—")}</td><td><span class="pill ${m.status === "alumni" ? "flat" : "ok"}">${esc(m.status || "active")}</span></td>
+        <td class="num"><b>${bal[m.id] ? bal[m.id].total : 0}</b></td><td><button class="btn sm" data-act="toggleMember" data-id="${esc(m.id)}" ${dis()}>${m.status === "alumni" ? "Reactivate" : "Mark alumni"}</button></td></tr>`).join("")}</tbody></table></div>`) +
+      `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub">${q ? `${list.length} of ${S.members.length} match` : `${S.members.length} members`}${list.length > shown.length ? ` · first ${shown.length} shown — search to find the rest` : ""}</span></div>`;
+  };
+  LIVE["members-table"] = tableHtml;
+  return head("Member registry", `${S.members.length} people on the books. LOs search this list by name or LeMSIC ID when they add volunteers — any LC, never any points.`) +
+    `<div class="row split" style="align-items:flex-start"><div class="col-main">${S.members.length === 0 ? empty("No members yet", "Upload the member list on the right, or add people one by one. LOs pick volunteers from this list.") :
+      `<div class="card"><div class="card-h"><div class="field" style="flex:1;max-width:420px"><input class="inp" data-form="${qf}" name="q" data-live="members-table" value="${esc(fv(qf, "q", ""))}" autocomplete="off" spellcheck="false" placeholder="Search by name or LeMSIC ID…" aria-label="Search members"></div></div><div id="members-table">${tableHtml()}</div></div>`}</div>
+    <div class="col-side">${vMemberList()}<form class="card" data-submit="addMember"><div class="card-h"><h3>Add a member</h3></div><div class="card-b stack">
       <div class="field"><label for="mn-n">Full name *</label>${inp(mf, "name", "", `id="mn-n" maxlength="80" placeholder="As they write it"`)}</div>
       <div class="field"><label for="mn-i">LeMSIC ID</label>${inp(mf, "lemsicId", "", `id="mn-i" maxlength="30" placeholder="LEM-0000"`)}</div>
       <div class="grid g2"><div class="field"><label for="mn-l">Committee *</label><select class="inp" id="mn-l" data-form="${mf}" name="lc">${opt("", "Choose…", "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, fv(mf, "lc"))).join("")}</select></div>
         <div class="field"><label for="mn-y">Year</label>${inp(mf, "year", "", `id="mn-y" maxlength="20" placeholder="Med 2"`)}</div></div>
       <button class="btn pri" type="submit" ${dis()}>Add member</button></div></form></div></div>`;
+}
+
+// ---------- uploading the member list (names, LeMSIC IDs, LCs — no points) ----------
+function vMemberList() {
+  const L = S.mlist;
+  if (!L) return `<div class="card"><div class="card-h"><h3>Upload the member list</h3></div><div class="card-b stack">
+      <span class="sub">An Excel or CSV file with one row per member: <b>name</b>, <b>LeMSIC ID</b> and <b>LC</b> (a year column is read too). Points aren't read here — the old points sheet goes through <b>Import old sheet</b>.</span>
+      <label class="btn" style="justify-content:center">Choose a file…<input type="file" accept=".xlsx,.xls,.csv" data-act-file="memberFile" hidden></label>
+      <span class="hint">Upload it again any time: people already here are recognised and skipped, so only new members are added.</span></div></div>`;
+  const plan = memberListPlan(L);
+  const headers = L.sheets[L.sheetIx].rows[L.header] || [];
+  const colSel = (key, label, optional) => `<div class="field"><label>${label}</label><select class="inp" data-ml="col.${key}">${optional ? opt(-1, "— none —", L.col[key]) : ""}${headers.map((h, i) => opt(i, colLetter(i) + " · " + (String(h).trim() || "(blank)"), L.col[key])).join("")}</select></div>`;
+  const adding = plan.add.length + (L.similarNew ? plan.similar.length : 0);
+  const filling = plan.fill.length + (L.similarNew ? 0 : plan.similar.filter((x) => x.id && !x.m.lemsicId).length);
+  const list = (items, fmt) => `<ul class="sub" style="margin:4px 0 0 18px;padding:0">${items.slice(0, 8).map((x) => `<li>${fmt(x)}</li>`).join("")}${items.length > 8 ? `<li>…and ${items.length - 8} more</li>` : ""}</ul>`;
+  return `<div class="card"><div class="card-h"><h3>Upload the member list</h3><div class="spacer"></div><small class="mono">${esc(L.filename)}</small></div><div class="card-b stack">
+    ${L.sheets.length > 1 ? `<div class="field"><label>Sheet</label><select class="inp" data-ml="sheet">${L.sheets.map((x, i) => opt(i, x.name, L.sheetIx)).join("")}</select></div>` : ""}
+    <div class="grid g2">${colSel("name", "Name column")}${colSel("name2", "Last name (if separate)", true)}${colSel("id", "LeMSIC ID column", true)}${colSel("lc", "LC column", true)}</div>
+    ${L.progress ? note("info", `Adding… ${esc(L.progress)}`) : ""}
+    ${note(adding || filling ? "good" : "info", `<b>${adding} new ${adding === 1 ? "member" : "members"}</b> to add${filling ? ` · ${filling} already here get their LeMSIC ID filled in` : ""} · ${plan.same} already in the registry${plan.skipped.length ? ` · ${plan.skipped.length} skipped` : ""}.`)}
+    ${plan.similar.length ? `<div>${note("info", `<b>${plan.similar.length} ${plan.similar.length === 1 ? "looks like someone" : "look like people"} already here</b> (a similar name in the same LC) and ${plan.similar.length === 1 ? "is" : "are"} treated as the same person:`)}${list(plan.similar, (x) => `${esc(x.name)} → ${esc(x.m.name)} (LC ${esc(x.m.lc)})`)}
+      <label class="sub" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" data-ml="similarNew" ${L.similarNew ? "checked" : ""}> They're different people — add them as new members</label></div>` : ""}
+    ${plan.skipped.length ? `<div>${note("warn", `<b>${plan.skipped.length} ${plan.skipped.length === 1 ? "row is" : "rows are"} skipped:</b>`)}${list(plan.skipped, (x) => `Row ${x.row}${x.name ? " — " + esc(x.name) : ""}: ${esc(x.why)}`)}</div>` : ""}
+    <div style="display:flex;gap:8px"><button class="btn pri" data-act="memberListApply" ${adding + filling === 0 || S.busy ? "disabled" : ""}>Add ${adding} ${adding === 1 ? "member" : "members"}${filling ? ` · fill ${filling} IDs` : ""}</button><button class="btn" data-act="memberListCancel" ${dis()}>Cancel</button></div>
+  </div></div>`;
+}
+async function readMemberFile(file) {
+  act(async () => {
+    if (!file) return;
+    const X = await loadXlsx();
+    let wb;
+    try { wb = X.read(await file.arrayBuffer(), { type: "array" }); } catch (e) { throw new UserError("That file couldn't be read as a spreadsheet. Use .xlsx, .xls or .csv."); }
+    const sheets = wb.SheetNames.map((n) => ({ name: n, rows: X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }) })).filter((x) => x.rows.length);
+    if (!sheets.length) throw new UserError("That file has no rows in it.");
+    S.mlist = { filename: file.name, sheets, similarNew: false };
+    const size = sheets.map((x) => x.rows.length);
+    pickMemberSheet(S.mlist, size.indexOf(Math.max(...size)));
+  });
+}
+function pickMemberSheet(L, ix) {
+  L.sheetIx = ix;
+  const rows = L.sheets[ix].rows;
+  L.header = guessHeader(rows);
+  const h = (rows[L.header] || []).map((x) => norm(x));
+  const g = guessColumns(rows[L.header] || []);
+  const first = h.findIndex((x) => /\bfirst\b|given/.test(x));
+  const last = h.findIndex((x) => /\blast\b|family|surname/.test(x));
+  L.col = { name: first >= 0 && last >= 0 ? first : Math.max(0, g.name), name2: first >= 0 && last >= 0 ? last : -1, id: g.id, lc: g.lc, year: h.findIndex((x) => /\byear\b|\bclass\b|promo|batch/.test(x)) };
+}
+/** What uploading the list would do. People already here are matched by LeMSIC ID, then by name within their LC. */
+function memberListPlan(L) {
+  const rows = L.sheets[L.sheetIx].rows.slice(L.header + 1);
+  const byId = new Map(), byName = new Map();
+  S.members.forEach((m) => { if (m.lemsicId) byId.set(idKey(m.lemsicId), m); byName.set((m.norm || norm(m.name)) + "|" + m.lc, m); });
+  const seenId = new Set(), seenName = new Set();
+  const plan = { add: [], fill: [], similar: [], same: 0, skipped: [] };
+  const cell = (r, i) => (i >= 0 ? String(r[i] ?? "").trim() : "");
+  rows.forEach((r, i) => {
+    r = r || [];
+    const row = L.header + 2 + i;
+    const name = cleanName([cell(r, L.col.name), cell(r, L.col.name2)].join(" "));
+    const id = cell(r, L.col.id), lcRaw = cell(r, L.col.lc), year = cell(r, L.col.year) || null;
+    if (!name && !id && !lcRaw) return; // a blank row
+    if (!name) { plan.skipped.push({ row, why: "no name" }); return; }
+    const lc = lcFrom(lcRaw);
+    if (!lc) { plan.skipped.push({ row, name, why: lcRaw ? `“${lcRaw}” isn't one of the LCs` : "no LC" }); return; }
+    const k = idKey(id), nk = norm(name) + "|" + lc;
+    if ((k && seenId.has(k)) || seenName.has(nk)) { plan.skipped.push({ row, name, why: "listed twice in this file" }); return; }
+    if (k) seenId.add(k); seenName.add(nk);
+    if (k && byId.has(k)) { plan.same++; return; }
+    const named = byName.get(nk);
+    if (named && (!named.lemsicId || !k)) { if (k) plan.fill.push({ m: named, lemsicId: id }); else plan.same++; return; }
+    // Not the same ID, not the same name: maybe the same person spelled differently ("L. Khoury").
+    const like = !named && S.members.find((m) => m.lc === lc && (!m.lemsicId || !k) && nameSimilarity(m.name, name) >= 0.75);
+    const person = { row, name, id: id || null, lc, year };
+    if (like) plan.similar.push(Object.assign(person, { m: like }));
+    else plan.add.push(person);
+  });
+  return plan;
+}
+async function applyMemberList() {
+  const L = S.mlist; if (!L) return;
+  const plan = memberListPlan(L);
+  const adds = plan.add.concat(L.similarNew ? plan.similar : []);
+  const fills = plan.fill.concat(L.similarNew ? [] : plan.similar.filter((x) => x.id && !x.m.lemsicId).map((x) => ({ m: x.m, lemsicId: x.id })));
+  const jobs = adds.map((a) => () => S.store.set("members/" + newId("m"), { name: a.name, norm: norm(a.name), lemsicId: a.id || null, lc: a.lc, year: a.year || null, status: "active", createdAt: Date.now(), via: "member list" }))
+    .concat(fills.map((f) => () => S.store.update("members/" + f.m.id, { lemsicId: f.lemsicId })));
+  // A few at a time. If it stops halfway, uploading the same file again finishes it: whoever was added is recognised.
+  for (let i = 0; i < jobs.length; i += 5) {
+    await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
+    L.progress = Math.min(jobs.length, i + 5) + " of " + jobs.length; changed();
+  }
+  await audit("members.uploaded", `Member list ${L.filename}: ${adds.length} added${fills.length ? `, ${fills.length} given their LeMSIC ID` : ""}`);
+  S.mlist = null;
+  toast(`${adds.length} ${adds.length === 1 ? "member" : "members"} added${fills.length ? ` · ${fills.length} IDs filled in` : ""}.`);
 }
 function vRubric() {
   const vpa = isVpa();
@@ -1206,15 +1417,15 @@ async function undoImport(id) {
 // ---------- Excel: the three sheets the app owns ----------
 /** The app writes exactly these sheets. Any other sheet in the workbook is left alone. */
 function workbookSheets() {
-  const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission"]].concat(
-    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || ""]));
+  const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission", "Event run by"]].concat(
+    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? "LC " + (e.eventLc || e.lc) : ""]));
   const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
   // Two columns to the right of the table: when this copy was written.
   const stamp = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   while (totals.length < 2) totals.push(["", "", "", "", "", ""]);
   totals[0] = totals[0].concat(["", "Last updated"]);
   totals[1] = totals[1].concat(["", stamp + " · LeMSIC Points"]);
-  const lcs = {}; S.ledger.forEach((e) => { const x = lcs[e.lc] || (lcs[e.lc] = [e.lc, new Set(), 0, 0, 0]); x[1].add(e.memberId); if (e.kind === "opening_balance") x[2] += e.pts; else x[3] += e.pts; x[4] += e.pts; });
+  const own = memberLcs(), lcs = {}; S.ledger.forEach((e) => { const lc = entryLc(e, own); const x = lcs[lc] || (lcs[lc] = [lc, new Set(), 0, 0, 0]); x[1].add(e.memberId); if (e.kind === "opening_balance") x[2] += e.pts; else x[3] += e.pts; x[4] += e.pts; });
   const byLc = [["LC", "Members credited", "Carried forward", "This term", "Total"]].concat(Object.values(lcs).sort((a, b) => b[4] - a[4]).map((x) => [x[0], x[1].size, x[2], x[3], x[4]]));
   return [["Totals by member", totals], ["Ledger", ledger], ["By LC", byLc]];
 }
@@ -1477,6 +1688,10 @@ document.addEventListener("input", (e) => {
   const form = el.getAttribute && el.getAttribute("data-form");
   if (!form) return;
   setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value });
+  // Only the results are redrawn while typing, so the box keeps focus and the phone keyboard stays up.
+  if (el.hasAttribute("data-picker")) { pickIx[form] = 0; refreshPick(form); return; }
+  const live = el.getAttribute("data-live");
+  if (live && LIVE[live]) { const box = document.getElementById(live); if (box) box.innerHTML = LIVE[live](); return; }
   if (el.name === "cat" && el.getAttribute("data-defaults")) {
     const c = S.rubric.find((x) => x.id === el.value);
     if (c) { setForm(form, { pts: String(c.def) }); const p = document.querySelector(`[data-form="${CSS.escape(form)}"][name="pts"]`); if (p) p.value = c.def; }
@@ -1485,6 +1700,15 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.getAttribute && el.getAttribute("data-act-file") === "importFile") { readImportFile(el.files && el.files[0]); return; }
+  if (el.getAttribute && el.getAttribute("data-act-file") === "memberFile") { readMemberFile(el.files && el.files[0]); return; }
+  const mlField = el.getAttribute && el.getAttribute("data-ml");
+  if (mlField && S.mlist) {
+    const L = S.mlist;
+    if (mlField === "sheet") pickMemberSheet(L, Number(el.value));
+    else if (mlField.startsWith("col.")) L.col[mlField.slice(4)] = Number(el.value);
+    else if (mlField === "similarNew") L.similarNew = el.checked;
+    changed(); return;
+  }
   const impField = el.getAttribute && el.getAttribute("data-imp");
   if (impField && S.imp) {
     const I = S.imp;
@@ -1498,6 +1722,25 @@ document.addEventListener("change", (e) => {
   if (el.getAttribute && el.getAttribute("data-act-change") === "previewLc") { S.previewLc = el.value; changed(); return; }
   const form = el.getAttribute && el.getAttribute("data-form");
   if (form && (el.tagName === "SELECT" || el.type === "checkbox")) setForm(form, { [el.name]: el.type === "checkbox" ? el.checked : el.value });
+});
+// In a member search box: ↓/↑ move through the matches, Enter picks one (and never submits the form), Esc clears.
+document.addEventListener("keydown", (e) => {
+  const form = e.target.getAttribute && e.target.getAttribute("data-picker");
+  if (!form) return;
+  const list = document.getElementById(form + "-list");
+  const all = list ? Array.from(list.querySelectorAll(".pickopt")) : [];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); if (!all.length) return;
+    const at = Math.max(0, all.findIndex((x) => x.classList.contains("on")));
+    pickIx[form] = e.key === "ArrowDown" ? Math.min(at + 1, all.length - 1) : Math.max(at - 1, 0);
+    refreshPick(form);
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    const on = list && (list.querySelector(".pickopt.on:not([disabled])") || list.querySelector(".pickopt:not([disabled])"));
+    if (on) ACTIONS.pickMember(on.dataset);
+  } else if (e.key === "Escape" && e.target.value) {
+    e.preventDefault(); e.target.value = ""; setForm(form, { q: "" }); refreshPick(form);
+  }
 });
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
@@ -1571,14 +1814,13 @@ const SUBMITS = {
     act(async () => {
       const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
       if (sub.status !== "draft" && sub.status !== "returned") throw new UserError("This submission is with the VPA and locked.");
-      const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Choose a member.");
-      if (m.lc !== sub.lc) throw new UserError("That member isn't in this committee.");
+      const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Search for the member and click their name.");
       const c = S.rubric.find((x) => x.id === f.cat); if (!c) throw new UserError("Choose a role from the rubric.");
       const pts = Number(f.pts);
       if (!Number.isInteger(pts) || pts < 0 || pts > 99) throw new UserError("Points must be a whole number from 0 to 99.");
       if ((sub.rows || []).some((r) => r.memberId === m.id)) throw new UserError(`${m.name} is already on this event — remove their row first to change it.`);
       const hours = f.hours === "" || f.hours == null ? null : Number(f.hours);
-      const row = { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, cat: c.id, catLabel: c.label, min: c.min, max: c.max, maxPerEvent: c.maxPerEvent || null, loCanExceed: !!c.loCanExceed, hours: Number.isFinite(hours) ? hours : null, note: String(f.note || "").trim() || null, pts };
+      const row = { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, cat: c.id, catLabel: c.label, min: c.min, max: c.max, maxPerEvent: c.maxPerEvent || null, loCanExceed: !!c.loCanExceed, hours: Number.isFinite(hours) ? hours : null, note: String(f.note || "").trim() || null, pts };
       const next = Object.assign({}, sub, { rows: (sub.rows || []).concat([row]), updatedAt: Date.now() });
       delete next.id; delete next.lo;
       await S.store.set(itemPath(d.lo, d.id), next);
@@ -1602,14 +1844,14 @@ const SUBMITS = {
     act(async () => {
       const sub = findItem(d.lo, d.id); if (!sub) throw new UserError("That submission is gone.");
       if (sub.status !== "pending") throw new UserError("That submission isn't waiting for review any more.");
-      const rows = sub.rows || [];
+      const rows = sub.rows || [], lcs = memberLcs();
       const decided = rows.map((r, i) => {
         const rejected = !!f["x" + i];
         const raw = f["p" + i] == null || f["p" + i] === "" ? Math.min(r.pts, r.max) : Number(f["p" + i]);
         if (!rejected && (!Number.isInteger(raw) || raw < 0)) throw new UserError(`${r.name}: points must be a whole number, 0 or more.`);
         if (!rejected && raw > r.max) throw new UserError(`${r.name}: “${r.catLabel}” tops out at ${r.max}.`);
         const pts = rejected ? 0 : raw;
-        return { memberId: r.memberId, name: r.name, lemsicId: r.lemsicId || null, cat: r.cat, catLabel: r.catLabel, pts, state: rejected ? "rejected" : pts === r.pts ? "kept" : "edited", note: String(f["n" + i] || "").trim() || null };
+        return { memberId: r.memberId, name: r.name, lemsicId: r.lemsicId || null, lc: lcs[r.memberId] || r.lc || sub.lc, cat: r.cat, catLabel: r.catLabel, pts, state: rejected ? "rejected" : pts === r.pts ? "kept" : "edited", note: String(f["n" + i] || "").trim() || null };
       });
       // Each row's entry has a fixed id and is only ever created, never overwritten:
       // if an approval is interrupted and retried, the entries already written are
@@ -1618,7 +1860,7 @@ const SUBMITS = {
       for (let i = 0; i < decided.length; i++) {
         const x = decided[i], path = "ledger/aw_" + d.id + "_" + i;
         if (x.pts <= 0 || await S.store.get(path)) continue;
-        await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, at: Date.now() + i, by: S.uid });
+        await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, at: Date.now() + i, by: S.uid });
       }
       const total = sum(decided, (x) => x.pts);
       await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: String(f.vnote || "").trim() || null, at: Date.now(), by: S.uid });
@@ -1644,7 +1886,7 @@ const SUBMITS = {
   correction() {
     const f = S.forms.corr || {};
     act(async () => {
-      const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Choose a member.");
+      const m = S.members.find((x) => x.id === f.member); if (!m) throw new UserError("Search for the member and click their name.");
       const pts = Number(f.pts);
       if (!Number.isInteger(pts) || pts === 0) throw new UserError("Enter a whole number of points other than zero.");
       const reason = String(f.reason || "").trim(); if (!reason) throw new UserError("A correction needs a reason.");
@@ -1659,8 +1901,8 @@ const SUBMITS = {
     act(async () => {
       const name = String(f.name || "").trim(), lc = f.lc, lemsicId = String(f.lemsicId || "").trim() || null;
       if (!name || !lc) throw new UserError("A member needs a name and a committee.");
-      const clash = S.members.find((m) => (lemsicId && m.lemsicId === lemsicId) || (m.norm === norm(name) && m.lc === lc));
-      if (clash) throw new UserError(`${clash.name} (LC ${clash.lc}) is already in the registry.`);
+      const clash = S.members.find((m) => (lemsicId && idKey(m.lemsicId) === idKey(lemsicId)) || ((m.norm || norm(m.name)) === norm(name) && m.lc === lc));
+      if (clash) throw new UserError(clash.lemsicId && lemsicId && idKey(clash.lemsicId) === idKey(lemsicId) ? `LeMSIC ID ${lemsicId} already belongs to ${clash.name} (LC ${clash.lc}).` : `${clash.name} (LC ${clash.lc}) is already in the registry.`);
       await S.store.set("members/" + newId("m"), { name, norm: norm(name), lemsicId, lc, year: String(f.year || "").trim() || null, status: "active", createdAt: Date.now() });
       await audit("member.added", `Added ${name} to LC ${lc}`);
       clearForm("member_new");
@@ -1742,6 +1984,22 @@ const ACTIONS = {
   toggleCat(d) {
     act(async () => { const c = S.rubric.find((x) => x.id === d.id); if (!c) return; await S.store.update("rubric/" + d.id, { active: c.active === false }); await audit("rubric.changed", `${c.active === false ? "Restored" : "Retired"} “${c.label}”`); });
   },
+  pickMember(d) {
+    const o = PICKERS[d.pf] || {};
+    if (o.exclude && o.exclude.has(d.id)) return;
+    setForm(d.pf, { member: d.id, q: "" }); pickIx[d.pf] = 0;
+    render();
+    const next = o.next && document.querySelector(`[data-form="${CSS.escape(d.pf)}"][name="${o.next}"]`);
+    if (next) next.focus();
+  },
+  unpickMember(d) {
+    setForm(d.pf, { member: "", q: "" });
+    render();
+    const box = document.querySelector(`[data-picker="${CSS.escape(d.pf)}"]`);
+    if (box) box.focus();
+  },
+  memberListCancel() { S.mlist = null; changed(); },
+  memberListApply() { act(applyMemberList, null); },
   toggleMember(d) {
     act(async () => { const m = S.members.find((x) => x.id === d.id); if (!m) return; await S.store.update("members/" + d.id, { status: m.status === "alumni" ? "active" : "alumni" }); });
   },

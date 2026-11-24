@@ -44,7 +44,10 @@ const text = (p) => p.innerText('body');
 const nav = async (p, label) => { await p.click(`.side button.nav:has-text("${label}")`); await settle(p); };
 async function addRow(p, member, cat, pts, note) {
   const f = 'form[data-submit="addRow"]';
-  await pick(p, `${f} select[name="member"]`, member);
+  // Members are found by typing: part of the name, then click the match.
+  if (await p.isVisible(`${f} button[data-act="unpickMember"]`)) await p.click(`${f} button[data-act="unpickMember"]`);
+  await p.fill(`${f} input[data-picker]`, member);
+  await p.click(`${f} .pickopt:has-text("${member}")`); await p.waitForSelector(`${f} .picked`);
   await pick(p, `${f} select[name="cat"]`, cat);
   if (pts != null) await p.fill(`${f} input[name="pts"]`, String(pts));
   if (note) await p.fill(`${f} input[name="note"]`, note);
