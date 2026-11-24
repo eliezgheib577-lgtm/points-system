@@ -4,7 +4,16 @@
 
 // Firebase: console → Project settings → Your apps → Web app → Config.
 // While this is null the page runs as a demo.
-window.LEMSIC_FIREBASE = null;
+// (The "apiKey" is not a secret: it only names the project. What protects the
+// data is the sign-in plus the rules in firestore.rules.)
+window.LEMSIC_FIREBASE = {
+  apiKey: "AIzaSyCr1YKM6O0DIkTMGF8TCnaUZNLEHBaW3N0",
+  authDomain: "lemsic-points.firebaseapp.com",
+  projectId: "lemsic-points",
+  storageBucket: "lemsic-points.firebasestorage.app",
+  messagingSenderId: "315606714277",
+  appId: "1:315606714277:web:112324b6fe554a5d138a4c"
+};
 
 // Microsoft 365, for keeping the Excel workbook up to date (see SETUP.md, part 2).
 // { clientId: "…", tenantId: "…" } — while this is null, Excel is download-only.
