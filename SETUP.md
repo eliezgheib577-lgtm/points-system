@@ -19,6 +19,11 @@ Firebase enforces them.
    versions of the console list it under **Build**.)
 2. Under **Sign-in method**, choose **Email/Password**, switch on the first toggle
    (leave "Email link" off), and **Save**.
+3. Open the **Settings** tab → **User actions**. Untick **Enable create
+   (sign-up)** and **Enable deletion**, and **Save**. Otherwise anyone who finds
+   the site could make an account of their own. You can still add and delete
+   users yourself from the console. (If your console doesn't show User actions,
+   skip this: the rules already give such accounts nothing.)
 
 ## 3. Create one login per position
 

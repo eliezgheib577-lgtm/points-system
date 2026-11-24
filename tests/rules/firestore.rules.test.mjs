@@ -59,6 +59,22 @@ describe("who can see the reference data", () => {
   it("an account inside the domain but not a position reads nothing", async () => {
     await assertFails(getDocs(collection(as("treasurer@lemsic-points.app"), "rubric")));
   });
+  it("a made-up LO login (someone signing themselves up) reads and writes nothing", async () => {
+    for (const who of ["lo.xyz", "lo.aub2", "lo.", "lo.aub.x"]) {
+      const db = as(who + "@lemsic-points.app");
+      await assertFails(getDocs(collection(db, "members")));
+      await assertFails(getDoc(doc(db, "config/app")));
+      await assertFails(setDoc(doc(db, `subs/${who}/items/x`), draft(who.split(".")[1] || "X")));
+      await assertFails(setDoc(doc(db, `subs/${who}`), { at: 1 }));
+    }
+  });
+  it("each of the seven real LO logins is an LO", async () => {
+    for (const code of ["aub", "usj", "lau", "bau", "lu", "uob", "usek"]) {
+      const db = as(`lo.${code}@lemsic-points.app`);
+      await assertSucceeds(getDocs(collection(db, "members")));
+      await assertSucceeds(setDoc(doc(db, `subs/lo.${code}/items/new`), draft(code.toUpperCase())));
+    }
+  });
   it("only the VPA changes the rubric or the member list", async () => {
     await assertFails(setDoc(doc(aub(), "rubric/oc_member"), { label: "OC member", def: 99, min: 0, max: 99 }));
     await assertFails(setDoc(doc(aub(), "members/m2"), { name: "Ghost", lc: "AUB" }));
