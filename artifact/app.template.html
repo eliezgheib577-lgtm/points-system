@@ -98,7 +98,7 @@ const days = (ms) => (Date.now() - ms) / 86400000;
 class UserError extends Error {}
 
 // ---------- reference data the demo is built from ----------
-const COMMITTEES = [["AUB", "American University of Beirut"], ["USJ", "Université Saint-Joseph"], ["LAU", "Lebanese American University"], ["BAU", "Beirut Arab University"], ["LU", "Lebanese University"], ["UOB", "University of Balamand"], ["USEK", "Holy Spirit University of Kaslik"]];
+const COMMITTEES = [["AUB", "American University of Beirut"], ["USJ", "Université Saint-Joseph"], ["LAU", "Lebanese American University"], ["BAU", "Beirut Arab University"], ["LU", "Lebanese University"], ["UOB", "University of Balamand"], ["USEK", "Holy Spirit University of Kaslik"], ["SGUB", "Saint George University of Beirut"]];
 const RUBRIC = [
   ["participant", "Participant / attendee", "Attended, no task assigned", 1, 0, 2, null, null, false],
   ["volunteer_half", "Volunteer — half day", "Up to 4 h on site", 3, 2, 4, "Attendance proof", null, false],
@@ -793,7 +793,7 @@ function vVpaHome() {
   return head(pend.length ? `${pend.length} submission${pend.length === 1 ? "" : "s"} waiting on you` : "Nothing waiting on you",
       oldest ? `The oldest has been waiting ${waited(oldest.submittedAt)}. Reviewing one takes a couple of minutes.` : "Every submission sent so far has been decided.",
       pend.length ? goBtn("Start reviewing →", "review", "", "pri sm") : "") +
-    (setup ? `<div class="card" style="margin-bottom:14px"><div class="card-b stack">${note("warn", "There are no committees or rubric yet, so nobody can submit.")}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn pri" data-act="loadSetup" ${dis()}>Load the starting setup</button><span class="sub">The term, the seven committees and a starting rubric. You can change all of it afterwards.</span></div></div></div>` : "") +
+    (setup ? `<div class="card" style="margin-bottom:14px"><div class="card-b stack">${note("warn", "There are no committees or rubric yet, so nobody can submit.")}<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn pri" data-act="loadSetup" ${dis()}>Load the starting setup</button><span class="sub">The term, the eight committees and a starting rubric. You can change all of it afterwards.</span></div></div></div>` : "") +
     (S.requests.length ? `<div style="margin-bottom:14px">${note("info", `<b>${S.requests.length} access request${S.requests.length === 1 ? "" : "s"}</b> from people who want to submit for a committee. ${goLink("Review them →", "access")}`)}</div>` : "") +
     `<div class="grid g4" style="margin-bottom:16px">${tile("Pending", pend.length, pend.length ? "awaiting your call" : "all clear", pend.length > 0)}${tile("Rows to review", sum(pend, (x) => (x.rows || []).length), sum(pend, (x) => sum(x.rows || [], (r) => r.pts)) + " proposed pts")}${tile("Points on the books", totals.total, bal.length + " members credited")}${tile("Carried forward", totals.carried, "from the old workbook")}</div>` +
     (pend.length === 0 ? empty("The queue is empty", "When a Local Officer sends a submission it appears here.") :
@@ -1306,7 +1306,7 @@ const colLetter = (i) => { let out = ""; let n = i + 1; while (n > 0) { const m 
 const isNum = (v) => typeof v === "number" || (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v.replace(/[, ]/g, ""))));
 const toNum = (v) => (typeof v === "number" ? v : Number(String(v).replace(/[, ]/g, "")));
 // Other ways people write each university, for LCs whose code doesn't appear in what they typed.
-const LC_ALIASES = { AUB: ["american university of beirut"], LAU: ["lebanese american"], USJ: ["saint joseph", "st joseph", "universite saint joseph"], BAU: ["beirut arab"], LU: ["lebanese university", "universite libanaise"], UOB: ["balamand"], USEK: ["kaslik", "holy spirit", "saint esprit"] };
+const LC_ALIASES = { AUB: ["american university of beirut"], LAU: ["lebanese american"], USJ: ["saint joseph", "st joseph", "universite saint joseph"], BAU: ["beirut arab"], LU: ["lebanese university", "universite libanaise"], UOB: ["balamand"], USEK: ["kaslik", "holy spirit", "saint esprit"], SGUB: ["saint george university", "st george university", "university of saint george", "saint george beirut", "st george beirut"] };
 /** "AUB", "LC AUB", "LeMSIC-UOB", "American University of Beirut", "Saint Joseph University" → the committee's id. */
 function lcFrom(raw) {
   const r = norm(raw); if (!r) return null;

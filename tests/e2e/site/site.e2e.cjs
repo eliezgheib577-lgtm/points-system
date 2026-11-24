@@ -100,7 +100,7 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await vpa.click('button[data-act="loadSetup"]'); await settle(vpa, 1500);
   await nav(vpa, 'Committees');
   const lcs = await text(vpa);
-  check('setup loaded: seven committees with their LO logins', (await vpa.locator('.col-main tbody tr').count()) === 7 && lcs.includes('lo.uob'));
+  check('setup loaded: eight committees with their LO logins, SGUB included', (await vpa.locator('.col-main tbody tr').count()) === 8 && lcs.includes('lo.uob') && lcs.includes('lo.sgub'));
   await vpa.screenshot({ path: `${SHOTS}/31-site-committees.png`, fullPage: true });
   await nav(vpa, 'Members');
   for (const [n, id, lc] of [['Lea Khoury', 'LEM-2341', 'AUB'], ['Karim Nassar', 'LEM-2502', 'AUB'], ['Maya Saad', 'LEM-2488', 'AUB'], ['Omar Fakih', 'LEM-3107', 'USJ']]) {

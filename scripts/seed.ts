@@ -15,6 +15,7 @@ const COMMITTEES = [
   ["LU", "Lebanese University"],
   ["UOB", "University of Balamand"],
   ["USEK", "Holy Spirit University of Kaslik"],
+  ["SGUB", "Saint George University of Beirut"],
 ] as const;
 
 const RUBRIC = [

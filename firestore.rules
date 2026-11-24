@@ -6,7 +6,7 @@ rules_version = '2';
 // Every login is <username>@lemsic-points.app, and the username is the role:
 //   vpa         the VPA: reads and writes everything
 //   lo.<code>   the Local Officer for that committee (lo.aub → AUB, lo.uob → UOB),
-//               for the seven committees listed in isLo() below
+//               for the eight committees listed in isLo() below
 // Any other account can sign in but reads and writes nothing.
 
 service cloud.firestore {
@@ -17,8 +17,8 @@ service cloud.firestore {
     function ours()     { return signedIn() && email().matches('^[a-z0-9._-]+@lemsic-points[.]app$'); }
     function username() { return email().split('@')[0]; }
     function isVpa()    { return ours() && username() == 'vpa'; }
-    // Only the seven real LO logins. An account someone else creates (lo.xyz, lo.aub2) gets nothing.
-    function isLo()     { return ours() && username() in ['lo.aub', 'lo.usj', 'lo.lau', 'lo.bau', 'lo.lu', 'lo.uob', 'lo.usek']; }
+    // Only the eight real LO logins. An account someone else creates (lo.xyz, lo.aub2) gets nothing.
+    function isLo()     { return ours() && username() in ['lo.aub', 'lo.usj', 'lo.lau', 'lo.bau', 'lo.lu', 'lo.uob', 'lo.usek', 'lo.sgub']; }
     function loCode()   { return username().split('[.]')[1]; }
     function anyone()   { return isVpa() || isLo(); }
 

@@ -27,7 +27,7 @@ Firebase enforces them.
 
 ## 3. Create one login per position
 
-**Authentication → Users → Add user**, eight times:
+**Authentication → Users → Add user**, nine times:
 
 | Email | Position |
 |---|---|
@@ -39,6 +39,7 @@ Firebase enforces them.
 | `lo.lu@lemsic-points.app` | LO · LC LU |
 | `lo.uob@lemsic-points.app` | LO · LC UOB |
 | `lo.usek@lemsic-points.app` | LO · LC USEK |
+| `lo.sgub@lemsic-points.app` | LO · LC SGUB |
 
 - Pick a different password for each, at least 10 characters.
 - `lemsic-points.app` is only part of the login name. Nothing is ever emailed
@@ -95,7 +96,7 @@ The rules from step 4 are what protect the data.
 ## 7. First sign-in
 
 1. Open the address and sign in as `vpa`.
-2. Click **Load the starting setup**. This loads the term, the seven committees
+2. Click **Load the starting setup**. This loads the term, the eight committees
    and a starting rubric; change any of it from the app afterwards.
 3. **Upload the member list** under **Members**: an Excel or CSV file with each
    member's name, LeMSIC ID and LC. LOs find volunteers by typing a name or ID,

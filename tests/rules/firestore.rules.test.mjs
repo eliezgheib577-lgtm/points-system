@@ -68,8 +68,8 @@ describe("who can see the reference data", () => {
       await assertFails(setDoc(doc(db, `subs/${who}`), { at: 1 }));
     }
   });
-  it("each of the seven real LO logins is an LO", async () => {
-    for (const code of ["aub", "usj", "lau", "bau", "lu", "uob", "usek"]) {
+  it("each of the eight real LO logins is an LO", async () => {
+    for (const code of ["aub", "usj", "lau", "bau", "lu", "uob", "usek", "sgub"]) {
       const db = as(`lo.${code}@lemsic-points.app`);
       await assertSucceeds(getDocs(collection(db, "members")));
       await assertSucceeds(setDoc(doc(db, `subs/lo.${code}/items/new`), draft(code.toUpperCase())));

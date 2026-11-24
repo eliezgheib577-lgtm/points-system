@@ -39,6 +39,11 @@
    "name": "Holy Spirit University of Kaslik",
    "active": true
   },
+  "committees/SGUB": {
+   "code": "SGUB",
+   "name": "Saint George University of Beirut",
+   "active": true
+  },
   "rubric/participant": {
    "label": "Participant / attendee",
    "description": "Attended, no task assigned",
