@@ -15,6 +15,10 @@ window.LEMSIC_FIREBASE = {
   appId: "1:315606714277:web:112324b6fe554a5d138a4c"
 };
 
-// Microsoft 365, for keeping the Excel workbook up to date (see SETUP.md, part 2).
-// { clientId: "…", tenantId: "…" } — while this is null, Excel is download-only.
-window.LEMSIC_MICROSOFT = null;
+// Microsoft 365, for keeping the Excel workbook up to date and saving the daily
+// backups (see SETUP.md, part 2). Both are identifiers, not secrets: the app
+// registration in LeMSIC's Microsoft Entra, and LeMSIC's Microsoft 365 tenant.
+window.LEMSIC_MICROSOFT = {
+  clientId: "0661a0ca-0e06-4ed4-9d8e-bc0a2e47bcfd",
+  tenantId: "a910431d-3056-4cbe-817f-8bfd7ae94377"
+};
