@@ -1180,6 +1180,7 @@ function vMemberList() {
   return `<div class="card"><div class="card-h"><h3>Upload the member list</h3><div class="spacer"></div><small class="mono">${esc(L.filename)}</small></div><div class="card-b stack">
     ${L.sheets.length > 1 ? `<div class="field"><label>Sheet</label><select class="inp" data-ml="sheet">${L.sheets.map((x, i) => opt(i, x.name, L.sheetIx)).join("")}</select></div>` : ""}
     <div class="grid g2">${colSel("name", "Name column")}${colSel("name2", "Last name (if separate)", true)}${colSel("id", "LeMSIC ID column", true)}${colSel("lc", "LC column", true)}</div>
+    ${plan.sample.length ? `<div><div class="hint" style="margin-bottom:6px">The first rows, as they'll be read — if a column is wrong, change it above.</div><div class="scroll-x" style="border:1px solid var(--line);border-radius:var(--r-sm)"><table><thead><tr><th>Name</th><th>LeMSIC ID</th><th>LC</th></tr></thead><tbody>${plan.sample.map((x) => `<tr><td>${esc(x.name || "—")}</td><td class="mono">${esc(x.id || "—")}</td><td>${x.lc ? "LC " + esc(x.lc) : `<span style="color:var(--amber)">? ${esc(x.lcRaw || "blank")}</span>`}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
     ${L.progress ? note("info", `Adding… ${esc(L.progress)}`) : ""}
     ${note(adding || filling ? "good" : "info", `<b>${adding} new ${adding === 1 ? "member" : "members"}</b> to add${filling ? ` · ${filling} already here get their LeMSIC ID filled in` : ""} · ${plan.same} already in the registry${plan.skipped.length ? ` · ${plan.skipped.length} skipped` : ""}.`)}
     ${plan.similar.length ? `<div>${note("info", `<b>${plan.similar.length} ${plan.similar.length === 1 ? "looks like someone" : "look like people"} already here</b> (a similar name in the same LC) and ${plan.similar.length === 1 ? "is" : "are"} treated as the same person:`)}${list(plan.similar, (x) => `${esc(x.name)} → ${esc(x.m.name)} (LC ${esc(x.m.lc)})`)}
@@ -1207,9 +1208,11 @@ function pickMemberSheet(L, ix) {
   L.header = guessHeader(rows);
   const h = (rows[L.header] || []).map((x) => norm(x));
   const g = guessColumns(rows[L.header] || []);
-  const first = h.findIndex((x) => /\bfirst\b|given/.test(x));
-  const last = h.findIndex((x) => /\blast\b|family|surname/.test(x));
-  L.col = { name: first >= 0 && last >= 0 ? first : Math.max(0, g.name), name2: first >= 0 && last >= 0 ? last : -1, id: g.id, lc: g.lc, year: h.findIndex((x) => /\byear\b|\bclass\b|promo|batch/.test(x)) };
+  // Names split over two columns — only when there's no "Full Name" column.
+  const first = h.findIndex((x) => /^(first|given) ?name$|^prenom$/.test(x));
+  const last = h.findIndex((x) => /^(last|family) ?name$|^surname$|^nom$/.test(x));
+  const split = !h.some((x) => /full ?name/.test(x)) && first >= 0 && last >= 0;
+  L.col = { name: split ? first : Math.max(0, g.name), name2: split ? last : -1, id: g.id, lc: g.lc, year: h.findIndex((x) => /^(year|class|promo|batch)\b|academic year|year of study/.test(x)) };
 }
 /** What uploading the list would do. People already here are matched by LeMSIC ID, then by name within their LC. */
 function memberListPlan(L) {
@@ -1217,7 +1220,7 @@ function memberListPlan(L) {
   const byId = new Map(), byName = new Map();
   S.members.forEach((m) => { if (m.lemsicId) byId.set(idKey(m.lemsicId), m); byName.set((m.norm || norm(m.name)) + "|" + m.lc, m); });
   const seenId = new Set(), seenName = new Set();
-  const plan = { add: [], fill: [], similar: [], same: 0, skipped: [] };
+  const plan = { add: [], fill: [], similar: [], same: 0, skipped: [], sample: [] };
   const cell = (r, i) => (i >= 0 ? String(r[i] ?? "").trim() : "");
   rows.forEach((r, i) => {
     r = r || [];
@@ -1225,8 +1228,9 @@ function memberListPlan(L) {
     const name = cleanName([cell(r, L.col.name), cell(r, L.col.name2)].join(" "));
     const id = cell(r, L.col.id), lcRaw = cell(r, L.col.lc), year = cell(r, L.col.year) || null;
     if (!name && !id && !lcRaw) return; // a blank row
-    if (!name) { plan.skipped.push({ row, why: "no name" }); return; }
     const lc = lcFrom(lcRaw);
+    if (plan.sample.length < 4) plan.sample.push({ name, id, lc, lcRaw });
+    if (!name) { plan.skipped.push({ row, why: "no name" }); return; }
     if (!lc) { plan.skipped.push({ row, name, why: lcRaw ? `“${lcRaw}” isn't one of the LCs` : "no LC" }); return; }
     const k = idKey(id), nk = norm(name) + "|" + lc;
     if ((k && seenId.has(k)) || seenName.has(nk)) { plan.skipped.push({ row, name, why: "listed twice in this file" }); return; }
@@ -1440,10 +1444,13 @@ function nameSimilarity(a, b) {
 const colLetter = (i) => { let out = ""; let n = i + 1; while (n > 0) { const m = (n - 1) % 26; out = String.fromCharCode(65 + m) + out; n = Math.floor((n - 1) / 26); } return out; };
 const isNum = (v) => typeof v === "number" || (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v.replace(/[, ]/g, ""))));
 const toNum = (v) => (typeof v === "number" ? v : Number(String(v).replace(/[, ]/g, "")));
-/** "AUB", "LC AUB", "American University of Beirut" → the committee's id. */
+// Other ways people write each university, for LCs whose code doesn't appear in what they typed.
+const LC_ALIASES = { AUB: ["american university of beirut"], LAU: ["lebanese american"], USJ: ["saint joseph", "st joseph", "universite saint joseph"], BAU: ["beirut arab"], LU: ["lebanese university", "universite libanaise"], UOB: ["balamand"], USEK: ["kaslik", "holy spirit", "saint esprit"] };
+/** "AUB", "LC AUB", "LeMSIC-UOB", "American University of Beirut", "Saint Joseph University" → the committee's id. */
 function lcFrom(raw) {
   const r = norm(raw); if (!r) return null;
-  const c = S.committees.find((x) => norm(x.id) === r || norm(x.name) === r || (r.length > 3 && norm(x.name).includes(r)) || r.split(" ").includes(norm(x.id)));
+  const c = S.committees.find((x) => norm(x.id) === r || norm(x.name) === r || (r.length > 3 && norm(x.name).includes(r)) || r.split(" ").includes(norm(x.id)))
+    || S.committees.find((x) => (LC_ALIASES[x.id] || []).some((a) => r.includes(a)) && !(x.id === "LU" && r.includes("american")));
   return c ? c.id : null;
 }
 function guessHeader(rows) {
@@ -1453,14 +1460,20 @@ function guessHeader(rows) {
   }
   return 0;
 }
+/** Which column holds what. Each field tries the clearest headings first, so the column order doesn't matter. */
 function guessColumns(headers) {
   const h = headers.map((x) => norm(x));
   const find = (re, not) => h.findIndex((x) => re.test(x) && !(not && not.test(x)));
+  const best = (...tries) => { for (const [re, not] of tries) { const i = find(re, not); if (i >= 0) return i; } return -1; };
+  const CONTACT = /phone|mobile|\btel\b|whats|contact/;
   let pts = find(/\btotal\b/); if (pts < 0) pts = find(/point|pts|score/);
   return {
-    name: find(/name|student|member|volunteer/, /\bid\b|committee|university|event/),
-    id: find(/\bid\b|lemsic|\bno\b|number/, /name|total|point/),
-    lc: find(/\blc\b|committee|university|\buni\b|local|school|faculty/),
+    // "Full Name" first; never "Username", "File name" or a question that happens to say "name".
+    name: best([/full ?name/], [/^name$|^names?\b|\bname$/, /\bid\b|commit|universit|event|user|file|first|last|family|surname/], [/name|student|member|volunteer/, /\bid\b|commit|universit|event/]),
+    // "LeMSIC ID" or "ID_to_email" — never a phone number.
+    id: best([/lemsic ?(id|no|number|code)\b|^lemsic$/, CONTACT], [/\bid\b/, CONTACT], [/\bno\b|number|code/, /name|total|point|phone|mobile|\btel\b|whats|contact/]),
+    // "Local Committee" (however it's spelled) or "LC" — never "Standing Committee".
+    lc: best([/\blc\b|local ?commit/], [/\blocal\b/], [/commit+e+/, /standing|\bsc\b/], [/universit|\buni\b|school|faculty/, /mail/]),
     pts,
   };
 }
