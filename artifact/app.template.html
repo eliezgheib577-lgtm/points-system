@@ -35,6 +35,11 @@ select.inp,input.inp,textarea.inp{width:100%}
 .inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .inline-form .field{min-width:150px;flex:1}
 input.pts{width:72px}
+/* On a phone the dark panel is hidden, so the sign-in form carries the name itself. */
+.auth-brand{margin-bottom:28px}
+.auth-brand .mark{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#1f9a78,var(--accent));color:#fff;font-weight:700;font-size:14px;flex:none}
+.auth-brand b{display:block;font-size:15.5px;color:var(--ink)}
+.auth-brand span{display:block;font-size:12.4px;color:var(--muted)}
 /* finding a member: a search box, then a short list of the closest matches */
 .picker{display:flex;flex-direction:column;gap:6px}
 .picklist{display:flex;flex-direction:column;gap:3px}
@@ -1482,6 +1487,7 @@ function vSignIn() {
     </div>
     <div class="auth-r">
       <form class="authbox" data-submit="signIn">
+        <div class="mob-top auth-brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>Volunteering &amp; contribution tracker</span></div></div>
         <h3>Sign in</h3>
         <p class="sub">Use your position's login, like <span class="mono">lo.aub</span>. The VPA gives these out.</p>
         ${S.signInError ? `<div style="margin:14px 0">${note("warn", esc(S.signInError))}</div>` : ""}
