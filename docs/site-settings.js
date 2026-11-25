@@ -22,3 +22,8 @@ window.LEMSIC_MICROSOFT = {
   clientId: "0661a0ca-0e06-4ed4-9d8e-bc0a2e47bcfd",
   tenantId: "a910431d-3056-4cbe-817f-8bfd7ae94377"
 };
+
+// Who to contact when something goes wrong. Shown on the sign-in page and at the
+// bottom of every page. "tel" is the number with the country code, for the
+// call and WhatsApp links.
+window.LEMSIC_HELP = { phone: "03 356 618", tel: "+9613356618" };

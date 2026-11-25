@@ -39,6 +39,12 @@ seed_tag = ('<script type="application/json" id="lemsic-seed">'
             + json.dumps({"docs": seed["docs"]}, ensure_ascii=False).replace("</", "<\\/")
             + "</script>\n")
 page = template.replace("/*__APP_CSS__*/", css.strip())
+# LeMSIC's logo, inlined so both builds are single files that work offline from GitHub's CDN.
+import base64
+for token, name in (("__LOGO_ICON__", "icon.png"), ("__LOGO_EMBLEM__", "emblem.png")):
+    data = (root / "artifact" / "brand" / name).read_bytes()
+    assert token in page, token
+    page = page.replace(token, "data:image/png;base64," + base64.b64encode(data).decode())
 head_part, body_part = page.split('<div id="app">', 1)
 body_part = '<div id="app">' + body_part
 app_div, app_script = body_part.split("\n<script>", 1)

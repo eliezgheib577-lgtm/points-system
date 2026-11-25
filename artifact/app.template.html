@@ -35,11 +35,22 @@ select.inp,input.inp,textarea.inp{width:100%}
 .inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .inline-form .field{min-width:150px;flex:1}
 input.pts{width:72px}
-/* On a phone the dark panel is hidden, so the sign-in form carries the name itself. */
+/* LeMSIC's logo: the emblem on the blue sign-in panel, the blue app icon everywhere else. */
+img.mark{display:block;width:34px;height:34px;border-radius:9px;flex:none;background:var(--brand)}
+.auth-emblem{width:188px;height:188px;display:block;position:relative;z-index:1}
+.auth-org{margin-top:18px;position:relative;z-index:1}
+.auth-org b{display:block;color:#fff;font-size:15px;font-weight:600;letter-spacing:.01em}
+.auth-org span{display:block;text-align:left;color:var(--auth-sub);font-size:16px;margin-top:4px;font-family:"Segoe UI","Noto Naskh Arabic","Geeza Pro",Tahoma,sans-serif}
+.auth-l h2 .app{display:block;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--auth-sub);font-weight:650;margin-bottom:10px}
+/* On a phone the blue panel is hidden, so the sign-in form carries the logo itself. */
 .auth-brand{margin-bottom:28px}
-.auth-brand .mark{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#1f9a78,var(--accent));color:#fff;font-weight:700;font-size:14px;flex:none}
+.auth-brand img.mark{width:46px;height:46px;border-radius:12px}
 .auth-brand b{display:block;font-size:15.5px;color:var(--ink)}
-.auth-brand span{display:block;font-size:12.4px;color:var(--muted)}
+.auth-brand span{display:block;font-size:12.2px;color:var(--muted)}
+.helpline{font-size:12.4px;color:var(--muted)}
+.helpline a{color:var(--accent);font-weight:600;text-decoration:none;white-space:nowrap}
+.helpline a:hover{text-decoration:underline}
+.page-foot{margin-top:28px;padding-top:14px;border-top:1px solid var(--line);display:flex;justify-content:center;text-align:center}
 /* finding a member: a search box, then a short list of the closest matches */
 .picker{display:flex;flex-direction:column;gap:6px}
 .picklist{display:flex;flex-direction:column;gap:3px}
@@ -629,6 +640,12 @@ function rowWho(r, sub) {
 /** Points belong to the member, so they count for the member's own LC — whichever LC ran the event. */
 function memberLcs() { const map = {}; S.members.forEach((m) => { map[m.id] = m.lc; }); return map; }
 const entryLc = (e, map) => (map && map[e.memberId]) || e.lc;
+// LeMSIC's logo (put in by the build from artifact/brand/), and who to call when something goes wrong.
+const LOGO_ICON = "__LOGO_ICON__", LOGO_EMBLEM = "__LOGO_EMBLEM__";
+// The browser-tab and home-screen icon, added from here so the image is in the page only once.
+try { [["icon", "image/png"], ["apple-touch-icon", null]].forEach(([rel, type]) => { const l = document.createElement("link"); l.rel = rel; if (type) l.type = type; l.href = LOGO_ICON; document.head.appendChild(l); }); } catch (e) { /* no document head (tests) */ }
+const HELP = (typeof window !== "undefined" && window.LEMSIC_HELP && window.LEMSIC_HELP.phone) ? window.LEMSIC_HELP : { phone: "03 356 618", tel: "+9613356618" };
+const helpLine = (lead) => `<div class="helpline">${esc(lead || "Any issues?")} Contact <a href="tel:${esc(HELP.tel || HELP.phone.replace(/\s+/g, ""))}">${esc(HELP.phone)}</a>${HELP.tel ? ` · <a href="https://wa.me/${esc(HELP.tel.replace(/\D/g, ""))}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</div>`;
 // Live regions: an input with data-live="<id>" redraws just that element as you type.
 const LIVE = {};
 /** Anything that removes or reverses asks twice: the first click arms the button for five seconds. */
@@ -1481,13 +1498,14 @@ function vSignIn() {
   const f = "signin";
   return `<div class="auth">
     <div class="auth-l">
-      <div class="brand" style="padding:0"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>Volunteering &amp; contribution tracker</span></div></div>
-      <h2>One place for every event, every volunteer, every point.</h2>
+      <img class="auth-emblem" src="${LOGO_EMBLEM}" alt="LeMSIC logo">
+      <div class="auth-org"><b>Lebanese Medical Students' International Committee</b><span lang="ar" dir="rtl">اللجنة الدولية لطلبة الطب في لبنان</span></div>
+      <h2><span class="app">LeMSIC Points</span>One place for every event, every volunteer, every point.</h2>
       <p>Local Officers submit the work their members did. The VPA reviews it once, approves it, and the points sheet updates itself.</p>
     </div>
     <div class="auth-r">
       <form class="authbox" data-submit="signIn">
-        <div class="mob-top auth-brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>Volunteering &amp; contribution tracker</span></div></div>
+        <div class="mob-top auth-brand"><img class="mark" src="${LOGO_ICON}" alt="LeMSIC logo"><div><b>LeMSIC Points</b><span>Lebanese Medical Students' International Committee</span></div></div>
         <h3>Sign in</h3>
         <p class="sub">Use your position's login, like <span class="mono">lo.aub</span>. The VPA gives these out.</p>
         ${S.signInError ? `<div style="margin:14px 0">${note("warn", esc(S.signInError))}</div>` : ""}
@@ -1495,8 +1513,9 @@ function vSignIn() {
           <div class="field"><label for="si-u">Username</label>${inp(f, "username", "", 'id="si-u" autocomplete="username" autocapitalize="none" spellcheck="false" required')}</div>
           <div class="field"><label for="si-p">Password</label><input class="inp" id="si-p" type="password" data-form="${f}" name="password" autocomplete="current-password" required></div>
           <button class="btn pri" style="justify-content:center;padding:10px" type="submit" ${dis()}>Sign in</button>
-          <span class="hint">Forgotten it? Ask the VPA — they can set a new one.</span>
+          <span class="hint">Forgotten your password? Ask the VPA — they can set a new one.</span>
         </div>
+        <div style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">${helpLine("Any issues signing in or using the site?")}</div>
       </form>
     </div>
   </div>`;
@@ -1505,7 +1524,7 @@ function vUnknown() {
   return `<div style="max-width:520px;margin:12vh auto 0" class="stack">
     <h1 style="font-size:22px">This login isn't one of LeMSIC's positions</h1>
     <p class="sub" style="font-size:14px">Positions sign in as <span class="mono">vpa</span> or <span class="mono">lo.</span> followed by the committee, like <span class="mono">lo.aub</span>. Ask the VPA which one is yours.</p>
-    <div><button class="btn" data-act="signOut">Sign out</button></div></div>`;
+    <div><button class="btn" data-act="signOut">Sign out</button></div>${helpLine("Think this is a mistake?")}</div>`;
 }
 function vCommittees() {
   const cf = "lc_new";
@@ -2197,7 +2216,7 @@ function render() {
 
   app.innerHTML = `<div class="shell">
     <aside class="side">
-      <div class="brand"><div class="mark">LP</div><div><b>LeMSIC Points</b><span>${esc(subtitle)}</span></div></div>
+      <div class="brand"><img class="mark" src="${LOGO_ICON}" alt="LeMSIC logo"><div><b>LeMSIC Points</b><span>${esc(subtitle)}</span></div></div>
       ${navItems.length ? `<div class="navgroup"><div class="navlabel">${isVpa() ? "VPA" : "Local Officer"}</div>${sideNav}</div>` : ""}
       <div class="side-foot"><div class="avatar">${esc(initials(nameShown))}</div><div><b>${esc(nameShown)}</b><small>${esc(whoLabel)}</small></div></div>
       ${S.platform === "firebase" ? `<button class="nav" data-act="signOut"><span class="ic">⏻</span>Sign out</button>` : ""}
@@ -2205,7 +2224,7 @@ function render() {
     <div class="main">
       <div class="topbar"><div class="crumb"><b>LeMSIC Points</b></div><div class="spacer"></div>${xlChip}${modeChip}${demoSwitch}${ownerSwitch}${term ? `<div class="termsel"><span class="dot"></span>${esc(term)}</div>` : ""}</div>
       ${mobNav ? `<nav class="mnav" aria-label="Sections">${mobNav}</nav>` : ""}
-      <div class="content" style="max-width:1460px">${banner ? `<div class="stack" style="margin-bottom:16px">${banner}</div>` : ""}${view}</div>
+      <div class="content" style="max-width:1460px">${banner ? `<div class="stack" style="margin-bottom:16px">${banner}</div>` : ""}${view}<div class="page-foot">${helpLine()}</div></div>
     </div>
   </div>${S.toast ? `<div class="toast${S.toast.bad ? " bad" : ""}" role="status">${esc(S.toast.msg)}</div>` : ""}`;
   restoreFocus(focus);
