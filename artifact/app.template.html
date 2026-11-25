@@ -37,6 +37,7 @@ select.inp,input.inp,textarea.inp{width:100%}
 input.pts{width:72px}
 /* LeMSIC's logo: the emblem on the blue sign-in panel, the blue app icon everywhere else. */
 img.mark{display:block;width:34px;height:34px;border-radius:9px;flex:none;background:var(--brand)}
+img.mark-emblem{width:42px;height:42px;border-radius:0;background:transparent}
 .auth-emblem{width:188px;height:188px;display:block;position:relative;z-index:1}
 .auth-org{margin-top:18px;position:relative;z-index:1}
 .auth-org b{display:block;color:#fff;font-size:15px;font-weight:600;letter-spacing:.01em}
@@ -2216,7 +2217,7 @@ function render() {
 
   app.innerHTML = `<div class="shell">
     <aside class="side">
-      <div class="brand"><img class="mark" src="${LOGO_ICON}" alt="LeMSIC logo"><div><b>LeMSIC Points</b><span>${esc(subtitle)}</span></div></div>
+      <div class="brand"><img class="mark mark-emblem" src="${LOGO_EMBLEM}" alt="LeMSIC logo"><div><b>LeMSIC Points</b><span>${esc(subtitle)}</span></div></div>
       ${navItems.length ? `<div class="navgroup"><div class="navlabel">${isVpa() ? "VPA" : "Local Officer"}</div>${sideNav}</div>` : ""}
       <div class="side-foot"><div class="avatar">${esc(initials(nameShown))}</div><div><b>${esc(nameShown)}</b><small>${esc(whoLabel)}</small></div></div>
       ${S.platform === "firebase" ? `<button class="nav" data-act="signOut"><span class="ic">⏻</span>Sign out</button>` : ""}

@@ -9,65 +9,65 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
-  /* LeMSIC: the committee's blue (#4769A8, from the logo), a deep navy rail, cool light canvas */
-  --brand:#4769A8;
-  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#f8f9fc;
-  --ink:#0f1a2e; --ink-2:#33456a; --muted:#66779a;
-  --line:#dde3ee; --line-2:#edf0f6;
-  --accent:#4769A8; --accent-2:#2f4f8c; --accent-soft:#e9eef8; --accent-ink:#ffffff; --accent-ring:#dbe4f5;
+  /* LeMSIC: white pages with the committee's gray (#A8A9A9) for lines, its blue (#3C6BAD) for the rail and actions */
+  --brand:#3C6BAD;
+  --bg:#ffffff; --surface:#ffffff; --surface-2:#f4f4f4;
+  --ink:#1d1f1f; --ink-2:#3f4242; --muted:#6b6d6d;
+  --line:#A8A9A9; --line-2:#e2e3e3;
+  --accent:#3C6BAD; --accent-2:#2c5390; --accent-soft:#eaf0f8; --accent-ink:#ffffff; --accent-ring:#d5e1f2;
   --amber:#9a5b06; --amber-soft:#fdf2e0; --amber-line:#f2e0c0; --amber-ink:#6f4204;
   --red:#a1312a; --red-soft:#fbeceb; --red-line:#edd4d2;
   --blue:#1f5f8f; --blue-soft:#e8f2f9; --blue-line:#d0e3f1; --blue-ink:#154a74;
   --violet:#5b3f9e; --violet-soft:#efeafb;
-  --good-line:#cdd9ef; --flag-row:#fffdf7;
+  --good-line:#c9d7ec; --flag-row:#fffdf7;
   --hot-line:#f0dfc2; --hot-top:#fffaf1; --hot-bot:#ffffff;
-  --chip-bg:#eef1f7; --chip-fg:#55617a; --step-bg:#e7ecf5; --knob:#ffffff;
-  --dot:#4f7fd6; --dot-ring:#dbe5f7;
-  --side-bg:#1b3260; --side-fg:#d4ddef; --side-head:#ffffff; --side-muted:#93a5c9; --side-label:#8396be;
-  --side-on:#284477; --side-line:#29467a; --side-chip:#33558f; --side-chip-fg:#cfdcf7; --side-foot-b:#e8edf7;
-  --auth-bg:#4769A8; --auth-fg:#eef3fb; --auth-sub:#d6e0f2; --auth-step:#e3eaf7;
-  --scrim:rgba(10,20,40,.55);
+  --chip-bg:#efefef; --chip-fg:#555757; --step-bg:#ececec; --knob:#ffffff;
+  --dot:#3C6BAD; --dot-ring:#d5e1f2;
+  --side-bg:#3C6BAD; --side-fg:#f0f4fa; --side-head:#ffffff; --side-muted:#dfe7f4; --side-label:#d8e2f2;
+  --side-on:#2d5590; --side-line:#5b84bf; --side-chip:#2d5590; --side-chip-fg:#ffffff; --side-foot-b:#ffffff;
+  --auth-bg:#3C6BAD; --auth-fg:#ffffff; --auth-sub:#e3eaf6; --auth-step:#eef3fa;
+  --scrim:rgba(20,22,22,.55);
   --r:12px; --r-sm:8px;
   --sans:"Inter","Inter Display",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --shadow:0 1px 2px rgba(15,26,46,.05), 0 8px 24px -12px rgba(15,26,46,.16);
-  --shadow-lift:0 6px 30px -10px rgba(15,26,46,.32);
+  --shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 18px -12px rgba(0,0,0,.14);
+  --shadow-lift:0 6px 30px -10px rgba(0,0,0,.28);
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0b1120; --surface:#111a2d; --surface-2:#152036;
-  --ink:#e7ecf6; --ink-2:#b3c0d9; --muted:#8493b1;
-  --line:#253350; --line-2:#1a2540;
-  --accent:#7d9fe0; --accent-2:#a9c1ef; --accent-soft:#18284a; --accent-ink:#0a1530; --accent-ring:#22386a;
+  --bg:#121314; --surface:#1a1b1c; --surface-2:#202223;
+  --ink:#ececec; --ink-2:#c4c6c6; --muted:#9a9c9c;
+  --line:#3a3c3c; --line-2:#2a2c2c;
+  --accent:#7ea3dd; --accent-2:#a9c2ea; --accent-soft:#1d2b40; --accent-ink:#0d1626; --accent-ring:#2a3d5c;
   --amber:#e0a35a; --amber-soft:#2e2412; --amber-line:#473314; --amber-ink:#f0c58c;
   --red:#ef8d83; --red-soft:#321b19; --red-line:#4a2823;
   --blue:#7fb8e8; --blue-soft:#13273a; --blue-line:#23405c; --blue-ink:#a8d0ef;
   --violet:#b7a0ea; --violet-soft:#221c38;
-  --good-line:#23406e; --flag-row:#1e2418;
-  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#111a2d;
-  --chip-bg:#1c2840; --chip-fg:#a2b0cc; --step-bg:#1c2840; --knob:#e7ecf6;
-  --dot:#7d9fe0; --dot-ring:#1b2c50;
-  --side-bg:#0f1c38; --side-on:#1d3462; --side-line:#203660; --side-chip:#284879;
-  --auth-bg:#2c4a85;
+  --good-line:#2a3d5c; --flag-row:#1e2418;
+  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#1a1b1c;
+  --chip-bg:#242626; --chip-fg:#b0b2b2; --step-bg:#242626; --knob:#ececec;
+  --dot:#7ea3dd; --dot-ring:#1d2b40;
+  --side-bg:#2a4f86; --side-on:#1f3d6b; --side-line:#3d64a0; --side-chip:#1f3d6b;
+  --auth-bg:#2a4f86;
   --scrim:rgba(0,0,0,.62);
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.66);
   --shadow-lift:0 6px 30px -10px rgba(0,0,0,.75);
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --bg:#0b1120; --surface:#111a2d; --surface-2:#152036;
-  --ink:#e7ecf6; --ink-2:#b3c0d9; --muted:#8493b1;
-  --line:#253350; --line-2:#1a2540;
-  --accent:#7d9fe0; --accent-2:#a9c1ef; --accent-soft:#18284a; --accent-ink:#0a1530; --accent-ring:#22386a;
+  --bg:#121314; --surface:#1a1b1c; --surface-2:#202223;
+  --ink:#ececec; --ink-2:#c4c6c6; --muted:#9a9c9c;
+  --line:#3a3c3c; --line-2:#2a2c2c;
+  --accent:#7ea3dd; --accent-2:#a9c2ea; --accent-soft:#1d2b40; --accent-ink:#0d1626; --accent-ring:#2a3d5c;
   --amber:#e0a35a; --amber-soft:#2e2412; --amber-line:#473314; --amber-ink:#f0c58c;
   --red:#ef8d83; --red-soft:#321b19; --red-line:#4a2823;
   --blue:#7fb8e8; --blue-soft:#13273a; --blue-line:#23405c; --blue-ink:#a8d0ef;
   --violet:#b7a0ea; --violet-soft:#221c38;
-  --good-line:#23406e; --flag-row:#1e2418;
-  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#111a2d;
-  --chip-bg:#1c2840; --chip-fg:#a2b0cc; --step-bg:#1c2840; --knob:#e7ecf6;
-  --dot:#7d9fe0; --dot-ring:#1b2c50;
-  --side-bg:#0f1c38; --side-on:#1d3462; --side-line:#203660; --side-chip:#284879;
-  --auth-bg:#2c4a85;
+  --good-line:#2a3d5c; --flag-row:#1e2418;
+  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#1a1b1c;
+  --chip-bg:#242626; --chip-fg:#b0b2b2; --step-bg:#242626; --knob:#ececec;
+  --dot:#7ea3dd; --dot-ring:#1d2b40;
+  --side-bg:#2a4f86; --side-on:#1f3d6b; --side-line:#3d64a0; --side-chip:#1f3d6b;
+  --auth-bg:#2a4f86;
   --scrim:rgba(0,0,0,.62);
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.66);
   --shadow-lift:0 6px 30px -10px rgba(0,0,0,.75);
