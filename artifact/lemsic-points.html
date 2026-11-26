@@ -490,7 +490,7 @@ const S = {
   uid: null, isOwner: false, myName: "", role: null, lc: null,
   viewAsLo: false, previewLc: "AUB", liveAvailable: false,
   config: null, committees: [], rubric: [], members: [], roster: [], rosterMe: undefined, requests: [], myRequest: undefined,
-  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, give: { rows: [] }, editMember: null, clearProgress: null, resetProgress: null, backup: undefined, restore: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
+  items: {}, ledger: [], decisions: [], audit: [], imports: [], loIds: [], imp: null, mlist: null, rlist: null, compare: null, give: { rows: [] }, editMember: null, clearProgress: null, resetProgress: null, backup: undefined, restore: null, undoArmed: null, excel: null, msAccount: null, xlBusy: false,
   profiles: {}, forms: {}, route: { name: "home" }, toast: null, busy: false,
   loaded: false, stale: false, revoked: false,
 };
@@ -2358,6 +2358,56 @@ function masterLogParts(e) {
     : orig.kind === "correction" ? "Correction made in the site" : orig.note ? orig.note : "";
   return { event, role, date, term: e.term || orig.term || termCode(), source: `LeMSIC Points site — ${ref} (#${e.id})`, flags };
 }
+/** The master sheet's person for a site member: by LeMSIC ID, else by name when only one person has it. */
+function sheetPersonOf(m, byId, byName) {
+  return (m.lemsicId && byId.get(idKey(m.lemsicId))) || ((byName.get(norm(m.name)) || []).length === 1 ? byName.get(norm(m.name))[0] : null);
+}
+/** Check every total on the master sheet against the site, to catch anything changed by hand in the sheet. */
+async function compareWithSheet() {
+  const xs = S.excel;
+  if (!xs || !xs.itemId) throw new UserError("Connect the master sheet first.");
+  await syncExcel(true); // the sheet first gets everything done on the site
+  const token = await msToken(true);
+  const base = `/drives/${encodeURIComponent(xs.driveId)}/items/${encodeURIComponent(xs.itemId)}/workbook`;
+  const session = await graph(token, "POST", base + "/createSession", { persistChanges: false });
+  const H = { "workbook-session-id": session.id };
+  let values = [];
+  try {
+    const sheets = (await graph(token, "GET", base + "/worksheets", undefined, H)).value || [];
+    const ms = sheets.find((w) => w.name.trim() === MASTER_SHEET);
+    if (!ms) throw new UserError("This workbook has no Mastersheet tab to compare with.");
+    const r = await graph(token, "GET", base + "/worksheets/" + encodeURIComponent(ms.id) + "/usedRange(valuesOnly=true)?$select=address,values", undefined, H);
+    values = (r && r.values) || [];
+  } finally { await graph(token, "POST", base + "/closeSession", {}, H).catch(() => null); }
+  const people = values.slice(1).map((r) => ({ name: String(r[0] || "").trim(), id: String(r[1] || "").trim(), lc: String(r[2] || "").trim(), total: Number(r[3]) })).filter((p) => p.name);
+  const byId = new Map(), byName = new Map();
+  people.forEach((p) => { if (p.id) byId.set(idKey(p.id), p); const k = norm(p.name); byName.set(k, (byName.get(k) || []).concat([p])); });
+  const bal = {}; balances().forEach((b) => { bal[b.memberId] = b.total; });
+  const seen = new Set(), diffs = [], onlySite = [];
+  for (const m of S.members) {
+    const p = sheetPersonOf(m, byId, byName), site = bal[m.id] || 0;
+    if (p) { seen.add(p); if (Number.isFinite(p.total) && Math.round(p.total) !== site) diffs.push({ memberId: m.id, name: m.name, lc: m.lc, site, sheet: Math.round(p.total) }); }
+    else if (site !== 0) onlySite.push({ memberId: m.id, name: m.name, lc: m.lc, site });
+  }
+  const onlySheet = people.filter((p) => !seen.has(p) && Number.isFinite(p.total) && Math.round(p.total) !== 0).map((p) => ({ name: p.name, lc: p.lc, sheet: Math.round(p.total) }));
+  S.compare = { at: Date.now(), checked: people.length, diffs: diffs.sort((a, b) => Math.abs(b.sheet - b.site) - Math.abs(a.sheet - a.site)), onlySite, onlySheet };
+}
+function vCompare() {
+  const C = S.compare;
+  let out = `<div class="card"><div class="card-h"><h3>Compare with the sheet</h3></div><div class="card-b stack">
+    <span class="sub">Checks every person's total on the sheet's Mastersheet against the site — to catch anything changed by hand in the sheet. Points should be changed on the site; this is how to find the ones that weren't.</span>
+    <div><button class="btn" data-act="compareSheet" ${S.busy || S.xlBusy ? "disabled" : ""}>${C ? "Compare again" : "Compare with the sheet"}</button>${C ? ` <span class="hint">Last compared ${esc(timeAgo(C.at))}</span>` : ""}</div>`;
+  if (C) {
+    if (!C.diffs.length && !C.onlySite.length && !C.onlySheet.length) out += note("good", `<b>All ${C.checked} totals match.</b> The sheet and the site agree.`);
+    if (C.diffs.length) out += `<div>${note("warn", `<b>${C.diffs.length} ${C.diffs.length === 1 ? "total differs" : "totals differ"}.</b> Probably changed by hand in the sheet. Use the sheet's total to change the site to match, or put the sheet back by hand.`)}
+      <div class="scroll-x" style="margin-top:8px"><table><thead><tr><th>Member</th><th>LC</th><th class="num">Site</th><th class="num">Sheet</th><th class="num">Difference</th><th></th></tr></thead><tbody>
+      ${C.diffs.map((d) => `<tr><td><b>${esc(d.name)}</b></td><td>${esc(lcShort(d.lc))}</td><td class="num mono">${d.site}</td><td class="num mono">${d.sheet}</td><td class="num"><b>${d.sheet - d.site > 0 ? "+" : ""}${d.sheet - d.site}</b></td>
+        <td style="text-align:right">${twiceBtn("useSheetTotal", "sheet:" + d.memberId, "Use the sheet's total", `data-id="${esc(d.memberId)}"`)}</td></tr>`).join("")}</tbody></table></div></div>`;
+    if (C.onlySite.length) out += note("info", `<b>On the site but not on the Mastersheet:</b> ${C.onlySite.slice(0, 12).map((x) => `${esc(x.name)} (${x.site})`).join(", ")}${C.onlySite.length > 12 ? `, and ${C.onlySite.length - 12} more` : ""}. Their name or LeMSIC ID differs from the sheet's.`);
+    if (C.onlySheet.length) out += note("info", `<b>On the sheet but not a member on the site:</b> ${C.onlySheet.slice(0, 12).map((x) => `${esc(x.name)} (${x.sheet})`).join(", ")}${C.onlySheet.length > 12 ? `, and ${C.onlySheet.length - 12} more` : ""}. If one of them is a member here under another spelling, give them the same name or LeMSIC ID on the site.`);
+  }
+  return out + `</div></div>`;
+}
 /** Keep LeMSIC's master sheet up to date. Returns how many Points Log rows were added. */
 async function syncMaster(token, base, H, sheets) {
   const sheetByName = (n) => sheets.find((w) => w.name.trim().toLowerCase() === n.toLowerCase());
@@ -2407,7 +2457,7 @@ async function syncMaster(token, base, H, sheets) {
   const outgoing = new Set(outWs ? (await read(outWs)).slice(1).map((r) => norm(r[0])).filter(Boolean) : []);
 
   // The rows the sheet doesn't have yet: everything done on the site (the starting balances came from this sheet).
-  const todo = S.ledger.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).filter((e) => e.kind !== "opening_balance" && !written.has(e.id));
+  const todo = S.ledger.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).filter((e) => e.kind !== "opening_balance" && !e.fromSheet && !written.has(e.id));
   if (!todo.length) return 0;
   const members = new Map(S.members.map((m) => [m.id, m]));
   const touched = new Map(); // person name (normalised) → { person, member }
@@ -2681,6 +2731,7 @@ function vExcel() {
             <div class="sub">or</div>
             <div><button class="btn" data-act="xlCreate" ${dis()}>Create “LeMSIC Points.xlsx” in my OneDrive</button></div>`}
         </div></div>
+      ${xs && xs.itemId && xs.layout === "master" ? vCompare() : ""}
       ${vBackups()}
     </div><div class="col-side">${sheetsCard}<div class="card"><div class="card-b">${download}</div></div></div></div>`;
 }
@@ -3157,6 +3208,18 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  compareSheet() { act(compareWithSheet); },
+  useSheetTotal(d) {
+    if (!confirmTwice("sheet:" + d.id)) return;
+    act(async () => {
+      const x = S.compare && S.compare.diffs.find((y) => y.memberId === d.id); if (!x) return;
+      const m = S.members.find((y) => y.id === d.id) || { name: x.name, lc: x.lc };
+      // An adjustment from the sheet: it isn't written back to the sheet, which already has it.
+      await S.store.set("ledger/" + newId("c"), { memberId: d.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "correction", pts: x.sheet - x.site, reason: "Matched to the master sheet's total (it was changed there)", fromSheet: true, term: termCode(), at: Date.now(), by: S.uid });
+      await audit("ledger.correction", `${x.sheet - x.site > 0 ? "+" : ""}${x.sheet - x.site} pts for ${m.name}: matched to the master sheet (${x.site} → ${x.sheet})`);
+      S.compare.diffs = S.compare.diffs.filter((y) => y.memberId !== d.id);
+    }, "The site now has the sheet's total for them.");
+  },
   showUnassigned() { setForm("mem_filter", { lc: NO_LC, q: "" }); changed(); },
   backupDownload() { act(async () => { await saveFile(`LeMSIC Points backup ${today()}${S.mode === "demo" ? " (demo)" : ""}.json`, new TextEncoder().encode(JSON.stringify(backupFile(), null, 1)), "application/json"); }); },
   backupNow() { act(async () => { if (!(await backupToMicrosoft(true))) throw new UserError("Sign in to Microsoft first."); }, "Backup saved to OneDrive."); },
@@ -3233,7 +3296,7 @@ const ACTIONS = {
     act(async () => {
       const e = S.ledger.find((x) => x.id === d.id); if (!e || e.kind !== "correction") return;
       if (reversed(e)) throw new UserError("That correction has already been undone.");
-      await S.store.set("ledger/rv_" + e.id, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "correction", pts: -e.pts, reason: "Undo of a correction — " + e.reason, reverses: e.id, term: e.term || termCode(), at: Date.now(), by: S.uid });
+      await S.store.set("ledger/rv_" + e.id, Object.assign({ memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "correction", pts: -e.pts, reason: "Undo of a correction — " + e.reason, reverses: e.id, term: e.term || termCode(), at: Date.now(), by: S.uid }, e.fromSheet ? { fromSheet: true } : {}));
       await audit("ledger.correction.undone", `${e.pts > 0 ? "−" : "+"}${Math.abs(e.pts)} pts for ${e.name}: undid “${e.reason}”`);
       syncSoon();
     }, "Correction undone.");

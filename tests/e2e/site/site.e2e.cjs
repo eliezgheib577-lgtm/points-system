@@ -549,6 +549,22 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   const logLen = mx('Points Log').length;
   await vpa.click('button[data-act="xlSync"]'); await settle(vpa, 3000);
   check('updating again writes nothing twice', mx('Points Log').length === logLen);
+  // Someone adds 7 points for Lea by hand in the sheet. Comparing finds it; the site can take the sheet's total.
+  const plog2 = mx('Points Log'); plog2.push(['P0001', 'Lea Khoury', 'AUB', '2026-27', '25/11/2026', 'Typed in by hand', 'Points Sheet entry', 'Lea Khoury', 7, 'Yes', `=IF(J${plog2.length + 1}="Yes",I${plog2.length + 1},0)`, 'by hand', '']);
+  await nav(vpa, 'Excel & backups');
+  await vpa.click('button[data-act="compareSheet"]'); await vpa.waitForSelector('button[data-act="compareSheet"]:has-text("Compare again")', { timeout: 30000 }); await settle(vpa, 800);
+  const cmp = await vpa.locator('.card', { hasText: 'Compare with the sheet' }).innerText();
+  const leaDiff = (/Lea Khoury\s+AUB\s+(-?\d+)\s+(-?\d+)\s+\+?(-?\d+)/.exec(cmp) || []);
+  check(`comparing finds Lea's total changed in the sheet (site ${leaDiff[1]}, sheet ${leaDiff[2]}: the 89 old points the site never imported here, plus the 7 typed in)`, Number(leaDiff[3]) === 96 && Number(leaDiff[2]) - Number(leaDiff[1]) === 96);
+  check('…lists who is only on the sheet (Old Member)', cmp.includes('On the sheet but not a member on the site') && cmp.includes('Old Member (10)'));
+  check('…and the people that agree aren\'t listed (Maya, Omar)', !/Maya Saad\s+AUB\s+\d/.test(cmp) && !/Omar Fakih\s+USJ\s+\d/.test(cmp));
+  await vpa.locator('.card', { hasText: 'Compare with the sheet' }).screenshot({ path: `${SHOTS}/36-site-compare.png` });
+  const logBefore = mx('Points Log').length;
+  const useBtn = vpa.locator('tr', { hasText: 'Lea Khoury' }).locator('button[data-act="useSheetTotal"]');
+  await useBtn.click(); await settle(vpa); await useBtn.click(); await vpa.waitForSelector('text=The site now has the sheet', { timeout: 15000 }); await settle(vpa, 3500);
+  await vpa.click('button[data-act="compareSheet"]'); await settle(vpa, 3000);
+  check('using the sheet\'s total makes them agree', !/Lea Khoury\s+AUB\s+-?\d/.test(await vpa.locator('.card', { hasText: 'Compare with the sheet' }).innerText()));
+  check('…and that adjustment is never written back into the sheet', mx('Points Log').length === logBefore);
   check(`every call to the master sheet matched the documented API (${MASTER.calls.filter((c) => c.startsWith('REJECTED')).join('; ') || 'none rejected'})`, MASTER.calls.filter((c) => c.startsWith('REJECTED')).length === 0);
 
   await nav(vpa, 'Overview');

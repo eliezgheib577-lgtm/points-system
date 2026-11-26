@@ -28,6 +28,24 @@ function parse(addr) {
   return { c1, r1, c2, r2 };
 }
 
+// What Excel shows for the master sheet's two kinds of formula (anything else stays as written).
+function evaluate(wb, sheet, v) {
+  if (typeof v !== 'string' || !v.startsWith('=')) return v;
+  const log = (wb.sheets.find((x) => x.name === 'Points Log') || { cells: [] }).cells;
+  const counted = (row) => (String(row[9]).trim() === 'Yes' ? Number(row[8]) || 0 : 0);
+  let m;
+  if ((m = /^=IF\(J(\d+)="Yes",I(\d+),0\)$/.exec(v))) return counted(log[Number(m[1]) - 1] || []);
+  if ((m = /^=SUMIFS\('Points Log'!\$K:\$K,'Points Log'!\$B:\$B,\$A(\d+)\)/.exec(v))) {
+    const name = String((sheet.cells[Number(m[1]) - 1] || [])[0] || '').trim().toLowerCase();
+    const mine = log.slice(1).filter((row) => String(row[1]).trim().toLowerCase() === name);
+    let t = mine.reduce((a, row) => a + counted(row), 0);
+    const out = wb.sheets.find((x) => /^Outgoings/.test(x.name));
+    if (/COUNTIF\('Outgoings/.test(v) && out && out.cells.slice(1).some((row) => String(row[0]).trim().toLowerCase() === name)) t -= mine.filter((row) => String(row[3]) !== '2026-27').reduce((a, row) => a + counted(row), 0);
+    return t;
+  }
+  return v;
+}
+
 function createWorkbook(opts = {}) {
   return {
     link: opts.link || LINK,
@@ -109,7 +127,7 @@ async function install(page, ...books) {
     if (op.startsWith('usedRange(valuesOnly=true)')) {
       const rows = sheet.cells.length, cols = Math.max(0, ...sheet.cells.map((r) => r.length));
       const out = { address: `${sheet.name}!A1${rows && cols ? ':' + letter(cols - 1) + rows : ''}` };
-      if (/values/.test(url.searchParams.get('$select') || '')) out.values = sheet.cells.map((r) => Array.from({ length: cols }, (_, i) => (r[i] == null ? '' : r[i])));
+      if (/values/.test(url.searchParams.get('$select') || '')) out.values = sheet.cells.map((r) => Array.from({ length: cols }, (_, i) => (r[i] == null ? '' : evaluate(wb, sheet, r[i]))));
       return json(200, out);
     }
     const rm = /^range\(address='([A-Z0-9:]+)'\)(\/.*)?$/.exec(op);
