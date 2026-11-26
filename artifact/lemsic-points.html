@@ -27,27 +27,9 @@
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   --shadow:0 1px 2px rgba(0,0,0,.04), 0 6px 18px -12px rgba(0,0,0,.14);
   --shadow-lift:0 6px 30px -10px rgba(0,0,0,.28);
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#121314; --surface:#1a1b1c; --surface-2:#202223;
-  --ink:#ececec; --ink-2:#c4c6c6; --muted:#9a9c9c;
-  --line:#3a3c3c; --line-2:#2a2c2c;
-  --accent:#7ea3dd; --accent-2:#a9c2ea; --accent-soft:#1d2b40; --accent-ink:#0d1626; --accent-ring:#2a3d5c;
-  --amber:#e0a35a; --amber-soft:#2e2412; --amber-line:#473314; --amber-ink:#f0c58c;
-  --red:#ef8d83; --red-soft:#321b19; --red-line:#4a2823;
-  --blue:#7fb8e8; --blue-soft:#13273a; --blue-line:#23405c; --blue-ink:#a8d0ef;
-  --violet:#b7a0ea; --violet-soft:#221c38;
-  --good-line:#2a3d5c; --flag-row:#1e2418;
-  --hot-line:#473314; --hot-top:#241c0e; --hot-bot:#1a1b1c;
-  --chip-bg:#242626; --chip-fg:#b0b2b2; --step-bg:#242626; --knob:#ececec;
-  --dot:#7ea3dd; --dot-ring:#1d2b40;
-  --side-bg:#2a4f86; --side-on:#1f3d6b; --side-line:#3d64a0; --side-chip:#1f3d6b;
-  --auth-bg:#2a4f86;
-  --scrim:rgba(0,0,0,.62);
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.66);
-  --shadow-lift:0 6px 30px -10px rgba(0,0,0,.75);
-  color-scheme:dark;
-}}
+/* Always white, as LeMSIC asked: a device in dark mode doesn't turn the pages dark. */
 :root[data-theme="dark"]{
   --bg:#121314; --surface:#1a1b1c; --surface-2:#202223;
   --ink:#ececec; --ink-2:#c4c6c6; --muted:#9a9c9c;

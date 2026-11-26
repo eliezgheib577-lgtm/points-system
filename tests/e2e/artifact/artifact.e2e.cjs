@@ -251,7 +251,7 @@ function harness() {
   const dark = await b.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
   await dark.goto(BASE); await dark.waitForSelector('.shell'); await settle(dark);
   const bg = await dark.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  check(`dark mode follows the system (${bg})`, bg === 'rgb(18, 19, 20)');
+  check(`pages stay white even on a device set to dark mode (${bg})`, bg === 'rgb(255, 255, 255)');
 
   await b.close(); server.close();
   console.log('\n' + (fail.length ? `${fail.length} FAILED:\n - ` + fail.join('\n - ') : 'ALL CHECKS PASSED'));
