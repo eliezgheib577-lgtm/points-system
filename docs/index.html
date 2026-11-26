@@ -689,7 +689,12 @@ const isVpa = () => S.role === "vpa" && !S.viewAsLo;
 const isLo = () => S.role === "lo" || (S.role === "vpa" && S.viewAsLo);
 // Events the VPA coordinates belong to no LC: they're "National". Points still count for each member's own LC.
 const NATIONAL = "National";
-const lcLabel = (lc) => (lc === NATIONAL ? "National (VPA)" : "LC " + lc);
+const lcLabel = (lc) => (lc === NATIONAL ? "National (VPA)" : lc === NO_LC ? "Unassigned" : "LC " + lc);
+// A member who isn't in an LC (yet). They can be credited like anyone; the VPA sets their LC later.
+const NO_LC = "UNASSIGNED";
+const lcText = (lc) => (lc === NO_LC ? "Unassigned" : "LC " + lc);   // "LC AUB" · "Unassigned"
+const lcShort = (lc) => (lc === NO_LC ? "Unassigned" : lc);          // "AUB" · "Unassigned"
+const lcOptions = (cur, withNone) => activeCommittees().map((c) => opt(c.id, "LC " + c.id, cur)).join("") + (withNone ? opt(NO_LC, "Unassigned — set it later", cur) : "");
 const isOwnEvent = (lo) => isVpa() && lo === S.uid;
 const myLc = () => {
   if (S.role === "vpa") return S.previewLc;
@@ -848,7 +853,7 @@ function findMembers(q, o) {
 const PICK_MAX = 8;
 const PICKERS = {}; // form → the picker's options, refreshed on every render
 const pickIx = {};  // form → which result the arrow keys are on
-const memberLine = (m) => [m.lemsicId, "LC " + m.lc].filter(Boolean).join(" · ");
+const memberLine = (m) => [m.lemsicId, lcText(m.lc)].filter(Boolean).join(" · ");
 /** Choosing a member: type part of a name or a LeMSIC ID, then click one of the closest matches. */
 function memberPicker(form, o) {
   PICKERS[form] = o;
@@ -871,7 +876,7 @@ function pickList(form) {
     const other = o.homeLc && m.lc !== o.homeLc;
     return `<button type="button" class="pickopt${i === ix ? " on" : ""}" role="option" aria-selected="${i === ix}" data-act="pickMember" data-pf="${esc(form)}" data-id="${esc(m.id)}" ${taken ? "disabled" : ""}>
       <span class="ava">${esc(initials(m.name))}</span><span class="pickname"><b>${esc(m.name)}</b><small>${esc(m.lemsicId || "no LeMSIC ID")}</small></span>
-      ${taken ? `<span class="sub">already added</span>` : ""}${m.status === "alumni" ? `<span class="pill flat">alumni</span>` : ""}<span class="pill ${other ? "tag" : "flat"}" title="${other ? "From another LC" : ""}">LC ${esc(m.lc)}</span></button>`;
+      ${taken ? `<span class="sub">already added</span>` : ""}${m.status === "alumni" ? `<span class="pill flat">alumni</span>` : ""}<span class="pill ${other ? "tag" : "flat"}" title="${other ? "From another LC" : ""}">${esc(lcText(m.lc))}</span></button>`;
   }).join("") + (found.length > PICK_MAX ? `<div class="pickempty">${found.length - PICK_MAX} more match — keep typing to narrow it down.</div>` : "");
 }
 function refreshPick(form) {
@@ -883,7 +888,7 @@ function refreshPick(form) {
 /** A volunteer row's name line: their LeMSIC ID, and their LC when it isn't the event's. */
 function rowWho(r, sub) {
   const lc = r.lc || (S.members.find((m) => m.id === r.memberId) || {}).lc;
-  return who(r.name, [r.lemsicId, lc && lc !== sub.lc ? "LC " + lc : ""].filter(Boolean).join(" · "));
+  return who(r.name, [r.lemsicId, lc && lc !== sub.lc ? lcText(lc) : ""].filter(Boolean).join(" · "));
 }
 /** Points belong to the member, so they count for the member's own LC — whichever LC ran the event. */
 function memberLcs() { const map = {}; S.members.forEach((m) => { map[m.id] = m.lc; }); return map; }
@@ -1153,7 +1158,7 @@ function vReviewSub() {
   });
   return head(esc(sub.title), `LC ${esc(sub.lc)} · ${fmtDate(sub.date)} · ${esc(sub.location || "—")} · submitted by ${esc(personName(sub.by))} ${timeAgo(sub.submittedAt)} · <span class="mono">${esc(sub.ref)}</span>`, sub.sc ? `<span class="pill tag">${esc(sub.sc)}</span>` : "") +
     (sub.loNote ? `<div style="margin-bottom:14px">${note("info", `<b>Note from ${esc(first(personName(sub.by)))} —</b> “${esc(sub.loNote)}”`)}</div>` : "") +
-    (() => { const lcs = memberLcs(); const away = rows.filter((r) => (lcs[r.memberId] || r.lc) && (lcs[r.memberId] || r.lc) !== sub.lc); return away.length ? `<div style="margin-bottom:14px">${note("info", `<b>${away.length} ${away.length === 1 ? "volunteer is" : "volunteers are"} from another LC</b> (${esc([...new Set(away.map((r) => "LC " + (lcs[r.memberId] || r.lc)))].join(", "))}). Their points count for their own LC.`)}</div>` : ""; })() +
+    (() => { const lcs = memberLcs(); const away = rows.filter((r) => (lcs[r.memberId] || r.lc) && (lcs[r.memberId] || r.lc) !== sub.lc); return away.length ? `<div style="margin-bottom:14px">${note("info", `<b>${away.length} ${away.length === 1 ? "volunteer is" : "volunteers are"} from another LC</b> (${esc([...new Set(away.map((r) => lcText(lcs[r.memberId] || r.lc)))].join(", "))}). Their points count for their own LC.`)}</div>` : ""; })() +
     `<div class="row split" style="align-items:flex-start"><div class="col-main">
       <form class="stack" data-submit="approve" data-lo="${esc(sub.lo)}" data-id="${esc(sub.id)}">
         <div class="card"><div class="card-h"><h3>Rows</h3><span class="pill flat">${rows.length}</span><div class="spacer"></div><small>Change a figure and say why — it's kept in the audit log</small></div>
@@ -1207,19 +1212,19 @@ function vLedger() {
   if (view === "member") {
     body = bal.length === 0 ? `<div class="card-b"><span class="sub">No one has points yet.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th class="num">Carried forward</th><th class="num">This term</th><th class="num">Total</th></tr></thead><tbody>
-      ${bal.map((b) => `<tr><td>${who(b.name, b.lemsicId)}</td><td>${esc(b.lc)}</td><td class="num mono">${b.carried}</td><td class="num mono" style="color:var(--accent-2)">${b.earned >= 0 ? "+" : ""}${b.earned}</td><td class="num"><b>${b.total}</b></td></tr>`).join("")}</tbody></table></div>`;
+      ${bal.map((b) => `<tr><td>${who(b.name, b.lemsicId)}</td><td>${esc(lcShort(b.lc))}</td><td class="num mono">${b.carried}</td><td class="num mono" style="color:var(--accent-2)">${b.earned >= 0 ? "+" : ""}${b.earned}</td><td class="num"><b>${b.total}</b></td></tr>`).join("")}</tbody></table></div>`;
   } else if (view === "lc") {
     const lcs = {}, own = memberLcs();
     S.ledger.forEach((e) => { const lc = entryLc(e, own); const x = lcs[lc] || (lcs[lc] = { lc, members: new Set(), carried: 0, earned: 0, total: 0 }); x.members.add(e.memberId); if (e.kind === "opening_balance") x.carried += e.pts; else x.earned += e.pts; x.total += e.pts; });
     const list = Object.values(lcs).sort((a, b) => b.total - a.total);
     body = list.length === 0 ? `<div class="card-b"><span class="sub">No points yet.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Local committee</th><th class="num">Members credited</th><th class="num">Carried</th><th class="num">This term</th><th class="num">Total</th></tr></thead><tbody>
-      ${list.map((x) => `<tr><td><b>LC ${esc(x.lc)}</b><div class="sub">${esc((committee(x.lc) || {}).name || "")}</div></td><td class="num">${x.members.size}</td><td class="num mono">${x.carried}</td><td class="num mono">${x.earned}</td><td class="num"><b>${x.total}</b></td></tr>`).join("")}</tbody></table></div>`;
+      ${list.map((x) => `<tr><td><b>${esc(lcText(x.lc))}</b><div class="sub">${esc(x.lc === NO_LC ? "Members not in an LC yet" : (committee(x.lc) || {}).name || "")}</div></td><td class="num">${x.members.size}</td><td class="num mono">${x.carried}</td><td class="num mono">${x.earned}</td><td class="num"><b>${x.total}</b></td></tr>`).join("")}</tbody></table></div>`;
   } else {
     body = S.ledger.length === 0 ? `<div class="card-b"><span class="sub">The ledger is empty. It fills as you approve submissions.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Reason</th><th>LC</th><th class="num">Pts</th><th>When</th><th></th></tr></thead><tbody>
       ${S.ledger.slice(0, 300).map((e) => `<tr${e.pts < 0 ? ` style="background:var(--red-soft)"` : e.kind === "opening_balance" ? ` style="background:var(--blue-soft)"` : ""}><td>${who(e.name, e.lemsicId)}</td>
-        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by ${esc(lcLabel(e.eventLc))}</div>` : ""}</td><td>${esc(e.lc)}</td>
+        <td>${esc(e.reason)}${e.kind === "opening_balance" ? `<div class="sub">Opening balance</div>` : e.kind === "correction" ? `<div class="sub">Correction</div>` : e.eventLc && e.eventLc !== e.lc ? `<div class="sub">Event run by ${esc(lcLabel(e.eventLc))}</div>` : ""}</td><td>${esc(lcShort(e.lc))}</td>
         <td class="num"><b style="${e.pts < 0 ? "color:var(--red)" : ""}">${e.pts > 0 ? "+" : ""}${e.pts}</b></td><td class="sub">${timeAgo(e.at)}</td>
         <td style="text-align:right">${e.kind === "correction" && !e.reverses ? (reversed(e) ? `<span class="pill flat">undone</span>` : twiceBtn("undoCorrection", "corr:" + e.id, "Undo", `data-id="${esc(e.id)}"`)) : e.kind === "award" && !e.reverses && e.subId ? `<span class="sub">undo from the submission</span>` : e.awardId && !e.reverses ? `<span class="sub">undo under Give points</span>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
   }
@@ -1237,24 +1242,27 @@ function vLedger() {
 function vMembers() {
   const bal = {}; balances().forEach((b) => { bal[b.memberId] = b; });
   const mf = "member_new", qf = "mem_filter";
+  const lcPick = fv(qf, "lc", ""), unassigned = S.members.filter((m) => m.lc === NO_LC).length;
   const tableHtml = () => {
-    const q = String(fv(qf, "q", "")).trim();
-    const list = q ? findMembers(q, { alumni: true }) : S.members.slice().sort((a, b) => String(a.lc).localeCompare(String(b.lc)) || String(a.name).localeCompare(String(b.name)));
+    const q = String(fv(qf, "q", "")).trim(), only = fv(qf, "lc", "");
+    const list = (q ? findMembers(q, { alumni: true }) : S.members.slice().sort((a, b) => String(a.lc).localeCompare(String(b.lc)) || String(a.name).localeCompare(String(b.name)))).filter((m) => !only || m.lc === only);
     const shown = list.slice(0, 300);
     return (list.length === 0 ? `<div class="card-b"><span class="sub">No member matches “${esc(q)}”.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Member</th><th>LC</th><th>Year</th><th>Status</th><th class="num">Points</th><th></th></tr></thead><tbody>
-      ${shown.map((m) => `<tr${m.status === "alumni" ? ` style="opacity:.6"` : ""}><td>${who(m.name, m.lemsicId)}</td><td>${esc(m.lc)}</td><td class="sub">${esc(m.year || "—")}</td><td><span class="pill ${m.status === "alumni" ? "flat" : "ok"}">${esc(m.status || "active")}</span></td>
+      ${shown.map((m) => `<tr${m.status === "alumni" ? ` style="opacity:.6"` : ""}><td>${who(m.name, m.lemsicId)}</td><td>${m.lc === NO_LC ? `<span class="pill pend">Unassigned</span>` : esc(m.lc)}</td><td class="sub">${esc(m.year || "—")}</td><td><span class="pill ${m.status === "alumni" ? "flat" : "ok"}">${esc(m.status || "active")}</span></td>
         <td class="num"><b>${bal[m.id] ? bal[m.id].total : 0}</b></td><td><div style="display:flex;gap:6px;justify-content:flex-end"><button class="btn sm" data-act="editMember" data-id="${esc(m.id)}" ${dis()}>Edit</button><button class="btn sm" data-act="toggleMember" data-id="${esc(m.id)}" ${dis()}>${m.status === "alumni" ? "Reactivate" : "Mark alumni"}</button></div></td></tr>`).join("")}</tbody></table></div>`) +
-      `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub">${q ? `${list.length} of ${S.members.length} match` : `${S.members.length} members`}${list.length > shown.length ? ` · first ${shown.length} shown — search to find the rest` : ""}</span></div>`;
+      `<div class="pad" style="border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)"><span class="sub">${q || only ? `${list.length} of ${S.members.length} ${q ? "match" : "shown"}` : `${S.members.length} members`}${list.length > shown.length ? ` · first ${shown.length} shown — search to find the rest` : ""}</span></div>`;
   };
   LIVE["members-table"] = tableHtml;
   return head("Member registry", `${S.members.length} people on the books. LOs search this list by name or LeMSIC ID when they add volunteers — any LC, never any points.`) +
     `<div class="row split" style="align-items:flex-start"><div class="col-main">${S.members.length === 0 ? empty("No members yet", "Upload the member list on the right, or add people one by one. LOs pick volunteers from this list.") :
-      `<div class="card"><div class="card-h"><div class="field" style="flex:1;max-width:420px"><input class="inp" data-form="${qf}" name="q" data-live="members-table" value="${esc(fv(qf, "q", ""))}" autocomplete="off" spellcheck="false" placeholder="Search by name or LeMSIC ID…" aria-label="Search members"></div></div><div id="members-table">${tableHtml()}</div></div>`}</div>
+      `${unassigned ? `<div style="margin-bottom:14px">${note("info", `<b>${unassigned} ${unassigned === 1 ? "member has" : "members have"} no LC yet.</b> They can still be credited. Set someone's LC with <b>Edit</b>, or upload an updated list and those with an LC in it get theirs. ${lcPick === NO_LC ? "" : `<button class="linkbtn" data-act="showUnassigned">Show them</button>`}`)}</div>` : ""}
+      <div class="card"><div class="card-h" style="flex-wrap:wrap"><div class="field" style="flex:1;max-width:420px;min-width:200px"><input class="inp" data-form="${qf}" name="q" data-live="members-table" value="${esc(fv(qf, "q", ""))}" autocomplete="off" spellcheck="false" placeholder="Search by name or LeMSIC ID…" aria-label="Search members"></div>
+        <div class="field" style="width:200px"><select class="inp" data-form="${qf}" name="lc" data-rerender="1" aria-label="Show one LC">${opt("", "All LCs", lcPick)}${S.committees.map((c) => opt(c.id, "LC " + c.id, lcPick)).join("")}${unassigned ? opt(NO_LC, `Unassigned (${unassigned})`, lcPick) : ""}</select></div></div><div id="members-table">${tableHtml()}</div></div>`}</div>
     <div class="col-side">${vEditMember()}${vMemberList()}<form class="card" data-submit="addMember"><div class="card-h"><h3>Add a member</h3></div><div class="card-b stack">
       <div class="field"><label for="mn-n">Full name *</label>${inp(mf, "name", "", `id="mn-n" maxlength="80" placeholder="As they write it"`)}</div>
       <div class="field"><label for="mn-i">LeMSIC ID</label>${inp(mf, "lemsicId", "", `id="mn-i" maxlength="30" placeholder="LEM-0000"`)}</div>
-      <div class="grid g2"><div class="field"><label for="mn-l">Committee *</label><select class="inp" id="mn-l" data-form="${mf}" name="lc">${opt("", "Choose…", "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, fv(mf, "lc"))).join("")}</select></div>
+      <div class="grid g2"><div class="field"><label for="mn-l">Committee *</label><select class="inp" id="mn-l" data-form="${mf}" name="lc">${opt("", "Choose…", "")}${lcOptions(fv(mf, "lc"), true)}</select></div>
         <div class="field"><label for="mn-y">Year</label>${inp(mf, "year", "", `id="mn-y" maxlength="20" placeholder="Med 2"`)}</div></div>
       <button class="btn pri" type="submit" ${dis()}>Add member</button></div></form>${vClearMembers()}</div></div>`;
 }
@@ -1270,6 +1278,7 @@ async function undoMemberUpload(id) {
   const kept = present.filter((mid) => used.has(mid)), gone = present.filter((mid) => !used.has(mid));
   const jobs = gone.map((mid) => () => S.store.del("members/" + mid));
   ((up && up.filled) || []).forEach((f) => { const m = S.members.find((x) => x.id === f.id); if (m && idKey(m.lemsicId) === idKey(f.lemsicId)) jobs.push(() => S.store.update("members/" + f.id, { lemsicId: null })); });
+  ((up && up.assigned) || []).forEach((a) => { const m = S.members.find((x) => x.id === a.id); if (m && m.lc === a.lc) jobs.push(() => S.store.update("members/" + a.id, Object.assign({ lc: NO_LC }, a.lemsicId && idKey(m.lemsicId) === idKey(a.lemsicId) ? { lemsicId: null } : {}))); });
   for (let i = 0; i < jobs.length; i += 5) await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
   if (!legacy) await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now(), kept: kept.length });
   await audit("members.upload.undone", `${legacy ? "An earlier member upload" : up.ref + " — " + up.filename} undone: ${gone.length} removed${kept.length ? `, ${kept.length} kept (already credited or on a submission)` : ""}`);
@@ -1327,7 +1336,7 @@ function vClearMembers() {
   const removable = scope.filter((m) => !used.has(m.id)).length, kept = scope.length - removable;
   const lcs = [...new Set(S.members.map((m) => m.lc))].sort();
   return `<div class="card"><div class="card-h"><h3>Clear members</h3></div><div class="card-b stack">
-      <div class="field"><label for="cm-l">Who</label><select class="inp" id="cm-l" data-form="${cf}" name="lc" data-rerender="1">${opt("", `Everyone (${S.members.length})`, lc)}${lcs.map((c) => opt(c, `LC ${c} only (${S.members.filter((m) => m.lc === c).length})`, lc)).join("")}</select></div>
+      <div class="field"><label for="cm-l">Who</label><select class="inp" id="cm-l" data-form="${cf}" name="lc" data-rerender="1">${opt("", `Everyone (${S.members.length})`, lc)}${lcs.map((c) => opt(c, `${c === NO_LC ? "Unassigned" : "LC " + c} only (${S.members.filter((m) => m.lc === c).length})`, lc)).join("")}</select></div>
       <span class="sub">${removable} will be removed${kept ? `; <b>${kept} stay</b> because they have points or are on a submission (mark them alumni instead)` : ""}.</span>
       ${S.clearProgress ? note("info", `Removing… ${esc(S.clearProgress)}`) : ""}
       <div>${removable ? twiceBtn("clearMembers", "clear:" + (lc || "all"), `Remove ${removable} ${removable === 1 ? "member" : "members"}`, `data-lc="${esc(lc)}"`, "danger") : `<button class="btn sm" disabled>Nobody to remove</button>`}</div>
@@ -1344,7 +1353,7 @@ function vEditMember() {
   return `<form class="card" data-submit="saveMember" data-id="${esc(m.id)}" style="border-color:var(--accent)"><div class="card-h"><h3>Edit member</h3><div class="spacer"></div><button type="button" class="btn ghost sm" data-act="editMemberClose">Close</button></div><div class="card-b stack">
       <div class="field"><label for="me-n">Full name *</label>${inp(ef, "name", m.name, `id="me-n" maxlength="80"`)}</div>
       <div class="field"><label for="me-i">LeMSIC ID</label>${inp(ef, "lemsicId", m.lemsicId || "", `id="me-i" maxlength="30"`)}</div>
-      <div class="grid g2"><div class="field"><label for="me-l">Committee *</label><select class="inp" id="me-l" data-form="${ef}" name="lc">${S.committees.map((c) => opt(c.id, "LC " + c.id, fv(ef, "lc", m.lc))).join("")}</select></div>
+      <div class="grid g2"><div class="field"><label for="me-l">Committee *</label><select class="inp" id="me-l" data-form="${ef}" name="lc">${S.committees.map((c) => opt(c.id, "LC " + c.id, fv(ef, "lc", m.lc))).join("")}${opt(NO_LC, "Unassigned", fv(ef, "lc", m.lc))}</select></div>
         <div class="field"><label for="me-y">Year</label>${inp(ef, "year", m.year || "", `id="me-y" maxlength="20"`)}</div></div>
       <button class="btn pri" type="submit" ${dis()}>Save changes</button>
       ${used ? `<span class="hint">${esc(first(m.name))} already has points or is on a submission, so they can't be deleted — mark them alumni instead. Changing their LC moves their points to the new LC.</span>`
@@ -1362,7 +1371,7 @@ function vMemberList() {
   const plan = memberListPlan(L);
   const headers = L.sheets[L.sheetIx].rows[L.header] || [];
   const colSel = (key, label, optional) => `<div class="field"><label>${label}</label><select class="inp" data-ml="col.${key}">${optional ? opt(-1, "— none —", L.col[key]) : ""}${headers.map((h, i) => opt(i, colLetter(i) + " · " + (String(h).trim() || "(blank)"), L.col[key])).join("")}</select></div>`;
-  const adding = plan.add.length + (L.similarNew ? plan.similar.length : 0);
+  const adding = plan.add.length + (L.similarNew ? plan.similar.length : 0), assigning = plan.assign.length;
   const filling = plan.fill.length + (L.similarNew ? 0 : plan.similar.filter((x) => x.id && !x.m.lemsicId).length);
   const list = (items, fmt) => `<ul class="sub" style="margin:4px 0 0 18px;padding:0">${items.slice(0, 8).map((x) => `<li>${fmt(x)}</li>`).join("")}${items.length > 8 ? `<li>…and ${items.length - 8} more</li>` : ""}</ul>`;
   return `<div class="card"><div class="card-h"><h3>Upload the member list</h3><div class="spacer"></div><small class="mono">${esc(L.filename)}</small></div><div class="card-b stack">
@@ -1370,11 +1379,12 @@ function vMemberList() {
     <div class="grid g2">${colSel("name", "Name column")}${colSel("name2", "Last name (if separate)", true)}${colSel("id", "LeMSIC ID column", true)}${colSel("lc", "LC column", true)}</div>
     ${plan.sample.length ? `<div><div class="hint" style="margin-bottom:6px">The first rows, as they'll be read — if a column is wrong, change it above.</div><div class="scroll-x" style="border:1px solid var(--line);border-radius:var(--r-sm)"><table><thead><tr><th>Name</th><th>LeMSIC ID</th><th>LC</th></tr></thead><tbody>${plan.sample.map((x) => `<tr><td>${esc(x.name || "—")}</td><td class="mono">${esc(x.id || "—")}</td><td>${x.lc ? "LC " + esc(x.lc) : `<span style="color:var(--amber)">? ${esc(x.lcRaw || "blank")}</span>`}</td></tr>`).join("")}</tbody></table></div></div>` : ""}
     ${L.progress ? note("info", `Adding… ${esc(L.progress)}`) : ""}
-    ${note(adding || filling ? "good" : "info", `<b>${adding} new ${adding === 1 ? "member" : "members"}</b> to add${filling ? ` · ${filling} already here get their LeMSIC ID filled in` : ""} · ${plan.same} already in the registry${plan.skipped.length ? ` · ${plan.skipped.length} skipped` : ""}.`)}
+    ${note(adding || filling || assigning ? "good" : "info", `<b>${adding} new ${adding === 1 ? "member" : "members"}</b> to add${plan.asUnassigned ? ` (${plan.asUnassigned} unassigned)` : ""}${filling ? ` · ${filling} already here get their LeMSIC ID filled in` : ""}${assigning ? ` · ${assigning} unassigned ${assigning === 1 ? "gets their" : "get their"} LC` : ""} · ${plan.same} already in the registry${plan.skipped.length ? ` · ${plan.skipped.length} skipped` : ""}.`)}
+    ${plan.noLc ? `<label class="sub" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-ml="unassigned" ${L.unassigned ? "checked" : ""}> Add the ${plan.noLc} ${plan.noLc === 1 ? "person" : "people"} with no LC (or one that isn't ours) as <b>Unassigned</b> — set their LC later</label>` : ""}
     ${plan.similar.length ? `<div>${note("info", `<b>${plan.similar.length} ${plan.similar.length === 1 ? "looks like someone" : "look like people"} already here</b> (a similar name in the same LC) and ${plan.similar.length === 1 ? "is" : "are"} treated as the same person:`)}${list(plan.similar, (x) => `${esc(x.name)} → ${esc(x.m.name)} (LC ${esc(x.m.lc)})`)}
       <label class="sub" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" data-ml="similarNew" ${L.similarNew ? "checked" : ""}> They're different people — add them as new members</label></div>` : ""}
     ${plan.skipped.length ? `<div>${note("warn", `<b>${plan.skipped.length} ${plan.skipped.length === 1 ? "row is" : "rows are"} skipped:</b>`)}${list(plan.skipped, (x) => `Row ${x.row}${x.name ? " — " + esc(x.name) : ""}: ${esc(x.why)}`)}</div>` : ""}
-    <div style="display:flex;gap:8px"><button class="btn pri" data-act="memberListApply" ${adding + filling === 0 || S.busy ? "disabled" : ""}>Add ${adding} ${adding === 1 ? "member" : "members"}${filling ? ` · fill ${filling} IDs` : ""}</button><button class="btn" data-act="memberListCancel" ${dis()}>Cancel</button></div>
+    <div style="display:flex;gap:8px"><button class="btn pri" data-act="memberListApply" ${adding + filling + assigning === 0 || S.busy ? "disabled" : ""}>Add ${adding} ${adding === 1 ? "member" : "members"}${filling ? ` · fill ${filling} IDs` : ""}${assigning ? ` · set ${assigning} LCs` : ""}</button><button class="btn" data-act="memberListCancel" ${dis()}>Cancel</button></div>
   </div></div>`;
 }
 async function readMemberFile(file) {
@@ -1408,7 +1418,8 @@ function memberListPlan(L) {
   const byId = new Map(), byName = new Map();
   S.members.forEach((m) => { if (m.lemsicId) byId.set(idKey(m.lemsicId), m); byName.set((m.norm || norm(m.name)) + "|" + m.lc, m); });
   const seenId = new Set(), seenName = new Set();
-  const plan = { add: [], fill: [], similar: [], same: 0, skipped: [], sample: [] };
+  const plan = { add: [], fill: [], assign: [], similar: [], same: 0, skipped: [], sample: [], noLc: 0, asUnassigned: 0 };
+  const sameName = (name) => S.members.filter((m) => (m.norm || norm(m.name)) === norm(name));
   const cell = (r, i) => (i >= 0 ? String(r[i] ?? "").trim() : "");
   rows.forEach((r, i) => {
     r = r || [];
@@ -1416,21 +1427,33 @@ function memberListPlan(L) {
     const name = cleanName([cell(r, L.col.name), cell(r, L.col.name2)].join(" "));
     const id = cell(r, L.col.id), lcRaw = cell(r, L.col.lc), year = cell(r, L.col.year) || null;
     if (!name && !id && !lcRaw) return; // a blank row
-    const lc = lcFrom(lcRaw);
+    let lc = lcFrom(lcRaw);
     if (plan.sample.length < 4) plan.sample.push({ name, id, lc, lcRaw });
     if (!name) { plan.skipped.push({ row, why: "no name" }); return; }
-    if (!lc) { plan.skipped.push({ row, name, why: lcRaw ? `“${lcRaw}” isn't one of the LCs` : "no LC" }); return; }
+    if (!lc) {
+      plan.noLc++;
+      if (!L.unassigned) { plan.skipped.push({ row, name, why: lcRaw ? `“${lcRaw}” isn't one of the LCs` : "no LC" }); return; }
+      lc = NO_LC;
+    }
     const k = idKey(id), nk = norm(name) + "|" + lc;
     if ((k && seenId.has(k)) || seenName.has(nk)) { plan.skipped.push({ row, name, why: "listed twice in this file" }); return; }
     if (k) seenId.add(k); seenName.add(nk);
-    if (k && byId.has(k)) { plan.same++; return; }
+    // Someone already here without an LC, who has one in this file, gets it.
+    if (k && byId.has(k)) { const m = byId.get(k); if (m.lc === NO_LC && lc !== NO_LC) plan.assign.push({ m, lc }); else plan.same++; return; }
+    if (lc === NO_LC) {
+      const one = sameName(name);
+      if (one.length === 1 && (!k || !one[0].lemsicId)) { if (k) plan.fill.push({ m: one[0], lemsicId: id }); else plan.same++; return; }
+    } else {
+      const waiting = sameName(name).filter((m) => m.lc === NO_LC && (!m.lemsicId || !k));
+      if (waiting.length === 1) { plan.assign.push({ m: waiting[0], lc, lemsicId: k && !waiting[0].lemsicId ? id : null }); return; }
+    }
     const named = byName.get(nk);
     if (named && (!named.lemsicId || !k)) { if (k) plan.fill.push({ m: named, lemsicId: id }); else plan.same++; return; }
     // Not the same ID, not the same name: maybe the same person spelled differently ("L. Khoury").
     const like = !named && S.members.find((m) => m.lc === lc && (!m.lemsicId || !k) && nameSimilarity(m.name, name) >= 0.75);
     const person = { row, name, id: id || null, lc, year };
     if (like) plan.similar.push(Object.assign(person, { m: like }));
-    else plan.add.push(person);
+    else { plan.add.push(person); if (lc === NO_LC) plan.asUnassigned++; }
   });
   return plan;
 }
@@ -1443,18 +1466,20 @@ async function applyMemberList() {
   // so even an upload that stops halfway can be undone.
   const upId = newId("up"), ref = "UPL-" + today().slice(2, 4) + today().slice(5, 7) + "-" + rand().toUpperCase().slice(0, 5);
   await S.store.set("imports/" + upId, { kind: "members", ref, filename: L.filename, status: "applying", at: Date.now(), by: S.uid,
-    added: adds.map((a) => a.mid), filled: fills.map((f) => ({ id: f.m.id, lemsicId: f.lemsicId })) });
+    added: adds.map((a) => a.mid), filled: fills.map((f) => ({ id: f.m.id, lemsicId: f.lemsicId })),
+    assigned: plan.assign.map((x) => ({ id: x.m.id, lc: x.lc, lemsicId: x.lemsicId || null })) });
   const jobs = adds.map((a) => () => S.store.set("members/" + a.mid, { name: a.name, norm: norm(a.name), lemsicId: a.id || null, lc: a.lc, year: a.year || null, status: "active", createdAt: Date.now(), via: "member list", uploadId: upId }))
-    .concat(fills.map((f) => () => S.store.update("members/" + f.m.id, { lemsicId: f.lemsicId })));
+    .concat(fills.map((f) => () => S.store.update("members/" + f.m.id, { lemsicId: f.lemsicId })))
+    .concat(plan.assign.map((x) => () => S.store.update("members/" + x.m.id, Object.assign({ lc: x.lc }, x.lemsicId ? { lemsicId: x.lemsicId } : {}))));
   // A few at a time. If it stops halfway, uploading the same file again finishes it: whoever was added is recognised.
   for (let i = 0; i < jobs.length; i += 5) {
     await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
     L.progress = Math.min(jobs.length, i + 5) + " of " + jobs.length; changed();
   }
   await S.store.update("imports/" + upId, { status: "applied" });
-  await audit("members.uploaded", `${ref} — member list ${L.filename}: ${adds.length} added${fills.length ? `, ${fills.length} given their LeMSIC ID` : ""}`);
+  await audit("members.uploaded", `${ref} — member list ${L.filename}: ${adds.length} added${fills.length ? `, ${fills.length} given their LeMSIC ID` : ""}${plan.assign.length ? `, ${plan.assign.length} given their LC` : ""}`);
   S.mlist = null;
-  toast(`${adds.length} ${adds.length === 1 ? "member" : "members"} added${fills.length ? ` · ${fills.length} IDs filled in` : ""}.`);
+  toast(`${adds.length} ${adds.length === 1 ? "member" : "members"} added${fills.length ? ` · ${fills.length} IDs filled in` : ""}${plan.assign.length ? ` · ${plan.assign.length} given their LC` : ""}.`);
 }
 function vRubric() {
   const vpa = isVpa();
@@ -1507,7 +1532,7 @@ function vGive() {
       <div class="card"><div class="card-h"><h3>To give</h3><span class="pill flat">${G.rows.length}</span></div>
         ${G.rows.length === 0 ? `<div class="card-b"><span class="sub">Nobody yet. Add people above; they wait here until you give the points.</span></div>` :
         `<div class="scroll-x"><table><thead><tr><th>Member</th><th>Type</th><th>Note</th><th class="num">Points</th><th></th></tr></thead><tbody>
-        ${G.rows.map((r, i) => `<tr><td>${who(r.name, [r.lemsicId, "LC " + r.lc].filter(Boolean).join(" · "))}</td><td>${esc(r.catLabel)}${r.group ? `<div class="sub">${esc(r.group)}</div>` : ""}</td><td class="sub">${esc(r.note || "—")}</td><td class="num"><b>${r.pts}</b></td>
+        ${G.rows.map((r, i) => `<tr><td>${who(r.name, [r.lemsicId, lcText(r.lc)].filter(Boolean).join(" · "))}</td><td>${esc(r.catLabel)}${r.group ? `<div class="sub">${esc(r.group)}</div>` : ""}</td><td class="sub">${esc(r.note || "—")}</td><td class="num"><b>${r.pts}</b></td>
           <td><button class="btn ghost sm" data-act="delGiveRow" data-i="${i}" title="Remove this row" ${dis()}>✕</button></td></tr>`).join("")}</tbody></table></div>`}
         <div class="card-b stack" style="border-top:1px solid var(--line)">
           <div class="field"><label for="give-t">What for — shown on the points sheet</label>${inp(mf, "title", "", `id="give-t" maxlength="120" placeholder="Positions — ${esc(term)}"`)}</div>
@@ -1998,7 +2023,7 @@ function vImport() {
     body = impSteps(3) + `<div class="grid g4" style="margin-bottom:14px">${tile("People in the file", I.groups.length, `${sum(I.groups, (g) => g.rows.length)} rows read`)}${tile("Matched to members", counts.matched, "already in the registry")}${tile("New members", counts.fresh, "will be added")}${tile("Worth a look", counts.check, "similar names", counts.check > 0)}</div>
       ${I.unreadable ? `<div style="margin-bottom:14px">${note("warn", `${I.unreadable} row${I.unreadable === 1 ? " has" : "s have"} a name but no readable points and will be left out.`)}</div>` : ""}
       ${I.fractional ? `<div style="margin-bottom:14px">${note("info", "Some points have decimals. Each person's total is rounded to a whole number.")}</div>` : ""}
-      ${plan.needLc ? `<div class="card" style="margin-bottom:14px"><div class="card-b inline-form">${note("warn", `${plan.needLc} new member${plan.needLc === 1 ? "" : "s"} can't be placed in a committee from the file.`)}<div class="field" style="max-width:260px"><label>Put them in</label><select class="inp" data-imp="defaultLc">${opt("", "Choose…", I.defaultLc || "")}${activeCommittees().map((c) => opt(c.id, "LC " + c.id, I.defaultLc || "")).join("")}</select></div></div></div>` : ""}
+      ${plan.needLc ? `<div class="card" style="margin-bottom:14px"><div class="card-b inline-form">${note("warn", `${plan.needLc} new member${plan.needLc === 1 ? "" : "s"} can't be placed in a committee from the file.`)}<div class="field" style="max-width:260px"><label>Put them in</label><select class="inp" data-imp="defaultLc">${opt("", "Choose…", I.defaultLc || "")}${lcOptions(I.defaultLc || "", true)}</select></div></div></div>` : ""}
       <div class="card"><div class="card-h"><h3>Who is who</h3><div class="spacer"></div><small>One profile per person keeps totals honest</small></div>
         <div class="scroll-x"><table><thead><tr><th>In the file</th><th>Committee</th><th class="num">Points</th><th style="min-width:260px">Is this…</th></tr></thead><tbody>
         ${I.groups.map((g) => {
@@ -2099,15 +2124,15 @@ async function undoImport(id) {
 /** The app writes exactly these sheets. Any other sheet in the workbook is left alone. */
 function workbookSheets() {
   const ledger = [["Date", "Member", "LeMSIC ID", "LC", "Kind", "Points", "Reason", "Submission", "Event run by"]].concat(
-    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", e.lc, e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? (e.source === "vpa" ? "VPA" : lcLabel(e.eventLc || e.lc)) : ""]));
-  const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", b.lc, b.carried, b.earned, b.total]));
+    S.ledger.slice().reverse().map((e) => [new Date(e.at).toISOString().slice(0, 10), e.name, e.lemsicId || "", lcShort(e.lc), e.kind === "opening_balance" ? "Carried forward" : e.kind === "correction" ? "Correction" : "Award", e.pts, e.reason, e.subRef || "", e.kind === "award" ? (e.source === "vpa" ? "VPA" : lcLabel(e.eventLc || e.lc)) : ""]));
+  const totals = [["Member", "LeMSIC ID", "LC", "Carried forward", "This term", "Total"]].concat(balances().map((b) => [b.name, b.lemsicId || "", lcShort(b.lc), b.carried, b.earned, b.total]));
   // Two columns to the right of the table: when this copy was written.
   const stamp = new Date().toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   while (totals.length < 2) totals.push(["", "", "", "", "", ""]);
   totals[0] = totals[0].concat(["", "Last updated"]);
   totals[1] = totals[1].concat(["", stamp + " · LeMSIC Points"]);
   const own = memberLcs(), lcs = {}; S.ledger.forEach((e) => { const lc = entryLc(e, own); const x = lcs[lc] || (lcs[lc] = [lc, new Set(), 0, 0, 0]); x[1].add(e.memberId); if (e.kind === "opening_balance") x[2] += e.pts; else x[3] += e.pts; x[4] += e.pts; });
-  const byLc = [["LC", "Members credited", "Carried forward", "This term", "Total"]].concat(Object.values(lcs).sort((a, b) => b[4] - a[4]).map((x) => [x[0], x[1].size, x[2], x[3], x[4]]));
+  const byLc = [["LC", "Members credited", "Carried forward", "This term", "Total"]].concat(Object.values(lcs).sort((a, b) => b[4] - a[4]).map((x) => [lcShort(x[0]), x[1].size, x[2], x[3], x[4]]));
   return [["Totals by member", totals], ["Ledger", ledger], ["By LC", byLc]];
 }
 async function workbookBytes() {
@@ -2534,6 +2559,7 @@ document.addEventListener("change", (e) => {
     if (mlField === "sheet") pickMemberSheet(L, Number(el.value));
     else if (mlField.startsWith("col.")) L.col[mlField.slice(4)] = Number(el.value);
     else if (mlField === "similarNew") L.similarNew = el.checked;
+    else if (mlField === "unassigned") L.unassigned = el.checked;
     changed(); return;
   }
   const impField = el.getAttribute && el.getAttribute("data-imp");
@@ -2736,9 +2762,9 @@ const SUBMITS = {
       const name = String(f.name || "").trim(), lc = f.lc, lemsicId = String(f.lemsicId || "").trim() || null;
       if (!name || !lc) throw new UserError("A member needs a name and a committee.");
       const clash = S.members.find((m) => (lemsicId && idKey(m.lemsicId) === idKey(lemsicId)) || ((m.norm || norm(m.name)) === norm(name) && m.lc === lc));
-      if (clash) throw new UserError(clash.lemsicId && lemsicId && idKey(clash.lemsicId) === idKey(lemsicId) ? `LeMSIC ID ${lemsicId} already belongs to ${clash.name} (LC ${clash.lc}).` : `${clash.name} (LC ${clash.lc}) is already in the registry.`);
+      if (clash) throw new UserError(clash.lemsicId && lemsicId && idKey(clash.lemsicId) === idKey(lemsicId) ? `LeMSIC ID ${lemsicId} already belongs to ${clash.name} (${lcText(clash.lc)}).` : `${clash.name} (${lcText(clash.lc)}) is already in the registry.`);
       await S.store.set("members/" + newId("m"), { name, norm: norm(name), lemsicId, lc, year: String(f.year || "").trim() || null, status: "active", createdAt: Date.now() });
-      await audit("member.added", `Added ${name} to LC ${lc}`);
+      await audit("member.added", `Added ${name}${lc === NO_LC ? " (no LC yet)" : " to LC " + lc}`);
       clearForm("member_new");
     }, "Member added.");
   },
@@ -2776,7 +2802,7 @@ const SUBMITS = {
       const clash = lemsicId && S.members.find((x) => x.id !== m.id && idKey(x.lemsicId) === idKey(lemsicId));
       if (clash) throw new UserError(`LeMSIC ID ${lemsicId} already belongs to ${clash.name} (LC ${clash.lc}).`);
       await S.store.update("members/" + m.id, { name, norm: norm(name), lemsicId, lc, year });
-      const what = [name !== m.name && `name “${m.name}” → “${name}”`, (lemsicId || "") !== (m.lemsicId || "") && `ID ${m.lemsicId || "—"} → ${lemsicId || "—"}`, lc !== m.lc && `LC ${m.lc} → ${lc}`].filter(Boolean);
+      const what = [name !== m.name && `name “${m.name}” → “${name}”`, (lemsicId || "") !== (m.lemsicId || "") && `ID ${m.lemsicId || "—"} → ${lemsicId || "—"}`, lc !== m.lc && `${lcText(m.lc)} → ${lcText(lc)}`].filter(Boolean);
       if (what.length) await audit("member.edited", `${name}: ${what.join(", ")}`);
       clearForm(key); S.editMember = null;
       if (lc !== m.lc) syncSoon();
@@ -2886,6 +2912,7 @@ const ACTIONS = {
     if (box) box.focus();
   },
   memberListCancel() { S.mlist = null; changed(); },
+  showUnassigned() { setForm("mem_filter", { lc: NO_LC, q: "" }); changed(); },
   backupDownload() { act(async () => { await saveFile(`LeMSIC Points backup ${today()}${S.mode === "demo" ? " (demo)" : ""}.json`, new TextEncoder().encode(JSON.stringify(backupFile(), null, 1)), "application/json"); }); },
   backupNow() { act(async () => { if (!(await backupToMicrosoft(true))) throw new UserError("Sign in to Microsoft first."); }, "Backup saved to OneDrive."); },
   restoreApply() { act(applyRestore); },

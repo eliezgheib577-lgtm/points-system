@@ -107,7 +107,9 @@ The rules from step 4 are what protect the data.
 4. **Upload the member list** under **Members**: an Excel or CSV file with each
    member's name, LeMSIC ID and LC. LOs find volunteers by typing a name or ID,
    from any LC. People already there are recognised, so uploading an updated
-   list later only adds the new ones.
+   list later only adds the new ones. Anyone with no LC can be added as
+   **Unassigned** (tick the box in the preview) and given their LC later —
+   with **Edit**, or by uploading a list that has it.
 5. **Import the old points sheet** under **Import old sheet** — now, or
    whenever the final version is ready: points earned on the site are kept,
    and the old sheet's are added on top. Doing it after step 4 lets it match
