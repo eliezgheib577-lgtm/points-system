@@ -123,7 +123,7 @@ function harness() {
   const owner = await open(lctx, 'owner');
   await owner.evaluate(() => localStorage.removeItem('mockdb'));
   await owner.reload(); await owner.waitForSelector('.shell'); await settle(owner);
-  check('owner is the VPA, live', await owner.isVisible('.modechip.live') && (await text(owner)).includes('Nothing waiting on you'));
+  check('owner is the VPA, live, with no “Live” label or LO preview switch at the top', !(await owner.isVisible('.modechip')) && !(await owner.isVisible('.seg button:has-text("Preview as LO")')) && (await text(owner)).includes('Nothing waiting on you'));
   check('an empty space tells the VPA what is missing', (await text(owner)).includes('no committees or rubric yet'));
   await owner.evaluate((docs) => window.__mockSeed(docs), SEED); await settle(owner);
   check('starting setup arrives live without a reload', !(await text(owner)).includes('no committees or rubric yet'));
@@ -220,9 +220,6 @@ function harness() {
   check('the LO sees “Approved” and no figures, and no import', loAfter.includes('Approved') && !loAfter.includes('+12') && !loAfter.includes('Import old sheet'));
 
   await owner.bringToFront();
-  await owner.click('.seg button:has-text("Preview as LO")'); await settle(owner);
-  check('the owner can preview the LO screens', (await text(owner)).includes('Previewing the LO screens'));
-  await owner.click('.seg button:has-text("VPA")'); await settle(owner);
   const ownerDenied = await owner.evaluate(() => window.__mockLog.slice());
   check(`the VPA screens never hit a rule either (${ownerDenied.length} denials)`, ownerDenied.length === 0);
 

@@ -2458,11 +2458,11 @@ function render() {
   const subtitle = isVpa() ? "National · VPA" : S.role === "none" ? "Waiting for access" : "LC " + (myLc() || "");
   const nameShown = S.mode === "demo" ? DEMO_PEOPLE[S.uid] : S.platform === "firebase" ? positionLabel(S.uid) : (S.myName || "You");
 
-  const modeChip = `<span class="modechip ${S.mode}">${S.mode === "live" ? "Live" : "Demo"}</span>`;
+  const modeChip = S.mode === "demo" ? `<span class="modechip demo">Demo</span>` : "";
   const xlChip = isVpa() && msConfig() && S.excel && S.excel.itemId
     ? `<button class="pill ${S.xlBusy ? "flat" : excelBehind() ? "pend" : "ok"}" style="border:0;cursor:pointer" data-act="go" data-r="excel" title="The shared Excel workbook">${S.xlBusy ? "Excel: updating…" : excelBehind() ? "Excel: behind" : "Excel ✓"}</button>` : "";
   const demoSwitch = S.mode === "demo" ? `<div class="seg" role="group" aria-label="Try the demo as"><button class="${S.role === "lo" ? "on" : ""}" data-act="demoRole" data-v="lo">LO · LC AUB</button><button class="${S.role === "vpa" ? "on" : ""}" data-act="demoRole" data-v="vpa">VPA</button></div>` : "";
-  const ownerSwitch = S.mode === "live" && S.role === "vpa" ? `<div class="seg" role="group" aria-label="View as"><button class="${!S.viewAsLo ? "on" : ""}" data-act="viewAs" data-v="vpa">VPA</button><button class="${S.viewAsLo ? "on" : ""}" data-act="viewAs" data-v="lo">Preview as LO</button></div>` : "";
+  const ownerSwitch = ""; // the VPA always sees the VPA screens
 
   let banner = "";
   if (S.mode === "demo") banner = note("warn", `<b>Demo.</b> This runs only in your browser with example people and events. Nothing you do here reaches anyone else. <button class="linkbtn" data-act="resetDemo">Start the demo over</button>${S.liveAvailable ? ` · <button class="linkbtn" data-act="leaveDemo">Back to the live page</button>` : ""}`);
