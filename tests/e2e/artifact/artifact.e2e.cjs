@@ -81,7 +81,7 @@ function harness() {
   console.log('\n— demo mode (no host, anyone with the link) —');
   const dctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
   const d = await open(dctx);
-  check('opens in demo mode', await d.isVisible('.modechip.demo'));
+  check('opens in demo mode, said in the banner, with no label at the top', (await text(d)).includes('This runs only in your browser') && !(await d.isVisible('.modechip')));
   check('as an LO by default, with a returned submission flagged', (await text(d)).includes('Action needed'));
   await d.screenshot({ path: `${SHOTS}/20-artifact-demo-lo.png`, fullPage: true });
   await d.click('button.linkbtn:has-text("Open & fix")'); await settle(d);
@@ -237,7 +237,7 @@ function harness() {
   const out = await open(lctx, 'outsider');
   check('a view-only visitor is told to ask for an Editor invite', (await text(out)).includes('invite you as an Editor'));
   await out.click('button[data-act="openDemo"]'); await settle(out);
-  check('…and can still try the demo', await out.isVisible('.modechip.demo'));
+  check('…and can still try the demo', (await text(out)).includes('This runs only in your browser'));
 
   const phone = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   await phone.goto(BASE); await phone.waitForSelector('.shell'); await settle(phone);
