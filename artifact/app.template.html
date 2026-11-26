@@ -185,6 +185,15 @@ function firestoreStore(db, F) {
     set: (p, data) => F.setDoc(F.doc(db, p), data),
     update: (p, data) => F.updateDoc(F.doc(db, p), data),
     del: (p) => F.deleteDoc(F.doc(db, p)),
+    // Firestore takes up to 500 writes in one trip; 450 leaves room.
+    async batch(ops, onProgress) {
+      for (let i = 0; i < ops.length; i += 450) {
+        const b = F.writeBatch(db);
+        ops.slice(i, i + 450).forEach((o) => { const ref = F.doc(db, o.path); if (o.op === "del") b.delete(ref); else if (o.op === "update") b.update(ref, o.data); else b.set(ref, o.data); });
+        await b.commit();
+        if (onProgress) onProgress(Math.min(ops.length, i + 450), ops.length);
+      }
+    },
     watch: (c, cb, err) => F.onSnapshot(F.collection(db, c), (s) => cb(rows(s), meta(s)), err),
     watchDoc: (p, cb, err) => F.onSnapshot(F.doc(db, p), (s) => cb(s.exists() ? s.data() : null, meta(s)), err),
   };
@@ -198,6 +207,13 @@ function liveStore(db) {
     set: (p, data) => db.doc(p).set(data),
     update: (p, data) => db.doc(p).update(data),
     del: (p) => db.doc(p).delete(),
+    // No batches here: twenty at a time, each to a different record.
+    async batch(ops, onProgress) {
+      for (let i = 0; i < ops.length; i += 20) {
+        await Promise.all(ops.slice(i, i + 20).map((o) => (o.op === "del" ? db.doc(o.path).delete() : o.op === "update" ? db.doc(o.path).update(o.data) : db.doc(o.path).set(o.data)).catch((e) => { if (!o.quiet) throw e; })));
+        if (onProgress) onProgress(Math.min(ops.length, i + 20), ops.length);
+      }
+    },
     watch: (c, cb, err) => db.collection(c).onSnapshot((s) => cb(rows(s), s.metadata), err),
     watchDoc: (p, cb, err) => db.doc(p).onSnapshot((s) => cb(s.exists ? s.data() : null, s.metadata), err),
   };
@@ -233,6 +249,18 @@ function localStore() {
       docs[p] = Object.assign({}, docs[p], clone(data)); save(); notify(p);
     },
     async del(p) { delete docs[p]; save(); notify(p); },
+    // All at once, saved once, and each list redrawn once.
+    async batch(ops, onProgress) {
+      for (const o of ops) {
+        if (o.op === "del") delete docs[o.path];
+        else if (o.op === "update") { if (!docs[o.path]) throw { code: "invalid_argument", message: "Document does not exist" }; docs[o.path] = Object.assign({}, docs[o.path], clone(o.data)); }
+        else docs[o.path] = clone(o.data);
+      }
+      save();
+      const cols = new Set(ops.map((o) => parent(o.path))), paths = new Set(ops.map((o) => o.path));
+      watchers.forEach((w) => { if (w.c != null && cols.has(w.c)) w.cb(list(w.c), meta); else if (w.p != null && paths.has(w.p)) w.cb(docs[w.p] ? clone(docs[w.p]) : null, meta); });
+      if (onProgress) onProgress(ops.length, ops.length);
+    },
     watch(c, cb) { const w = { c, cb }; watchers.add(w); setTimeout(() => cb(list(c), meta), 0); return () => watchers.delete(w); },
     watchDoc(p, cb) { const w = { p, cb }; watchers.add(w); setTimeout(() => cb(docs[p] ? clone(docs[p]) : null, meta), 0); return () => watchers.delete(w); },
     reset() {
@@ -881,10 +909,7 @@ async function resetTest() {
   if (!keepAccess) { S.roster.forEach((x) => paths.push("roster/" + x.id)); S.requests.forEach((x) => paths.push("requests/" + x.id)); }
   if (S.config) paths.push("config/app");
   if (S.excel) paths.push("settings/excel");
-  for (let i = 0; i < paths.length; i += 10) {
-    await Promise.all(paths.slice(i, i + 10).map((p) => S.store.del(p).catch(() => null)));
-    S.resetProgress = Math.min(paths.length, i + 10) + " of " + paths.length; changed();
-  }
+  await S.store.batch(paths.map((p) => ({ op: "del", path: p, quiet: true })), (done, total) => { S.resetProgress = done + " of " + total; changed(); });
   S.resetProgress = null;
   Object.assign(S, { give: { rows: [] }, mlist: null, rlist: null, imp: null, editMember: null });
   clearForm("reset_test");
@@ -1029,10 +1054,10 @@ async function undoMemberUpload(id) {
   const added = legacy ? S.members.filter((m) => m.via === "member list" && !m.uploadId).map((m) => m.id) : (up.added || []);
   const present = added.filter((mid) => S.members.some((m) => m.id === mid)), used = usedIds();
   const kept = present.filter((mid) => used.has(mid)), gone = present.filter((mid) => !used.has(mid));
-  const jobs = gone.map((mid) => () => S.store.del("members/" + mid));
-  ((up && up.filled) || []).forEach((f) => { const m = S.members.find((x) => x.id === f.id); if (m && idKey(m.lemsicId) === idKey(f.lemsicId)) jobs.push(() => S.store.update("members/" + f.id, { lemsicId: null })); });
-  ((up && up.assigned) || []).forEach((a) => { const m = S.members.find((x) => x.id === a.id); if (m && m.lc === a.lc) jobs.push(() => S.store.update("members/" + a.id, Object.assign({ lc: NO_LC }, a.lemsicId && idKey(m.lemsicId) === idKey(a.lemsicId) ? { lemsicId: null } : {}))); });
-  for (let i = 0; i < jobs.length; i += 5) await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
+  const ops = gone.map((mid) => ({ op: "del", path: "members/" + mid }));
+  ((up && up.filled) || []).forEach((f) => { const m = S.members.find((x) => x.id === f.id); if (m && idKey(m.lemsicId) === idKey(f.lemsicId)) ops.push({ op: "update", path: "members/" + f.id, data: { lemsicId: null } }); });
+  ((up && up.assigned) || []).forEach((a) => { const m = S.members.find((x) => x.id === a.id); if (m && m.lc === a.lc) ops.push({ op: "update", path: "members/" + a.id, data: Object.assign({ lc: NO_LC }, a.lemsicId && idKey(m.lemsicId) === idKey(a.lemsicId) ? { lemsicId: null } : {}) }); });
+  await S.store.batch(ops);
   if (!legacy) await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now(), kept: kept.length });
   await audit("members.upload.undone", `${legacy ? "An earlier member upload" : up.ref + " — " + up.filename} undone: ${gone.length} removed${kept.length ? `, ${kept.length} kept (already credited or on a submission)` : ""}`);
   toast(`Upload undone: ${gone.length} ${gone.length === 1 ? "member" : "members"} removed${kept.length ? ` · ${kept.length} kept because they already have points or are on a submission` : ""}.`);
@@ -1058,10 +1083,7 @@ async function clearMembers(lc) {
   const parts = []; for (let i = 0; i < gone.length; i += 200) parts.push(gone.slice(i, i + 200));
   for (let p = 0; p < parts.length; p++) await S.store.set(`imports/${id}_p${p}`, { kind: "clear-part", clearId: id, members: parts[p].map((m) => Object.assign({}, m)) });
   await S.store.set("imports/" + id, { kind: "clear", ref, lc: lc || null, count: gone.length, parts: parts.length, status: "applying", at: Date.now(), by: S.uid });
-  for (let i = 0; i < gone.length; i += 5) {
-    await Promise.all(gone.slice(i, i + 5).map((m) => S.store.del("members/" + m.id)));
-    S.clearProgress = Math.min(gone.length, i + 5) + " of " + gone.length; changed();
-  }
+  await S.store.batch(gone.map((m) => ({ op: "del", path: "members/" + m.id })), (done, total) => { S.clearProgress = done + " of " + total; changed(); });
   S.clearProgress = null;
   await S.store.update("imports/" + id, { status: "applied" });
   await audit("members.cleared", `${ref}: removed ${gone.length} members${lc ? " of LC " + lc : ""}`);
@@ -1076,7 +1098,7 @@ async function undoClear(id) {
   const ids = new Set(S.members.map((m) => idKey(m.lemsicId)).filter(Boolean)), names = new Set(S.members.map((m) => (m.norm || norm(m.name)) + "|" + m.lc));
   // Anyone added again since (say, by a new upload) isn't brought back a second time.
   const back = saved.filter((m) => !S.members.some((x) => x.id === m.id) && !(m.lemsicId && ids.has(idKey(m.lemsicId))) && !names.has((m.norm || norm(m.name)) + "|" + m.lc));
-  for (let i = 0; i < back.length; i += 5) await Promise.all(back.slice(i, i + 5).map((m) => { const data = Object.assign({}, m); delete data.id; return S.store.set("members/" + m.id, data); }));
+  await S.store.batch(back.map((m) => { const data = Object.assign({}, m); delete data.id; return { op: "set", path: "members/" + m.id, data }; }));
   await S.store.update("imports/" + id, { status: "restored", restoredAt: Date.now() });
   await audit("members.clear.undone", `${rec.ref} undone: ${back.length} members back`);
   toast(`${back.length} ${back.length === 1 ? "member" : "members"} back${saved.length > back.length ? ` · ${saved.length - back.length} were already in the list again` : ""}.`);
@@ -1221,14 +1243,11 @@ async function applyMemberList() {
   await S.store.set("imports/" + upId, { kind: "members", ref, filename: L.filename, status: "applying", at: Date.now(), by: S.uid,
     added: adds.map((a) => a.mid), filled: fills.map((f) => ({ id: f.m.id, lemsicId: f.lemsicId })),
     assigned: plan.assign.map((x) => ({ id: x.m.id, lc: x.lc, lemsicId: x.lemsicId || null })) });
-  const jobs = adds.map((a) => () => S.store.set("members/" + a.mid, { name: a.name, norm: norm(a.name), lemsicId: a.id || null, lc: a.lc, year: a.year || null, status: "active", createdAt: Date.now(), via: "member list", uploadId: upId }))
-    .concat(fills.map((f) => () => S.store.update("members/" + f.m.id, { lemsicId: f.lemsicId })))
-    .concat(plan.assign.map((x) => () => S.store.update("members/" + x.m.id, Object.assign({ lc: x.lc }, x.lemsicId ? { lemsicId: x.lemsicId } : {}))));
-  // A few at a time. If it stops halfway, uploading the same file again finishes it: whoever was added is recognised.
-  for (let i = 0; i < jobs.length; i += 5) {
-    await Promise.all(jobs.slice(i, i + 5).map((j) => j()));
-    L.progress = Math.min(jobs.length, i + 5) + " of " + jobs.length; changed();
-  }
+  const ops = adds.map((a) => ({ op: "set", path: "members/" + a.mid, data: { name: a.name, norm: norm(a.name), lemsicId: a.id || null, lc: a.lc, year: a.year || null, status: "active", createdAt: Date.now(), via: "member list", uploadId: upId } }))
+    .concat(fills.map((f) => ({ op: "update", path: "members/" + f.m.id, data: { lemsicId: f.lemsicId } })))
+    .concat(plan.assign.map((x) => ({ op: "update", path: "members/" + x.m.id, data: Object.assign({ lc: x.lc }, x.lemsicId ? { lemsicId: x.lemsicId } : {}) })));
+  // In batches. If it stops halfway, uploading the same file again finishes it: whoever was added is recognised.
+  await S.store.batch(ops, (done, total) => { L.progress = done + " of " + total; changed(); });
   await S.store.update("imports/" + upId, { status: "applied" });
   await audit("members.uploaded", `${ref} — member list ${L.filename}: ${adds.length} added${fills.length ? `, ${fills.length} given their LeMSIC ID` : ""}${plan.assign.length ? `, ${plan.assign.length} given their LC` : ""}`);
   S.mlist = null;
@@ -1305,12 +1324,14 @@ async function applyGive() {
   const total = sum(G.rows, (r) => r.pts);
   await S.store.set("imports/" + id, { kind: "award", ref, title, status: "applying", rows: G.rows.map((r) => Object.assign({}, r)), total, count: G.rows.length, at: Date.now(), by: S.uid });
   // Fixed ids, only ever created: a retry after a dropped connection never gives anything twice.
+  const have = new Set(S.ledger.map((e) => e.id)), byId = new Map(S.members.map((m) => [m.id, m])), ops = [];
   for (let i = 0; i < G.rows.length; i++) {
-    const r = G.rows[i], path = "ledger/va_" + id + "_" + i;
-    if (await S.store.get(path)) continue;
-    const m = S.members.find((x) => x.id === r.memberId) || r;
-    await S.store.set(path, { memberId: r.memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "award", source: "vpa", pts: r.pts, reason: (title ? title + " — " : "") + r.catLabel + (r.note ? " (" + r.note + ")" : ""), cat: r.cat, awardId: id, eventTitle: title || "Points from the VPA", catLabel: r.catLabel, note: r.note || null, term: termCode(), at: Date.now() + i, by: S.uid });
+    const r = G.rows[i], eid = "va_" + id + "_" + i;
+    if (have.has(eid)) continue;
+    const m = byId.get(r.memberId) || r;
+    ops.push({ op: "set", path: "ledger/" + eid, data: { memberId: r.memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "award", source: "vpa", pts: r.pts, reason: (title ? title + " — " : "") + r.catLabel + (r.note ? " (" + r.note + ")" : ""), cat: r.cat, awardId: id, eventTitle: title || "Points from the VPA", catLabel: r.catLabel, note: r.note || null, term: termCode(), at: Date.now() + i, by: S.uid } });
   }
+  await S.store.batch(ops);
   await S.store.update("imports/" + id, { status: "applied" });
   await audit("points.given", `${ref}${title ? " — " + title : ""}: ${total} pts to ${G.rows.length} ${G.rows.length === 1 ? "person" : "people"}`);
   S.give = { rows: [] }; clearForm("give_meta");
@@ -1321,10 +1342,9 @@ async function undoGive(id) {
   const rec = S.imports.find((x) => x.id === id);
   if (!rec || rec.kind !== "award" || rec.status === "reversed") throw new UserError("That batch has already been undone.");
   const entries = S.ledger.filter((e) => e.awardId === id && !e.reverses);
-  for (const e of entries) {
-    const path = "ledger/rv_" + e.id;
-    if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "award", source: "vpa", pts: -e.pts, reason: "Undo of " + rec.ref + " — " + e.reason, cat: e.cat || null, awardId: id, reverses: e.id, eventTitle: e.eventTitle || null, catLabel: e.catLabel || null, term: e.term || termCode(), at: Date.now(), by: S.uid });
-  }
+  const have = new Set(S.ledger.map((e) => e.id));
+  await S.store.batch(entries.filter((e) => !have.has("rv_" + e.id)).map((e) => ({ op: "set", path: "ledger/rv_" + e.id,
+    data: { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "award", source: "vpa", pts: -e.pts, reason: "Undo of " + rec.ref + " — " + e.reason, cat: e.cat || null, awardId: id, reverses: e.id, eventTitle: e.eventTitle || null, catLabel: e.catLabel || null, term: e.term || termCode(), at: Date.now(), by: S.uid } })));
   await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now() });
   await audit("points.given.undone", `${rec.ref} undone: ${sum(entries, (e) => e.pts)} pts taken back`);
   syncSoon();
@@ -1430,18 +1450,20 @@ async function applyRubric() {
   const taken = new Set(S.rubric.map((c) => c.id)), created = [];
   plan.items.filter((x) => !x.was).forEach((x) => { let cid = norm((x.group || "") + " " + x.label).replace(/ /g, "_").slice(0, 50) || "cat"; while (taken.has(cid)) cid += "_" + rand().slice(0, 3); taken.add(cid); x.newId = cid; created.push(cid); });
   await S.store.set("imports/" + id, { kind: "rubric", ref, filename: R.filename, status: "applying", count: plan.items.length, at: Date.now(), by: S.uid, before: S.rubric.map((c) => Object.assign({}, c)), created });
+  const ops = [];
   for (const x of plan.items) {
     const fields = { group: x.group, label: x.label, def: x.def, min: x.min, max: x.max, order: x.order, active: true, vpaOnly: x.was && typeof x.was.vpaOnly === "boolean" ? x.was.vpaOnly : vpaOnlyByDefault(x.group) };
     if (R.col.per >= 0) fields.maxPerEvent = x.maxPerEvent;
     if (R.col.desc >= 0) fields.description = x.description;
-    if (x.was) await S.store.update("rubric/" + x.was.id, fields);
-    else await S.store.set("rubric/" + x.newId, Object.assign({ description: null, requires: null, maxPerEvent: null, loCanExceed: false }, fields));
+    if (x.was) ops.push({ op: "update", path: "rubric/" + x.was.id, data: fields });
+    else ops.push({ op: "set", path: "rubric/" + x.newId, data: Object.assign({ description: null, requires: null, maxPerEvent: null, loCanExceed: false }, fields) });
   }
   let removed = 0, retired = 0;
   if (!R.keepOthers) for (const c of plan.leftover) {
-    if (c.used) { await S.store.update("rubric/" + c.id, { active: false }); retired++; }
-    else { await S.store.del("rubric/" + c.id); removed++; }
+    if (c.used) { ops.push({ op: "update", path: "rubric/" + c.id, data: { active: false } }); retired++; }
+    else { ops.push({ op: "del", path: "rubric/" + c.id }); removed++; }
   }
+  await S.store.batch(ops);
   await S.store.update("imports/" + id, { status: "applied" });
   await audit("rubric.uploaded", `${ref} — ${R.filename}: ${plan.items.length} categories${removed ? `, ${removed} old ones removed` : ""}${retired ? `, ${retired} retired` : ""}`);
   S.rlist = null;
@@ -1451,11 +1473,12 @@ async function undoRubric(id) {
   const rec = S.imports.find((x) => x.id === id);
   if (!rec || rec.kind !== "rubric" || rec.status === "reversed") throw new UserError("That rubric upload has already been undone.");
   const used = usedCats();
-  for (const c of rec.before || []) { const data = Object.assign({}, c); delete data.id; delete data.used; await S.store.set("rubric/" + c.id, data); }
+  const ops = (rec.before || []).map((c) => { const data = Object.assign({}, c); delete data.id; delete data.used; return { op: "set", path: "rubric/" + c.id, data }; });
   for (const cid of rec.created || []) {
     if (!S.rubric.some((c) => c.id === cid)) continue;
-    if (used.has(cid)) await S.store.update("rubric/" + cid, { active: false }); else await S.store.del("rubric/" + cid);
+    ops.push(used.has(cid) ? { op: "update", path: "rubric/" + cid, data: { active: false } } : { op: "del", path: "rubric/" + cid });
   }
+  await S.store.batch(ops);
   await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now() });
   await audit("rubric.upload.undone", `${rec.ref} undone: the rubric is back as it was`);
   toast("Rubric upload undone. The rubric is back as it was.");
@@ -1848,24 +1871,25 @@ async function applyImport() {
   const impId = I.resume ? I.resume.id : "imp_" + I.hash.slice(0, 12) + "_" + Date.now().toString(36);
   const ref = I.resume ? I.resume.ref : "IMP-" + today().slice(2, 4) + today().slice(5, 7) + "-" + rand().toUpperCase().slice(0, 5);
   const label = "Carried forward — " + I.filename;
-  const write = async (path, data) => { if (!(await S.store.get(path))) await S.store.set(path, data); };
+  // Already written (an interrupted import being finished) is known from what's loaded — no trip each.
+  const haveMember = new Set(S.members.map((m) => m.id)), haveEntry = new Set(S.ledger.map((e) => e.id));
+  const ops = [], byId = new Map(S.members.map((m) => [m.id, m]));
   // The record goes first, so an interrupted import can be found and finished.
   if (!I.resume) await S.store.set("imports/" + impId, { ref, filename: I.filename, sha256: I.hash, status: "applying", members: plan.people, created: plan.newOnes.size, total: plan.total, at: Date.now(), by: S.uid });
-  I.progress = { done: 0, total: plan.newOnes.size + plan.totals.size }; changed();
   const memberFor = {};
   for (const [key, g] of plan.newOnes) {
     // Deterministic ids: a resumed import finds the members it already added.
     const id = "m_" + impId.slice(4, 16) + "_" + norm(g.name).replace(/ /g, "-").slice(0, 40);
     memberFor[key] = id;
-    await write("members/" + id, { name: g.name, norm: norm(g.name), lemsicId: g.id || null, lc: g.lc || I.defaultLc, year: null, status: "active", createdAt: Date.now(), importId: impId });
-    I.progress.done++; changed();
+    if (!haveMember.has(id)) ops.push({ op: "set", path: "members/" + id, data: { name: g.name, norm: norm(g.name), lemsicId: g.id || null, lc: g.lc || I.defaultLc, year: null, status: "active", createdAt: Date.now(), importId: impId } });
   }
   for (const [target, pts] of plan.totals) {
-    const memberId = target.startsWith("new:") ? memberFor[target.slice(4)] : target;
-    const m = S.members.find((x) => x.id === memberId) || (() => { const g = plan.newOnes.get(target.slice(4)); return { name: g.name, lemsicId: g.id || null, lc: g.lc || I.defaultLc }; })();
-    if (pts !== 0) await write("ledger/ob_" + impId + "_" + memberId, { memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "opening_balance", pts, reason: label, importId: impId, at: Date.now(), by: S.uid });
-    I.progress.done++; changed();
+    const memberId = target.startsWith("new:") ? memberFor[target.slice(4)] : target, eid = "ob_" + impId + "_" + memberId;
+    const m = byId.get(memberId) || (() => { const g = plan.newOnes.get(target.slice(4)); return { name: g.name, lemsicId: g.id || null, lc: g.lc || I.defaultLc }; })();
+    if (pts !== 0 && !haveEntry.has(eid)) ops.push({ op: "set", path: "ledger/" + eid, data: { memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "opening_balance", pts, reason: label, importId: impId, at: Date.now(), by: S.uid } });
   }
+  I.progress = { done: 0, total: ops.length }; changed();
+  await S.store.batch(ops, (done, total) => { I.progress = { done, total }; changed(); });
   await S.store.update("imports/" + impId, { status: "applied", appliedAt: Date.now() });
   await audit("import.applied", `${ref}: carried forward ${plan.total} pts for ${plan.people} members from ${I.filename}`);
   S.imp = { step: "done", result: { ref, people: plan.people, total: plan.total, created: plan.newOnes.size } };
@@ -1876,10 +1900,9 @@ async function undoImport(id) {
   if (!imp || imp.status !== "applied") throw new UserError("That import isn't in the ledger.");
   // Nothing is deleted: each balance gets a matching negative entry, so the history shows both.
   const entries = S.ledger.filter((e) => e.importId === id && e.kind === "opening_balance" && !e.reverses);
-  for (const e of entries) {
-    const path = "ledger/rv_" + id + "_" + e.memberId;
-    if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "opening_balance", pts: -e.pts, reason: "Undo of " + imp.ref + " — " + imp.filename, importId: id, reverses: e.id, at: Date.now(), by: S.uid });
-  }
+  const have = new Set(S.ledger.map((e) => e.id));
+  await S.store.batch(entries.filter((e) => !have.has("rv_" + id + "_" + e.memberId)).map((e) => ({ op: "set", path: "ledger/rv_" + id + "_" + e.memberId,
+    data: { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "opening_balance", pts: -e.pts, reason: "Undo of " + imp.ref + " — " + imp.filename, importId: id, reverses: e.id, at: Date.now(), by: S.uid } })));
   await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now(), reversedBy: S.uid });
   await audit("import.reversed", `${imp.ref} undone: ${entries.length} starting balances reversed`);
   syncSoon();
@@ -2030,10 +2053,7 @@ async function applyRestore() {
   const paths = Object.keys(R.missingBy).filter((k) => R.pick[k] !== false).flatMap((k) => R.missingBy[k]);
   // Markers first, so a restored submission is found by the VPA's screens straight away.
   paths.sort((a, b) => a.split("/").length - b.split("/").length);
-  for (let i = 0; i < paths.length; i += 5) {
-    await Promise.all(paths.slice(i, i + 5).map((p) => S.store.set(p, R.docs[p])));
-    R.progress = Math.min(paths.length, i + 5) + " of " + paths.length; changed();
-  }
+  await S.store.batch(paths.map((p) => ({ op: "set", path: p, data: R.docs[p] })), (done, total) => { R.progress = done + " of " + total; changed(); });
   await audit("backup.restored", `Restored ${paths.length} missing records from ${R.filename}`);
   S.restore = null;
   syncSoon();
@@ -2677,11 +2697,13 @@ async function touchMarker(lo, lc) { await S.store.set("subs/" + lo, { lc, updat
  *  again writes new entries (round 1, 2, …). */
 async function writeApproval(d, sub, decided, vnote) {
   const round = sub.round || 0;
+  const have = new Set(S.ledger.map((e) => e.id)), ops = [];
   for (let i = 0; i < decided.length; i++) {
-    const x = decided[i], path = "ledger/aw_" + d.id + (round ? "_r" + round : "") + "_" + i;
-    if (x.pts <= 0 || await S.store.get(path)) continue;
-    await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, eventTitle: sub.title, eventDate: sub.date || null, catLabel: x.catLabel, term: termCode(), at: Date.now() + i, by: S.uid });
+    const x = decided[i], eid = "aw_" + d.id + (round ? "_r" + round : "") + "_" + i;
+    if (x.pts <= 0 || have.has(eid)) continue;
+    ops.push({ op: "set", path: "ledger/" + eid, data: { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, eventTitle: sub.title, eventDate: sub.date || null, catLabel: x.catLabel, term: termCode(), at: Date.now() + i, by: S.uid } });
   }
+  await S.store.batch(ops);
   const total = sum(decided, (x) => x.pts);
   await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: vnote || null, at: Date.now(), by: S.uid });
   await S.store.update(itemPath(d.lo, d.id), { status: "approved", decidedAt: Date.now() });
@@ -2990,7 +3012,7 @@ const ACTIONS = {
   sectionVpaOnly(d) {
     act(async () => {
       const list = S.rubric.filter((c) => (c.group || "") === d.g && c.active !== false), v = d.v === "1";
-      for (const c of list) await S.store.update("rubric/" + c.id, { vpaOnly: v });
+      await S.store.batch(list.map((c) => ({ op: "update", path: "rubric/" + c.id, data: { vpaOnly: v } })));
       await audit("rubric.changed", `${d.g}: ${v ? "given by the VPA only" : "LOs can use these again"}`);
     }, d.v === "1" ? `${d.g}: only the VPA gives these now.` : `${d.g}: LOs can use these again.`);
   },
@@ -3028,10 +3050,9 @@ const ACTIONS = {
       const round = sub.round || 0;
       // Nothing is deleted: each award gets a matching minus entry, so the history shows both.
       const awards = S.ledger.filter((e) => e.subId === d.id && e.kind === "award" && !e.reverses && (e.round || 0) === round);
-      for (const e of awards) {
-        const path = "ledger/rv_" + e.id;
-        if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, eventLc: e.eventLc || null, kind: "award", pts: -e.pts, reason: "Approval undone — " + sub.ref, subId: d.id, subRef: sub.ref, reverses: e.id, round, eventTitle: e.eventTitle || null, eventDate: e.eventDate || null, catLabel: e.catLabel || null, term: e.term || termCode(), at: Date.now(), by: S.uid });
-      }
+      const have = new Set(S.ledger.map((e) => e.id));
+      await S.store.batch(awards.filter((e) => !have.has("rv_" + e.id)).map((e) => ({ op: "set", path: "ledger/rv_" + e.id,
+        data: { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, eventLc: e.eventLc || null, kind: "award", pts: -e.pts, reason: "Approval undone — " + sub.ref, subId: d.id, subRef: sub.ref, reverses: e.id, round, eventTitle: e.eventTitle || null, eventDate: e.eventDate || null, catLabel: e.catLabel || null, term: e.term || termCode(), at: Date.now(), by: S.uid } })));
       await S.store.update("decisions/" + d.id, { undone: true, undoneAt: Date.now() });
       const own = isOwnEvent(d.lo);
       await S.store.update(itemPath(d.lo, d.id), { status: own ? "draft" : "pending", round: round + 1, reopenedAt: Date.now() });
