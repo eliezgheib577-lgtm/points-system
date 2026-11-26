@@ -1701,7 +1701,7 @@ function vAccess() {
           <td style="text-align:right"><button class="btn sm" data-act="toggleLc" data-id="${esc(c.id)}" ${dis()}>${c.active === false ? "Restore" : "Archive"}</button></td></tr>`; }).join("")}</tbody></table></div>
       </div>
     </div>
-    <div class="col-side">
+    <div class="col-side">${vTermCard()}
       <div class="card"><div class="card-h"><h3>Bringing an LO in</h3></div><div class="card-b stack">
         <div class="sub"><b>1.</b> Open this page's <b>Share</b> menu and invite them by email as an <b>Editor</b>. People from outside your Claude organisation can only save changes as Editors, and only while sharing by public link is switched off.</div>
         <div class="sub"><b>2.</b> They open the page and pick their committee.</div>
@@ -1749,13 +1749,11 @@ function vSignIn() {
       <form class="authbox" data-submit="signIn">
         <div class="mob-top auth-brand"><img class="mark" src="${LOGO_ICON}" alt="LeMSIC logo"><div><b>LeMSIC Points</b><span>Lebanese Medical Students' International Committee</span></div></div>
         <h3>Sign in</h3>
-        <p class="sub">Use your position's login, like <span class="mono">lo.aub</span>. The VPA gives these out.</p>
         ${S.signInError ? `<div style="margin:14px 0">${note("warn", esc(S.signInError))}</div>` : ""}
         <div style="display:flex;flex-direction:column;gap:13px;margin-top:16px">
           <div class="field"><label for="si-u">Username</label>${inp(f, "username", "", 'id="si-u" autocomplete="username" autocapitalize="none" spellcheck="false" required')}</div>
           <div class="field"><label for="si-p">Password</label><input class="inp" id="si-p" type="password" data-form="${f}" name="password" autocomplete="current-password" required></div>
           <button class="btn pri" style="justify-content:center;padding:10px" type="submit" ${dis()}>Sign in</button>
-          <span class="hint">Forgotten your password? Ask the VPA — they can set a new one.</span>
         </div>
         <div style="margin-top:22px;padding-top:14px;border-top:1px solid var(--line)">${helpLine("Any issues signing in or using the site?")}</div>
       </form>
@@ -1767,6 +1765,13 @@ function vUnknown() {
     <h1 style="font-size:22px">This login isn't one of LeMSIC's positions</h1>
     <p class="sub" style="font-size:14px">Positions sign in as <span class="mono">vpa</span> or <span class="mono">lo.</span> followed by the committee, like <span class="mono">lo.aub</span>. Ask the VPA which one is yours.</p>
     <div><button class="btn" data-act="signOut">Sign out</button></div>${helpLine("Think this is a mistake?")}</div>`;
+}
+function vTermCard() {
+  const tf = "term_edit";
+  return `<form class="card" data-submit="saveTerm"><div class="card-h"><h3>Term</h3></div><div class="card-b stack">
+      <div class="field"><label for="term-n">The name shown at the top of every page</label>${inp(tf, "term", (S.config && S.config.term) || "", `id="term-n" maxlength="60" placeholder="2026–2027 · Semester 2"`)}</div>
+      <button class="btn" type="submit" ${dis()}>Rename the term</button>
+      <span class="hint">Only the name changes. Points, submissions and history stay as they are.</span></div></form>`;
 }
 function vCommittees() {
   const cf = "lc_new";
@@ -1781,6 +1786,7 @@ function vCommittees() {
       </tbody></table></div></div>
     </div>
     <div class="col-side">
+      ${vTermCard()}
       <div class="card"><div class="card-h"><h3>Logins</h3></div><div class="card-b stack">
         <div class="sub">Logins live in your Firebase project, under <b>Authentication → Users</b>. Each one is the username followed by <span class="mono">@${LOGIN_DOMAIN}</span>, for example <span class="mono">lo.aub@${LOGIN_DOMAIN}</span>.</div>
         <div class="sub">To change a password — someone forgot it, or a new person takes over a position — delete that login in Firebase and add it again with the same address and the new password. Nothing is lost: the site goes by the position, not the account.</div>
@@ -1790,7 +1796,7 @@ function vCommittees() {
         <div class="field"><label for="lc-c">Short code *</label>${inp(cf, "code", "", `id="lc-c" maxlength="16" placeholder="NDU"`)}</div>
         <div class="field"><label for="lc-n">Full name *</label>${inp(cf, "name", "", `id="lc-n" maxlength="120" placeholder="Notre Dame University"`)}</div>
         <button class="btn" type="submit" ${dis()}>Add committee</button>
-        <span class="hint">Then create its <span class="mono">lo.</span> login in Firebase.</span></div></form>
+        <span class="hint">Then create its <span class="mono">lo.</span> login in Firebase, and add that login to the list in <span class="mono">firestore.rules</span> (isLo) — until it's there, the new login can't do anything.</span></div></form>
     </div></div>`;
 }
 
@@ -2012,7 +2018,10 @@ function vImport() {
       <div style="display:flex;gap:10px"><button class="btn pri" data-act="go" data-r="ledger" data-view="member">See totals by member →</button><button class="btn" data-act="impReset">Import another file</button></div></div>`;
   }
   const done = sheetImports();
-  return head("Import the old points sheet", "Bring last year's points in once, as each member's starting balance. Points approved from now on are added on top.") + body +
+  const applied = sheetImports().filter((x) => x.status === "applied");
+  const replaceNote = applied.length && (!I || ["file", "map", "match"].includes(I.step))
+    ? `<div style="margin-bottom:14px;max-width:760px">${note(I && I.step !== "file" ? "warn" : "info", `<b>${applied.map((x) => `${esc(x.ref)} (${esc(x.filename)}, ${x.total || 0} pts)`).join(", ")} ${applied.length === 1 ? "is" : "are"} already in the points sheet.</b> If this file replaces it — a newer version of the same sheet — undo that import first, under <b>Imports so far</b> below. Otherwise both are added.`)}</div>` : "";
+  return head("Import the old points sheet", "Bring last year's points in as each member's starting balance — any time, even after the site is in use. Points earned on the site are kept, and these are added on top.") + replaceNote + body +
     `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Imports so far</h3><span class="pill flat">${done.length}</span></div>
       ${done.length === 0 ? `<div class="card-b"><span class="sub">Nothing imported yet.</span></div>` :
       `<div class="scroll-x"><table><thead><tr><th>Import</th><th>File</th><th>When</th><th class="num">Members</th><th class="num">Points</th><th>State</th><th></th></tr></thead><tbody>
@@ -2464,7 +2473,7 @@ function render() {
       ${S.platform === "firebase" ? `<button class="nav" data-act="signOut"><span class="ic">⏻</span>Sign out</button>` : ""}
     </aside>
     <div class="main">
-      <div class="topbar"><div class="crumb"><b>LeMSIC Points</b></div><div class="spacer"></div>${xlChip}${modeChip}${demoSwitch}${ownerSwitch}${term ? `<div class="termsel"><span class="dot"></span>${esc(term)}</div>` : ""}</div>
+      <div class="topbar"><div class="crumb"><b>LeMSIC Points</b></div><div class="spacer"></div>${xlChip}${modeChip}${demoSwitch}${ownerSwitch}${term ? `${isVpa() ? `<button class="termsel" style="cursor:pointer;font:inherit;font-size:12.5px" data-act="go" data-r="access" title="Rename the term">` : `<div class="termsel">`}<span class="dot"></span>${esc(term)}${isVpa() ? "</button>" : "</div>"}` : ""}</div>
       ${mobNav ? `<nav class="mnav" aria-label="Sections">${mobNav}</nav>` : ""}
       <div class="content" style="max-width:1460px">${banner ? `<div class="stack" style="margin-bottom:16px">${banner}</div>` : ""}${view}<div class="page-foot">${helpLine()}</div></div>
     </div>
@@ -2740,6 +2749,17 @@ const SUBMITS = {
     setForm(rf, { member: "", q: "", note: "" });
     render();
     const box = document.querySelector('[data-picker="give_row"]'); if (box) box.focus();
+  },
+  saveTerm() {
+    act(async () => {
+      const term = String(fv("term_edit", "term", (S.config && S.config.term) || "")).replace(/\s+/g, " ").trim();
+      if (!term) throw new UserError("Give the term a name, like “2026–2027 · Semester 2”.");
+      const before = (S.config && S.config.term) || "";
+      if (term === before) return;
+      await S.store.set("config/app", Object.assign({}, S.config || {}, { term }));
+      await audit("term.renamed", `Term renamed from “${before}” to “${term}”`);
+      clearForm("term_edit");
+    }, "Term renamed. Everyone sees the new name at the top of the page.");
   },
   saveMember(d) {
     const key = "member_edit_" + d.id;

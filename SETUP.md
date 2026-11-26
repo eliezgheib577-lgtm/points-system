@@ -97,7 +97,8 @@ The rules from step 4 are what protect the data.
 
 1. Open the address and sign in as `vpa`.
 2. Click **Load the starting setup**. This loads the term, the eight committees
-   and a placeholder rubric; change any of it from the app afterwards.
+   and a placeholder rubric; change any of it from the app afterwards. The term
+   is renamed under **Committees** (or by clicking it at the top of the page).
 3. **Upload the real rubric** under **Rubric & rules → Upload a rubric**: an
    Excel file with a row per type — its section (Activity, CB…), the type and
    its points. It replaces the placeholder, and the upload can be undone.
@@ -107,10 +108,13 @@ The rules from step 4 are what protect the data.
    member's name, LeMSIC ID and LC. LOs find volunteers by typing a name or ID,
    from any LC. People already there are recognised, so uploading an updated
    list later only adds the new ones.
-5. **Import the old points sheet** under **Import old sheet**, before LOs
-   start submitting. Doing it after step 4 lets it match people by LeMSIC ID.
-   It brings in each member's points as a starting balance, adds anyone
-   missing to the member list, and can be undone.
+5. **Import the old points sheet** under **Import old sheet** — now, or
+   whenever the final version is ready: points earned on the site are kept,
+   and the old sheet's are added on top. Doing it after step 4 lets it match
+   people by LeMSIC ID. It brings in each member's points as a starting
+   balance, adds anyone missing to the member list, and can be undone. To
+   replace an import with a newer version of the sheet, undo the first one,
+   then import the new file — otherwise both are added (the page warns you).
 6. Send each LO the address and their password.
 
 Points always count for the member's own LC, even when another LC's event
