@@ -179,19 +179,29 @@ Both are identifiers, not secrets.
 
 ## 4. Choose the workbook
 
-1. Sign in to the site as `vpa` and open **Excel**.
-2. **Sign in to Microsoft** with the LeMSIC account that can edit the workbook.
-3. Either paste the link to the workbook you already keep (in Excel or SharePoint:
-   **Share → Copy link**), or let the site create `LeMSIC Points.xlsx` in that
-   account's OneDrive.
+1. Sign in to the site as `vpa` and open **Excel & backups**.
+2. **Sign in to Microsoft** with the LeMSIC account that will own the workbook —
+   one that stays with LeMSIC, not a person's own account.
+3. **Choose the master sheet** (LeMSIC's points master sheet, .xlsx). The site
+   saves it, exactly as it is, in a **LeMSIC Points** folder in that account's
+   OneDrive. (Or paste the link to a workbook already on OneDrive or SharePoint.)
 
-The site writes three sheets — **Totals by member**, **Ledger** and **By LC** —
-and rewrites them after every change. Any other sheet in the workbook is never
-touched, so notes, charts and pivot tables of your own are safe. Don't type into
-those three sheets; corrections go through the site.
+From then on, the master sheet is kept the way it was built:
 
-Those three sheets are locked against accidental typing (Excel shows them as
-protected), so nobody edits them by mistake and then loses the edit.
+- every point added on the site — an approval, points the VPA gives, a
+  correction, an undo — is a new row in **Points Log**, in its own columns, with
+  the person's key, the term (`2026-27`), the date and the event
+  (`Exchange 101 (USJ)`);
+- the totals on **Mastersheet** and on each LC's tab follow by their own
+  formulas, and the person's **Points History** gets the new line;
+- someone new gets the next key and a row on Mastersheet and on their LC's tab,
+  with the same total formula;
+- old rows and every other tab (Contract Giveaway, Outgoings, Not Counted,
+  Review…) are never changed.
+
+Import the same master sheet under **Import old sheet** so the site starts from
+the same totals (it reads the Mastersheet tab). A workbook without a Points Log
+gets the site's own three sheets instead (Totals by member, Ledger, By LC).
 
 ## 5. Share the workbook
 

@@ -15,6 +15,8 @@ const SHOTS = process.env.E2E_SHOTS || path.join(ROOT, 'docs', 'screens');
 const SHEETJS = process.env.SHEETJS_PATH || path.join(ROOT, 'node_modules', 'xlsx', 'dist', 'xlsx.full.min.js');
 const MS = require('../fixtures/fake-microsoft.cjs');
 const WORKBOOK = MS.createWorkbook();
+const MASTER = MS.createMasterWorkbook();
+const mx = (name) => (MASTER.sheets.find((x) => x.name === name) || { cells: [] }).cells;
 const OLD_SHEET = require('../fixtures/old-sheet.cjs')(path.join(require('os').tmpdir(), 'lemsic-old-points-site-' + process.pid + '.xlsx'));
 const RUBRIC = require('../fixtures/rubric.cjs')(path.join(require('os').tmpdir(), 'lemsic-rubric-site-' + process.pid + '.xlsx'));
 const MEMBER_LIST = require('../fixtures/member-list.cjs')(path.join(require('os').tmpdir(), 'lemsic-members-site-' + process.pid + '.xlsx'));
@@ -53,7 +55,7 @@ async function open(browser, base) {
     path: path.join(ROOT, 'node_modules', 'firebase', path.basename(new URL(r.request().url()).pathname)),
     contentType: 'application/javascript', headers: { 'access-control-allow-origin': '*' },
   }));
-  await MS.install(p, WORKBOOK);
+  await MS.install(p, WORKBOOK, MASTER);
   if (SHEETJS) await p.route('**/xlsx.full.min.js', (r) => r.fulfill({ path: SHEETJS, contentType: 'application/javascript' }));
   await p.goto(base);
   await p.waitForFunction(() => document.querySelector('.authbox, .shell') || /isn't one of/.test(document.body.innerText), null, { timeout: 20000 });
@@ -511,6 +513,43 @@ const errors = (p) => p.evaluate(() => (window.__lemsicErrors || []).slice());
   await vpa.locator('tr', { hasText: 'National Leadership Weekend' }).locator('button:has-text("Open")').click(); await settle(vpa);
   await vpa.click('button[data-act="undoApproval"]'); await settle(vpa); await vpa.click('button[data-act="undoApproval"]'); await vpa.waitForSelector('text=the event is a draft again', { timeout: 15000 }); await settle(vpa, 2500);
   check('undoing it takes the points back and makes it an editable draft again', await vpa.isVisible('form[data-submit="addRow"]') && (await sheetTotal()) === startTotal && leaTotal() === leaStart);
+
+  console.log('\n— LeMSIC\'s master sheet, kept the way it was built —');
+  await nav(vpa, 'Excel & backups');
+  await vpa.click('button[data-act="xlForget"]'); await settle(vpa, 800);
+  // The VPA puts the master sheet on OneDrive from the site: chosen, uploaded, connected and kept from then on.
+  const XLSXu = require(path.join(ROOT, 'node_modules', 'xlsx'));
+  const masterFile = path.join(require('os').tmpdir(), 'lemsic-' + process.pid + '-up', 'LeMSIC Points Master Sheet.xlsx');
+  fs.mkdirSync(path.dirname(masterFile), { recursive: true });
+  const mwb = XLSXu.utils.book_new(); MASTER.sheets.forEach((x) => XLSXu.utils.book_append_sheet(mwb, XLSXu.utils.aoa_to_sheet(x.cells), x.name)); XLSXu.writeFile(mwb, masterFile);
+  await vpa.setInputFiles('input[data-act-file="xlUpload"]', masterFile); await settle(vpa, 5000);
+  check(`the master sheet is uploaded to OneDrive as it is, never over an existing file (${MASTER.uploaded} bytes)`, MASTER.uploaded > 1000 && (await text(vpa)).includes('LeMSIC Points Master Sheet.xlsx'));
+  check('…and the page says how it is kept', (await text(vpa)).includes('How the master sheet is kept'));
+  const siteEntries = await vpa.evaluate(async () => {
+    const A = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const F = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    return (await F.getDocs(F.collection(F.getFirestore(A.getApp()), 'ledger'))).docs.filter((d) => d.data().kind !== 'opening_balance').length;
+  });
+  const plog = mx('Points Log');
+  check(`every point given on the site became a Points Log row (${plog.length - 6} of ${siteEntries}); the old rows are untouched`, plog.length - 6 === siteEntries && plog[1][1] === 'Lea Khoury' && plog[5][1] === 'Old Member');
+  const leaAt = plog.findIndex((r, i) => i > 5 && r[1] === 'Lea Khoury' && r[5] === 'Blood Pressure Screening (AUB)' && r[8] === 12), lea = plog[leaAt] || [];
+  check(`…in the sheet's own columns (${lea.slice(0, 10).join(' | ')})`, lea[0] === 'P0001' && lea[2] === 'AUB' && lea[3] === '2026-27' && lea[4] === '15/11/2026' && lea[6] === 'OC coordinator' && lea[7] === 'Lea Khoury' && lea[9] === 'Yes' && lea[10] === `=IF(J${leaAt + 1}="Yes",I${leaAt + 1},0)` && /^LeMSIC Points site — SUB-\S+ \(#/.test(lea[11] || ''));
+  const keysOf = (n) => [...new Set(plog.slice(6).filter((r) => r[1] === n).map((r) => r[0]))].join(',');
+  check(`people new to the sheet get the next keys, the same on every row (Maya ${keysOf('Maya Saad')}, Omar ${keysOf('Omar Fakih')})`, keysOf('Maya Saad') === 'P0008' && keysOf('Omar Fakih') === 'P0009');
+  const msx = mx('Mastersheet'), omarMs = msx.findIndex((r) => r[0] === 'Omar Fakih');
+  check('…a Mastersheet row with the sheet\'s own total formula, for his row', omarMs > 0 && msx[omarMs][2] === 'USJ' && String(msx[omarMs][3]).includes(`$A${omarMs + 1})`) && String(msx[omarMs][3]).includes('Outgoings 2025-26') && !String(msx[omarMs][3]).includes('$A2)'));
+  const omarLc = mx('USJ').find((r) => r[0] === 'Omar Fakih') || [];
+  check('…and a row on his LC\'s tab, with his Points History', /\[26-27\] Blood Pressure Screening \(AUB\) - Volunteer — half day: 3/.test(omarLc[2] || '') && omarLc[4] === 'Added by the LeMSIC Points site.');
+  const leaLc = mx('AUB').find((r) => r[0] === 'Lea Khoury') || [];
+  check('Lea\'s Points History is rebuilt the way the sheet builds it', /^\[26-27\]/.test(leaLc[2] || '') && leaLc[2].includes('[26-27] Blood Pressure Screening (AUB) - OC coordinator: 12') && leaLc[2].includes('[25-26] Christmas of Care (SGUB) - Attended live event/session: 5') && leaLc[2].endsWith("[Before 25-26] Points Sheet 'All entries': 84 (2 entries)") && !leaLc[2].includes('National Leadership Weekend') && leaLc[4] === 'Old note');
+  check('people with no new points are left exactly as they were', (mx('AUB').find((r) => r[0] === 'Karim Nassar') || [])[2] === '[25-26] National Team Retreat - Attended online event/session: 24  (deducted)');
+  check('the other tabs are never touched', JSON.stringify(mx('Review')) === JSON.stringify([['#', 'Category', 'Item'], [1, 'Missing files', 'Keep this exactly']]));
+  const fmts = MASTER.sheets.find((x) => x.name === 'Points Log').formats || [];
+  check('new rows look like the old ones (Arial 10, grey borders, yellow “Counted?”, whole points)', fmts.some((f) => f.kind === 'font' && f.name === 'Arial' && f.size === 10) && fmts.some((f) => f.kind === 'borders' && f.color === '#BFBFBF') && fmts.some((f) => f.kind === 'fill' && f.color === '#FFF2CC' && /^J/.test(f.address)) && fmts.some((f) => f.kind === 'numberFormat' && f.value === '0'));
+  const logLen = mx('Points Log').length;
+  await vpa.click('button[data-act="xlSync"]'); await settle(vpa, 3000);
+  check('updating again writes nothing twice', mx('Points Log').length === logLen);
+  check(`every call to the master sheet matched the documented API (${MASTER.calls.filter((c) => c.startsWith('REJECTED')).join('; ') || 'none rejected'})`, MASTER.calls.filter((c) => c.startsWith('REJECTED')).length === 0);
 
   await nav(vpa, 'Overview');
   check('the real site has no reset button', !(await vpa.isVisible('button[data-act="resetTest"]')) && !(await text(vpa)).includes('Reset this test copy'));

@@ -523,7 +523,7 @@ async function act(fn, okMessage) {
   if (S.busy) return;
   S.busy = true; changed();
   try { await fn(); if (okMessage) toast(okMessage); }
-  catch (e) { toast(failMessage(e), true); }
+  catch (e) { if (!(e instanceof UserError)) console.error(e); toast(failMessage(e), true); }
   finally { S.busy = false; changed(); }
 }
 function toast(msg, bad) {
@@ -1309,7 +1309,7 @@ async function applyGive() {
     const r = G.rows[i], path = "ledger/va_" + id + "_" + i;
     if (await S.store.get(path)) continue;
     const m = S.members.find((x) => x.id === r.memberId) || r;
-    await S.store.set(path, { memberId: r.memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "award", source: "vpa", pts: r.pts, reason: (title ? title + " — " : "") + r.catLabel + (r.note ? " (" + r.note + ")" : ""), cat: r.cat, awardId: id, at: Date.now() + i, by: S.uid });
+    await S.store.set(path, { memberId: r.memberId, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "award", source: "vpa", pts: r.pts, reason: (title ? title + " — " : "") + r.catLabel + (r.note ? " (" + r.note + ")" : ""), cat: r.cat, awardId: id, eventTitle: title || "Points from the VPA", catLabel: r.catLabel, note: r.note || null, term: termCode(), at: Date.now() + i, by: S.uid });
   }
   await S.store.update("imports/" + id, { status: "applied" });
   await audit("points.given", `${ref}${title ? " — " + title : ""}: ${total} pts to ${G.rows.length} ${G.rows.length === 1 ? "person" : "people"}`);
@@ -1323,7 +1323,7 @@ async function undoGive(id) {
   const entries = S.ledger.filter((e) => e.awardId === id && !e.reverses);
   for (const e of entries) {
     const path = "ledger/rv_" + e.id;
-    if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "award", source: "vpa", pts: -e.pts, reason: "Undo of " + rec.ref + " — " + e.reason, cat: e.cat || null, awardId: id, reverses: e.id, at: Date.now(), by: S.uid });
+    if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "award", source: "vpa", pts: -e.pts, reason: "Undo of " + rec.ref + " — " + e.reason, cat: e.cat || null, awardId: id, reverses: e.id, eventTitle: e.eventTitle || null, catLabel: e.catLabel || null, term: e.term || termCode(), at: Date.now(), by: S.uid });
   }
   await S.store.update("imports/" + id, { status: "reversed", reversedAt: Date.now() });
   await audit("points.given.undone", `${rec.ref} undone: ${sum(entries, (e) => e.pts)} pts taken back`);
@@ -1590,6 +1590,10 @@ async function loadXlsx() {
   return window.XLSX;
 }
 async function sha256(buf) {
+  if (!(window.crypto && crypto.subtle)) { // not a secure page (plain http): a simpler fingerprint still tells files apart
+    let h = 2166136261; const b = new Uint8Array(buf); for (let i = 0; i < b.length; i++) { h ^= b[i]; h = Math.imul(h, 16777619) >>> 0; }
+    return "fnv-" + b.length + "-" + h.toString(16);
+  }
   const h = await crypto.subtle.digest("SHA-256", buf);
   return Array.from(new Uint8Array(h)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -1612,12 +1616,15 @@ const cleanName = (n) => {
 function nameSimilarity(a, b) {
   const L = new Set(norm(cleanName(a)).split(" ").filter(Boolean)), R = new Set(norm(cleanName(b)).split(" ").filter(Boolean));
   if (!L.size || !R.size) return 0;
-  let shared = 0;
+  // Each word of one name can stand for one word of the other, once: "Karim Karam" isn't "Karim Bahr".
+  let shared = 0; const used = new Set();
+  for (const t of L) if (R.has(t)) { shared += 1; used.add(t); }
   for (const t of L) {
-    if (R.has(t)) { shared += 1; continue; }
+    if (R.has(t)) continue;
     for (const o of R) {
-      if ((t.length === 1 && o.startsWith(t)) || (o.length === 1 && t.startsWith(o))) { shared += 0.5; break; }
-      if (t.length > 3 && o.length > 3 && editClose(t, o)) { shared += 0.8; break; }
+      if (used.has(o)) continue;
+      if ((t.length === 1 && o.startsWith(t)) || (o.length === 1 && t.startsWith(o))) { shared += 0.5; used.add(o); break; }
+      if (t.length > 3 && o.length > 3 && editClose(t, o)) { shared += 0.8; used.add(o); break; }
     }
   }
   return shared / Math.max(L.size, R.size);
@@ -1630,6 +1637,7 @@ const LC_ALIASES = { AUB: ["american university of beirut"], LAU: ["lebanese ame
 /** "AUB", "LC AUB", "LeMSIC-UOB", "American University of Beirut", "Saint Joseph University" → the committee's id. */
 function lcFrom(raw) {
   const r = norm(raw); if (!r) return null;
+  if (/^(unassigned( lc)?|no lc|none|n a)$/.test(r)) return NO_LC;
   const c = S.committees.find((x) => norm(x.id) === r || norm(x.name) === r || (r.length > 3 && norm(x.name).includes(r)) || r.split(" ").includes(norm(x.id)))
     || S.committees.find((x) => (LC_ALIASES[x.id] || []).some((a) => r.includes(a)) && !(x.id === "LU" && r.includes("american")));
   return c ? c.id : null;
@@ -1702,7 +1710,8 @@ function buildGroups(I) {
       g.cands.sort((a, b) => b.score - a.score).splice(3);
     }
     // Someone written two ways in the same sheet, neither yet in the registry.
-    g.twins = list.slice(0, gi).filter((o) => o.key !== g.key && (!g.lc || !o.lc || g.lc === o.lc) && nameSimilarity(g.name, o.name) >= 0.75).map((o) => o.key);
+    // Two rows with different LeMSIC IDs are two people, however alike the names.
+    g.twins = list.slice(0, gi).filter((o) => o.key !== g.key && (!g.lc || !o.lc || g.lc === o.lc) && !(g.id && o.id && idKey(g.id) !== idKey(o.id)) && nameSimilarity(g.name, o.name) >= 0.75).map((o) => o.key);
     const best = g.cands[0];
     dec[g.key] = best && best.score >= 0.75 ? best.memberId : g.twins.length ? "same:" + g.twins[0] : "new";
     g.check = !!(best && best.score >= 0.75 && best.score < 1) || (!best && g.twins.length > 0);
@@ -1827,8 +1836,11 @@ async function readImportFile(file) {
     const dup = sheetImports().find((x) => x.sha256 === hash && x.status === "applied");
     const resume = sheetImports().find((x) => x.sha256 === hash && x.status === "applying");
     S.imp = { step: dup ? "dup" : "map", dup, resume, filename: file.name, hash, sheets };
+    // A sheet with a Total column (LeMSIC's "Mastersheet") holds each person's total: read that one.
+    // Otherwise, the sheet with the most numbers in it.
+    const totals = sheets.map((x) => { const h = (x.rows[guessHeader(x.rows)] || []).map((v) => norm(v)); return h.some((v) => /\btotal\b/.test(v)) && h.some((v) => /name/.test(v)) ? x.rows.length : -1; });
     const quality = sheets.map((x) => x.rows.filter((r) => (r || []).some(isNum)).length);
-    pickSheet(S.imp, quality.indexOf(Math.max(...quality)));
+    pickSheet(S.imp, Math.max(...totals) > 0 ? totals.indexOf(Math.max(...totals)) : quality.indexOf(Math.max(...quality)));
   });
 }
 async function applyImport() {
@@ -2028,6 +2040,219 @@ async function applyRestore() {
   toast(`${paths.length} ${paths.length === 1 ? "record" : "records"} brought back from the backup.`);
 }
 
+// ---------- Excel: LeMSIC's master sheet ----------
+// When the connected workbook is LeMSIC's master sheet (a "Points Log" and a "Mastersheet"), the
+// site keeps it the way it was built: every point is a Points Log row, totals are the sheet's own
+// SUMIFS formulas, and each person's "Points History" summarises their rows. The site only adds
+// rows for what happens on the site, and never touches the other tabs.
+const MASTER_LOG = "Points Log", MASTER_SHEET = "Mastersheet";
+const MASTER_LOG_HEAD = ["Key", "Person", "LC", "Term", "Date", "Event", "Activity / Role", "Name as Written in Source", "Points (as submitted)", "Counted?", "Counted Points", "Source File", "Flags"];
+/** "2026–2027 · Semester 2" → "2026-27" (the term column of the Points Log). */
+function termCode() {
+  const m = /(\d{4})\s*[–\-\/]\s*(\d{2,4})/.exec((S.config && S.config.term) || "");
+  if (m) return m[1] + "-" + m[2].slice(-2);
+  const d = new Date(), start = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1;
+  return start + "-" + String(start + 1).slice(-2);
+}
+const ddmmyyyy = (iso) => (/^\d{4}-\d{2}-\d{2}/.test(iso || "") ? iso.slice(8, 10) + "/" + iso.slice(5, 7) + "/" + iso.slice(0, 4) : iso || "");
+const lcSheetName = (lc) => (lc === NO_LC ? "Unassigned LC" : lc);
+/*<master-history>*/
+/** A person's "Points History", built from their Points Log rows the way the master sheet does it:
+ *  newest term first; in a term, newest date first, one line per event and role with its counted
+ *  points; the old Points Sheet as one line with its number of entries; rows not counted left out;
+ *  for someone on the Outgoings list, "(deducted)" after every line from an earlier term.
+ *  rows: [key, person, lc, term, date, event, role, written, points, counted, …] */
+function masterHistory(rows, outgoing, currentTerm) {
+  const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  const dateKey = (d) => {
+    d = String(d == null ? "" : d).trim(); let m;
+    if ((m = /^(\d{1,2})(?:-\d{1,2})?\/(\d{1,2})\/(\d{4})$/.exec(d))) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0"); // 17/11/2026, 04-05/11/2026
+    if ((m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d))) return m[1] + "-" + m[2] + "-" + m[3];
+    if ((m = /^([A-Za-z]{3})[a-z]*\.?(?:\s*-\s*[A-Za-z]{3}[a-z]*\.?)?\s+(\d{4})$/.exec(d)) && MONTHS[m[1].toLowerCase()]) return m[2] + "-" + String(MONTHS[m[1].toLowerCase()]).padStart(2, "0") + "-00"; // Nov 2025, Jan-Feb 2026
+    return "";
+  };
+  const short = (t) => String(t).replace(/\b20(\d{2})-(\d{2})\b/, "$1-$2");
+  const termRank = (t) => { t = String(t); if (/^before/i.test(t)) return -1; const m = /(\d{4})/.exec(t); return m ? Number(m[1]) : 0; };
+  const counted = rows.filter((r) => String(r[9]).trim().toLowerCase() === "yes" && String(r[3] || "").trim());
+  const terms = [...new Set(counted.map((r) => String(r[3]).trim()))].sort((a, b) => termRank(b) - termRank(a));
+  const lines = [];
+  for (const term of terms) {
+    const inTerm = counted.map((r, i) => ({ r, i })).filter((x) => String(x.r[3]).trim() === term)
+      .sort((a, b) => (dateKey(b.r[4]) > dateKey(a.r[4]) ? 1 : dateKey(b.r[4]) < dateKey(a.r[4]) ? -1 : a.i - b.i)).map((x) => x.r);
+    const before = /^before/i.test(term), groups = [];
+    for (const r of inTerm) {
+      const event = before ? String(r[5]).replace(/\s*\(before [^)]*\)\s*$/i, "") : String(r[5]);
+      const key = before ? event : event + "\u0000" + r[6];
+      let g = groups.find((x) => x.key === key);
+      if (!g) groups.push(g = { key, event, role: r[6], pts: 0, n: 0 });
+      g.pts += Number(r[8]) || 0; g.n += 1;
+    }
+    const tail = outgoing && term !== currentTerm ? "  (deducted)" : "";
+    groups.filter((g) => g.pts !== 0).forEach((g) => lines.push(before
+      ? `[${short(term)}] ${g.event}: ${g.pts} (${g.n} ${g.n === 1 ? "entry" : "entries"})${tail}`
+      : `[${short(term)}] ${g.event} - ${g.role}: ${g.pts}${tail}`));
+  }
+  return lines.join("\n");
+}
+/*</master-history>*/
+
+/** One Points Log row's words for a ledger entry: event, role, date, term, where it came from. */
+function masterLogParts(e) {
+  const orig = (e.reverses && S.ledger.find((x) => x.id === e.reverses)) || e;
+  const sub = orig.subId ? allItems().find((x) => x.id === orig.subId) : null;
+  const batch = orig.awardId ? S.imports.find((x) => x.id === orig.awardId) : null;
+  const parts = String(orig.reason || "").split(" — ");
+  let event, role;
+  if (orig.kind === "correction") { event = "Correction"; role = String(orig.reason || "").replace(/^Undo of a correction — /, ""); }
+  else if (orig.source === "vpa") { event = orig.eventTitle || (batch && batch.title) || "Points from the VPA"; role = orig.catLabel || parts[parts.length - 1]; }
+  else {
+    const title = orig.eventTitle || (sub && sub.title) || parts[0], evLc = orig.eventLc || (sub && sub.lc);
+    event = evLc ? `${title} (${evLc === NATIONAL ? "National" : lcShort(evLc)})` : title;
+    role = orig.catLabel || parts.slice(1).join(" — ");
+  }
+  const date = ddmmyyyy(orig.eventDate || (sub && sub.date) || new Date(orig.at || Date.now()).toISOString().slice(0, 10));
+  const ref = orig.subRef || (batch && batch.ref) || (orig.kind === "correction" ? "correction" : "VPA");
+  const flags = e.reverses ? (orig.kind === "correction" ? "Undo of a correction, made in the site" : orig.source === "vpa" ? `Undo of ${ref}, made in the site` : `Approval of ${ref} undone in the site`)
+    : orig.kind === "correction" ? "Correction made in the site" : orig.note ? orig.note : "";
+  return { event, role, date, term: e.term || orig.term || termCode(), source: `LeMSIC Points site — ${ref} (#${e.id})`, flags };
+}
+/** Keep LeMSIC's master sheet up to date. Returns how many Points Log rows were added. */
+async function syncMaster(token, base, H, sheets) {
+  const sheetByName = (n) => sheets.find((w) => w.name.trim().toLowerCase() === n.toLowerCase());
+  const wsPath = (ws) => base + "/worksheets/" + encodeURIComponent(ws.id);
+  const R = (ws, a) => wsPath(ws) + `/range(address='${a}')`;
+  const read = async (ws) => {
+    const r = await graph(token, "GET", wsPath(ws) + "/usedRange(valuesOnly=true)?$select=address,values", undefined, H);
+    const start = /^([A-Z]+)(\d+)/.exec(String((r && r.address) || "A1").split("!").pop()) || [, "A", "1"];
+    const pad = colIndex(start[1]), top = Number(start[2]) - 1;
+    return Array.from({ length: top }, () => []).concat(((r && r.values) || []).map((row) => Array(pad).fill("").concat(row)));
+  };
+  const used = (values) => { let n = values.length; while (n > 1 && (values[n - 1] || []).every((v) => v === "" || v == null)) n--; return n; };
+  const formulaAt = async (ws, addr) => { try { const r = await graph(token, "GET", R(ws, addr) + "?$select=formulas", undefined, H); const f = r && r.formulas && r.formulas[0] && r.formulas[0][0]; return typeof f === "string" && f.startsWith("=") ? f : null; } catch (e) { return null; } };
+  const forRow = (f, from, to) => f.replace(new RegExp("(\\$?[A-Z]{1,3})" + from + "(?![0-9])", "g"), (m0, col) => col + to);
+  const text = (v) => (v == null || v === "" ? "" : "'" + v); // stays text: dates, terms and IDs aren't turned into numbers or dates
+  const style = async (ws, r1, r2, width, o) => {
+    const last = colLetter(width - 1), all = `A${r1}:${last}${r2}`;
+    await graph(token, "PATCH", R(ws, all) + "/format", { verticalAlignment: "Top", wrapText: false }, H);
+    await graph(token, "PATCH", R(ws, all) + "/format/font", { name: "Arial", size: 10, bold: false, color: "#000000" }, H);
+    for (const side of ["EdgeTop", "EdgeBottom", "EdgeLeft", "EdgeRight", "InsideVertical"].concat(r2 > r1 ? ["InsideHorizontal"] : []))
+      await graph(token, "PATCH", R(ws, all) + "/format/borders/" + side, { style: "Continuous", color: "#BFBFBF", weight: "Thin" }, H);
+    for (const c of o.center || []) await graph(token, "PATCH", R(ws, `${c.split(":")[0]}${r1}:${(c.split(":")[1] || c)}${r2}`) + "/format", { horizontalAlignment: "Center" }, H);
+    for (const c of o.wrap || []) await graph(token, "PATCH", R(ws, `${c}${r1}:${c}${r2}`) + "/format", { wrapText: true }, H);
+    for (const c of o.bold || []) await graph(token, "PATCH", R(ws, `${c}${r1}:${c}${r2}`) + "/format/font", { bold: true }, H);
+    for (const c of o.number || []) await graph(token, "PATCH", R(ws, `${c}${r1}:${c}${r2}`), { numberFormat: Array.from({ length: r2 - r1 + 1 }, () => ["0"]) }, H);
+    for (const [c, color] of o.fill || []) await graph(token, "PATCH", R(ws, `${c}${r1}:${c}${r2}`) + "/format/fill", { color }, H);
+  };
+  const LC_HEAD = ["Full Name", "LeMSIC ID", "Points History", "Total", "Notes"];
+  const LC_STYLE = { center: ["D"], wrap: ["C", "E"], bold: ["D"], number: ["D"] };
+
+  // What's there now.
+  const logWs = sheetByName(MASTER_LOG), msWs = sheetByName(MASTER_SHEET);
+  const log = await read(logWs);
+  const head = (log[0] || []).slice(0, MASTER_LOG_HEAD.length).map((x) => String(x || "").trim().toLowerCase());
+  const wrong = MASTER_LOG_HEAD.findIndex((h, i) => head[i] !== h.toLowerCase());
+  if (wrong >= 0) throw new UserError(`The “${MASTER_LOG}” sheet's column ${colLetter(wrong)} should be headed “${MASTER_LOG_HEAD[wrong]}”. Nothing was written.`);
+  const logUsed = used(log);
+  const logRows = log.slice(1, logUsed);
+  const written = new Set(logRows.map((r) => (/\(#([A-Za-z0-9_-]+)\)\s*$/.exec(String(r[11] || "")) || [])[1]).filter(Boolean));
+  const keyOf = new Map(); let maxKey = 0;
+  logRows.forEach((r) => { const k = String(r[0] || ""), m = /^P(\d+)$/i.exec(k); if (m) maxKey = Math.max(maxKey, Number(m[1])); if (k && !keyOf.has(norm(r[1]))) keyOf.set(norm(r[1]), k); });
+  const ms = await read(msWs), msUsed = used(ms);
+  const people = ms.slice(1, msUsed).map((r, i) => ({ row: i + 2, name: String(r[0] || "").trim(), id: String(r[1] || "").trim(), lc: String(r[2] || "").trim() })).filter((p) => p.name);
+  const byId = new Map(), byName = new Map();
+  people.forEach((p) => { if (p.id) byId.set(idKey(p.id), p); const k = norm(p.name); byName.set(k, (byName.get(k) || []).concat([p])); });
+  const outWs = sheets.find((w) => /^outgoings/i.test(w.name.trim()));
+  const outgoing = new Set(outWs ? (await read(outWs)).slice(1).map((r) => norm(r[0])).filter(Boolean) : []);
+
+  // The rows the sheet doesn't have yet: everything done on the site (the starting balances came from this sheet).
+  const todo = S.ledger.slice().sort((a, b) => (a.at || 0) - (b.at || 0)).filter((e) => e.kind !== "opening_balance" && !written.has(e.id));
+  if (!todo.length) return 0;
+  const members = new Map(S.members.map((m) => [m.id, m]));
+  const touched = new Map(); // person name (normalised) → { person, member }
+  const newRows = [];
+  for (const e of todo) {
+    const m = members.get(e.memberId) || { name: e.name, lemsicId: e.lemsicId, lc: e.lc };
+    let p = (m.lemsicId && byId.get(idKey(m.lemsicId))) || ((byName.get(norm(m.name)) || []).length === 1 ? byName.get(norm(m.name))[0] : null);
+    if (!p) { p = { row: null, name: m.name, id: m.lemsicId || "", lc: lcShort(m.lc), isNew: true }; byName.set(norm(p.name), [p]); if (p.id) byId.set(idKey(p.id), p); }
+    let key = keyOf.get(norm(p.name)); if (!key) { key = "P" + String(++maxKey).padStart(4, "0"); keyOf.set(norm(p.name), key); }
+    const w = masterLogParts(e), r = logUsed + 1 + newRows.length;
+    newRows.push([key, p.name, lcShort(m.lc), text(w.term), text(w.date), w.event, w.role, m.name, e.pts, "Yes", null, w.source, w.flags]);
+    touched.set(norm(p.name), { p, m });
+  }
+  // Points Log: the new rows at the bottom, with the sheet's own Counted Points formula.
+  const kTemplate = (logUsed >= 2 && (await formulaAt(logWs, "K2"))) || '=IF(J2="Yes",I2,0)';
+  newRows.forEach((row, i) => { row[10] = forRow(kTemplate, 2, logUsed + 1 + i); });
+  const r1 = logUsed + 1, r2 = logUsed + newRows.length;
+  await graph(token, "PATCH", R(logWs, `A${r1}:M${r2}`), { formulas: newRows.map((row) => row.map((v) => (v == null ? "" : v))) }, H);
+  await style(logWs, r1, r2, 13, { center: ["A", "C:D", "I:K"], number: ["I", "K"], fill: [["J", "#FFF2CC"]] });
+
+  // Each touched person's history, rebuilt from all their rows.
+  const allRows = logRows.concat(newRows.map((row) => row.map((v) => (typeof v === "string" && v.startsWith("'") ? v.slice(1) : v))));
+  const rowsOf = (name) => allRows.filter((r) => norm(r[1]) === norm(name));
+  const history = (p) => masterHistory(rowsOf(p.name), outgoing.has(norm(p.name)), termCode());
+
+  // Mastersheet: new people at the bottom, LCs and IDs brought up to date for the people touched.
+  const tTemplate = (msUsed >= 2 && (await formulaAt(msWs, "D2"))) || null;
+  const msTotal = (row) => (tTemplate ? forRow(tTemplate, 2, row) : `=SUMIFS('${MASTER_LOG}'!$K:$K,'${MASTER_LOG}'!$B:$B,$A${row})`);
+  const fresh = [...touched.values()].filter((t) => t.p.isNew);
+  for (const t of [...touched.values()].filter((t) => !t.p.isNew)) {
+    const lc = lcShort(t.m.lc);
+    if (t.m.lc && lc !== t.p.lc) { await graph(token, "PATCH", R(msWs, `C${t.p.row}`), { values: [[lc]] }, H); t.moveFrom = t.p.lc; t.p.lc = lc; }
+    if (!t.p.id && t.m.lemsicId) { await graph(token, "PATCH", R(msWs, `B${t.p.row}`), { values: [[text(t.m.lemsicId)]] }, H); t.p.id = t.m.lemsicId; }
+  }
+  if (fresh.length) {
+    const m1 = msUsed + 1, m2 = msUsed + fresh.length;
+    await graph(token, "PATCH", R(msWs, `A${m1}:D${m2}`), { formulas: fresh.map((t, i) => { t.p.row = m1 + i; return [t.p.name, text(t.p.id), t.p.lc, msTotal(m1 + i)]; }) }, H);
+    await style(msWs, m1, m2, 4, { center: ["C:D"], bold: ["D"], number: ["D"] });
+  }
+
+  // LC sheets: a person's row is on the sheet of their LC, with their Points History.
+  const lcSheets = new Map();
+  const lcSheet = async (lc) => {
+    const name = lc === "Unassigned" ? "Unassigned LC" : lc;
+    if (lcSheets.has(name)) return lcSheets.get(name);
+    let ws = sheetByName(name);
+    if (!ws) {
+      ws = await graph(token, "POST", base + "/worksheets/add", { name }, H); sheets.push(ws);
+      await graph(token, "PATCH", R(ws, "A1:E1"), { values: [LC_HEAD] }, H);
+      await style(ws, 1, 1, 5, { center: ["A:E"] });
+      await graph(token, "PATCH", R(ws, "A1:E1") + "/format", { wrapText: true, verticalAlignment: "Center" }, H);
+      await graph(token, "PATCH", R(ws, "A1:E1") + "/format/font", { bold: true, color: "#FFFFFF" }, H);
+      await graph(token, "PATCH", R(ws, "A1:E1") + "/format/fill", { color: "#1F3864" }, H);
+    }
+    const values = await read(ws), info = { ws, values, used: used(values), adds: [], drops: [], tpl: null };
+    info.tpl = info.used >= 2 ? await formulaAt(ws, "D2") : null;
+    lcSheets.set(name, info); return info;
+  };
+  const rowIn = (info, name) => { const i = info.values.findIndex((r, k) => k > 0 && k < info.used && norm(r[0]) === norm(name)); return i < 0 ? -1 : i + 1; };
+  for (const t of touched.values()) {
+    const to = await lcSheet(t.p.lc);
+    let notes = "Added by the LeMSIC Points site.";
+    if (t.moveFrom) {
+      const from = await lcSheet(t.moveFrom), at = rowIn(from, t.p.name);
+      if (at > 0) { notes = from.values[at - 1][4] || ""; from.drops.push(at); }
+    }
+    const at = rowIn(to, t.p.name);
+    if (at > 0 && !t.moveFrom) {
+      await graph(token, "PATCH", R(to.ws, `C${at}`), { values: [[history(t.p)]] }, H);
+      if (!to.values[at - 1][1] && t.p.id) await graph(token, "PATCH", R(to.ws, `B${at}`), { values: [[text(t.p.id)]] }, H);
+      await graph(token, "POST", R(to.ws, `A${at}:E${at}`) + "/format/autofitRows", {}, H);
+    } else if (at < 0 || t.moveFrom) to.adds.push([t.p.name, text(t.p.id), history(t.p), null, notes]);
+  }
+  for (const info of lcSheets.values()) {
+    // Rows of people who moved LC come out bottom-up, so the rows above keep their numbers.
+    for (const at of info.drops.sort((a, b) => b - a)) { await graph(token, "POST", R(info.ws, `A${at}:E${at}`) + "/delete", { shift: "Up" }, H); info.used--; }
+    if (!info.adds.length) continue;
+    const a1 = info.used + 1, a2 = info.used + info.adds.length;
+    info.adds.forEach((row, i) => { row[3] = info.tpl ? forRow(info.tpl, 2, a1 + i) : msTotal(a1 + i).replace(/\$A\d+/, "$A" + (a1 + i)); });
+    await graph(token, "PATCH", R(info.ws, `A${a1}:E${a2}`), { formulas: info.adds }, H);
+    await style(info.ws, a1, a2, 5, LC_STYLE);
+    await graph(token, "POST", R(info.ws, `A${a1}:E${a2}`) + "/format/autofitRows", {}, H);
+  }
+  return newRows.length;
+}
+const colIndex = (letters) => String(letters).split("").reduce((n, ch) => n * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+
 // ---------- Excel: keeping the workbook on SharePoint / OneDrive up to date ----------
 // Only the VPA's browser ever writes to it, straight after the VPA changes the
 // ledger, using the VPA's own Microsoft 365 sign-in. No server is involved.
@@ -2082,10 +2307,16 @@ async function graph(token, method, path, body, headers) {
   return r.status === 204 ? null : r.json().catch(() => null);
 }
 const shareId = (url) => "u!" + btoa(unescape(encodeURIComponent(url))).replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
-async function connectWorkbook(link) {
+async function connectWorkbook(link, upload) {
   const token = await msToken(true);
   let item;
-  if (link) item = await graph(token, "GET", "/shares/" + shareId(link) + "/driveItem");
+  if (upload) {
+    // LeMSIC's own master sheet, saved as it is in this account's OneDrive. "rename" means an
+    // existing file of the same name is never overwritten: the copy gets a number instead.
+    if (upload.bytes.byteLength > 4 * 1024 * 1024) throw new UserError("That file is over 4 MB. Put it on OneDrive yourself, then paste its link below.");
+    item = await graph(token, "PUT", "/me/drive/root:/LeMSIC Points/" + upload.name.replace(/[\\/:*?"<>|#%]/g, "-") + ":/content?@microsoft.graph.conflictBehavior=rename", new Uint8Array(upload.bytes));
+  }
+  else if (link) item = await graph(token, "GET", "/shares/" + shareId(link) + "/driveItem");
   else item = await graph(token, "PUT", "/me/drive/root:/LeMSIC Points/LeMSIC Points.xlsx:/content", new Uint8Array(await workbookBytes()));
   if (!/\.xlsx$/i.test(item.name || "")) throw new UserError("That link isn't to an Excel workbook (.xlsx).");
   await S.store.set("settings/excel", { driveId: item.parentReference.driveId, itemId: item.id, name: item.name, webUrl: item.webUrl || null, auto: true, connectedAt: Date.now(), lastSyncAt: null, lastError: null });
@@ -2108,7 +2339,10 @@ async function syncExcel(interactive) {
     const H = { "workbook-session-id": session.id };
     try {
       const existing = (await graph(token, "GET", base + "/worksheets", undefined, H)).value || [];
-      for (const [name, data] of workbookSheets()) {
+      const master = existing.some((w) => w.name.trim() === MASTER_LOG) && existing.some((w) => w.name.trim() === MASTER_SHEET);
+      S.xlLayout = master ? "master" : "app";
+      if (master) rows = await syncMaster(token, base, H, existing);
+      else for (const [name, data] of workbookSheets()) {
         const ws = existing.find((w) => w.name === name) || (await graph(token, "POST", base + "/worksheets/add", { name }, H));
         const wsPath = base + "/worksheets/" + encodeURIComponent(ws.id);
         // The app's sheets are kept protected (no password) so that someone typing in
@@ -2129,7 +2363,7 @@ async function syncExcel(interactive) {
     } finally {
       await graph(token, "POST", base + "/closeSession", {}, H).catch(() => null);
     }
-    await S.store.update("settings/excel", { lastSyncAt: Date.now(), lastError: null, rows });
+    await S.store.update("settings/excel", { lastSyncAt: Date.now(), lastError: null, rows, layout: S.xlLayout || null });
   } catch (e) {
     const msg = failMessage(e);
     await S.store.update("settings/excel", { lastError: msg, lastErrorAt: Date.now() }).catch(() => null);
@@ -2160,7 +2394,12 @@ function syncSoon() { if (S.excel && S.excel.itemId && S.excel.auto !== false &&
 
 function vExcel() {
   const cfg = msConfig(), xs = S.excel;
-  const sheetsCard = `<div class="card"><div class="card-h"><h3>What the app writes</h3></div><div class="card-b stack">
+  const sheetsCard = xs && xs.layout === "master" ? `<div class="card"><div class="card-h"><h3>How the master sheet is kept</h3></div><div class="card-b stack">
+    <div class="sub">Every point added here — an approval, points you give, a correction, an undo — becomes a new row in <b>Points Log</b>, in its own columns, with the person's key, the term and the event.</div>
+    <div class="sub">The totals on <b>Mastersheet</b> and on each LC's tab follow by their own formulas, and the person's <b>Points History</b> gets the new line. Someone new is added to Mastersheet and to their LC's tab.</div>
+    <div class="sub">Old rows and every other tab are never changed.</div>
+    ${note("warn", "<b>Whoever you share it with sees every member's points.</b> Share it with the board, view-only — not with Local Officers.")}
+  </div></div>` : `<div class="card"><div class="card-h"><h3>What the app writes</h3></div><div class="card-b stack">
     <div class="sub">Three sheets, rewritten after every change to the points: <b>Totals by member</b>, <b>Ledger</b> and <b>By LC</b>.</div>
     <div class="sub">Any other sheet in the workbook — your own notes, charts, pivot tables — is never read or touched.</div>
     <div class="sub">The app's sheets are locked against accidental typing. A correction goes through the points sheet here, and reaches the workbook with everything else.</div>
@@ -2191,9 +2430,12 @@ function vExcel() {
             ${xs.lastError ? note("warn", `<b>The last update didn't go through:</b> ${esc(xs.lastError)}`) : excelBehind() ? note("info", "Some changes haven't reached the workbook yet — probably approved on a device that isn't signed in to Microsoft. It catches up by itself whenever this site is open here; or press Update now.") : ""}
             <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn pri" data-act="xlSync" ${S.xlBusy || S.busy ? "disabled" : ""}>${S.xlBusy ? "Updating…" : "Update now"}</button>
               <button class="btn" data-act="xlForget" ${dis()}>Use a different workbook</button></div>`
-          : `<div class="sub">Use the workbook you already keep, or start a fresh one.</div>
+          : `<div class="stack" style="gap:8px"><b>Put LeMSIC's master sheet on OneDrive</b>
+              <span class="sub">Choose the master sheet (.xlsx). It's saved in a “LeMSIC Points” folder in this account's OneDrive, exactly as it is, and from then on every point added here is written into it: a row in its Points Log, the person's Points History, and the totals through its own formulas.</span>
+              <label class="btn pri" style="justify-content:center;max-width:340px">Choose the master sheet…<input type="file" accept=".xlsx" data-act-file="xlUpload" hidden></label></div>
+            <div class="sub">or use a workbook that's already on OneDrive or SharePoint, or start a fresh one:</div>
             <form class="stack" data-submit="xlLink"><div class="field"><label for="xl-link">Link to the existing workbook</label>${inp("xl", "link", "", `id="xl-link" placeholder="In Excel or SharePoint: Share → Copy link, and paste it here"`)}</div>
-              <div><button class="btn pri" type="submit" ${dis()}>Use this workbook</button></div></form>
+              <div><button class="btn" type="submit" ${dis()}>Use this workbook</button></div></form>
             <div class="sub">or</div>
             <div><button class="btn" data-act="xlCreate" ${dis()}>Create “LeMSIC Points.xlsx” in my OneDrive</button></div>`}
         </div></div>
@@ -2296,6 +2538,14 @@ document.addEventListener("change", (e) => {
   if (el.getAttribute && el.getAttribute("data-act-file") === "importFile") { readImportFile(el.files && el.files[0]); return; }
   if (el.getAttribute && el.getAttribute("data-act-file") === "memberFile") { readMemberFile(el.files && el.files[0]); return; }
   if (el.getAttribute && el.getAttribute("data-act-file") === "rubricFile") { readRubricFile(el.files && el.files[0]); return; }
+  if (el.getAttribute && el.getAttribute("data-act-file") === "xlUpload") {
+    const file = el.files && el.files[0]; el.value = "";
+    if (file) act(async () => {
+      if (!/\.xlsx$/i.test(file.name)) throw new UserError("Choose the master sheet as an Excel file (.xlsx).");
+      await connectWorkbook(null, { name: file.name, bytes: await file.arrayBuffer() });
+    }, "The master sheet is on OneDrive, and points added here are written into it.");
+    return;
+  }
   if (el.getAttribute && el.getAttribute("data-act-file") === "backupFile") { readBackupFile(el.files && el.files[0]); el.value = ""; return; }
   const rsField = el.getAttribute && el.getAttribute("data-rs");
   if (rsField && S.restore) { S.restore.pick[rsField] = el.checked; changed(); return; }
@@ -2379,7 +2629,7 @@ async function writeApproval(d, sub, decided, vnote) {
   for (let i = 0; i < decided.length; i++) {
     const x = decided[i], path = "ledger/aw_" + d.id + (round ? "_r" + round : "") + "_" + i;
     if (x.pts <= 0 || await S.store.get(path)) continue;
-    await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, at: Date.now() + i, by: S.uid });
+    await S.store.set(path, { memberId: x.memberId, name: x.name, lemsicId: x.lemsicId, lc: x.lc, eventLc: sub.lc, kind: "award", pts: x.pts, reason: sub.title + " — " + x.catLabel, subId: d.id, subRef: sub.ref, cat: x.cat, round, eventTitle: sub.title, eventDate: sub.date || null, catLabel: x.catLabel, term: termCode(), at: Date.now() + i, by: S.uid });
   }
   const total = sum(decided, (x) => x.pts);
   await S.store.set("decisions/" + d.id, { lo: d.lo, subId: d.id, subRef: sub.ref, rows: decided, total, vpaNote: vnote || null, at: Date.now(), by: S.uid });
@@ -2503,7 +2753,7 @@ const SUBMITS = {
       const pts = Number(f.pts);
       if (!Number.isInteger(pts) || pts === 0) throw new UserError("Enter a whole number of points other than zero.");
       const reason = String(f.reason || "").trim(); if (!reason) throw new UserError("A correction needs a reason.");
-      await S.store.set("ledger/" + newId("c"), { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "correction", pts, reason, at: Date.now(), by: S.uid });
+      await S.store.set("ledger/" + newId("c"), { memberId: m.id, name: m.name, lemsicId: m.lemsicId || null, lc: m.lc, kind: "correction", pts, reason, term: termCode(), at: Date.now(), by: S.uid });
       await audit("ledger.correction", `${pts > 0 ? "+" : ""}${pts} pts for ${m.name}: ${reason}`);
       clearForm("corr");
       syncSoon();
@@ -2717,7 +2967,7 @@ const ACTIONS = {
       const awards = S.ledger.filter((e) => e.subId === d.id && e.kind === "award" && !e.reverses && (e.round || 0) === round);
       for (const e of awards) {
         const path = "ledger/rv_" + e.id;
-        if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, eventLc: e.eventLc || null, kind: "award", pts: -e.pts, reason: "Approval undone — " + sub.ref, subId: d.id, subRef: sub.ref, reverses: e.id, round, at: Date.now(), by: S.uid });
+        if (!(await S.store.get(path))) await S.store.set(path, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, eventLc: e.eventLc || null, kind: "award", pts: -e.pts, reason: "Approval undone — " + sub.ref, subId: d.id, subRef: sub.ref, reverses: e.id, round, eventTitle: e.eventTitle || null, eventDate: e.eventDate || null, catLabel: e.catLabel || null, term: e.term || termCode(), at: Date.now(), by: S.uid });
       }
       await S.store.update("decisions/" + d.id, { undone: true, undoneAt: Date.now() });
       const own = isOwnEvent(d.lo);
@@ -2741,7 +2991,7 @@ const ACTIONS = {
     act(async () => {
       const e = S.ledger.find((x) => x.id === d.id); if (!e || e.kind !== "correction") return;
       if (reversed(e)) throw new UserError("That correction has already been undone.");
-      await S.store.set("ledger/rv_" + e.id, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "correction", pts: -e.pts, reason: "Undo of a correction — " + e.reason, reverses: e.id, at: Date.now(), by: S.uid });
+      await S.store.set("ledger/rv_" + e.id, { memberId: e.memberId, name: e.name, lemsicId: e.lemsicId || null, lc: e.lc, kind: "correction", pts: -e.pts, reason: "Undo of a correction — " + e.reason, reverses: e.id, term: e.term || termCode(), at: Date.now(), by: S.uid });
       await audit("ledger.correction.undone", `${e.pts > 0 ? "−" : "+"}${Math.abs(e.pts)} pts for ${e.name}: undid “${e.reason}”`);
       syncSoon();
     }, "Correction undone.");
